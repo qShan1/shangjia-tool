@@ -1477,52 +1477,24 @@ async function loadOrderDashboardMetrics() {
 
     try {
         const token = localStorage.getItem('auth_token');
-        const response = await fetch('/api/orders', {
+        const response = await fetch('/api/sales', {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
         });
 
         const data = await response.json();
-        if (!data.success) {
+        if (!response.ok || !data.success || !data.data) {
             console.error('加载订单数量失败:', data.message);
             updateDashboardOrderMetrics(defaultMetrics);
             return defaultMetrics;
         }
 
-        const orders = Array.isArray(data.data) ? data.data : [];
-        const totalOrders = orders.length;
-
-        let totalSalesAmount = 0;
-        let completedOrders = 0;
-        let completionEligibleOrders = 0;
-        let todayOrders = 0;
-
-        orders.forEach(order => {
-            const normalizedStatus = normalizeOrderStatus(order?.order_status);
-            const parsedAmount = parseOrderAmount(order);
-
-            if (isSalesEligibleOrder(normalizedStatus) && parsedAmount !== null) {
-                totalSalesAmount += parsedAmount;
-            }
-
-            if (isCompletionEligibleOrder(normalizedStatus)) {
-                completionEligibleOrders++;
-                if (isCompletedOrder(normalizedStatus)) {
-                    completedOrders++;
-                }
-            }
-
-            if (isTodayOrder(getEffectiveOrderSalesTime(order))) {
-                todayOrders++;
-            }
-        });
-
         const metrics = {
-            totalOrders,
-            totalSalesAmount,
-            completionRate: completionEligibleOrders > 0 ? (completedOrders / completionEligibleOrders) * 100 : 0,
-            todayOrders
+            totalOrders: Number(data.data.count || 0),
+            totalSalesAmount: Number(data.data.total || 0),
+            completionRate: Number(data.data.completion_rate || 0),
+            todayOrders: Number(data.data.today_order_count || 0)
         };
 
         updateDashboardOrderMetrics(metrics);

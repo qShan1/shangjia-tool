@@ -144,7 +144,7 @@ SALES_ELIGIBLE_ORDER_STATUSES = {
     'completed',
 }
 
-ORDER_SALES_TIME_SQL = "COALESCE(NULLIF(platform_paid_at, ''), NULLIF(platform_created_at, ''), created_at)"
+ORDER_SALES_TIME_SQL = "COALESCE(NULLIF(o.platform_paid_at, ''), NULLIF(o.platform_created_at, ''), o.created_at)"
 
 ORDER_HISTORY_SYNC_JOB_RETENTION_SECONDS = 3600
 order_history_sync_jobs: Dict[str, Dict[str, Any]] = {}
@@ -1817,8 +1817,11 @@ async def get_sales_data(
         sales_by_date = {}
         total_sales = 0.0
         valid_count = 0
+        completed_count = 0
+        today_order_count = 0
         skipped_invalid_amount = 0
         skipped_ineligible_status = 0
+        today_local_date = get_local_now().strftime('%Y-%m-%d')
 
         for order in orders:
             amount_str = order[0]
@@ -1840,6 +1843,10 @@ async def get_sales_data(
 
             total_sales += amount
             valid_count += 1
+            if normalize_order_status_value(order_status) == 'completed':
+                completed_count += 1
+            if local_date == today_local_date:
+                today_order_count += 1
 
             if local_date not in sales_by_date:
                 sales_by_date[local_date] = 0
@@ -1864,7 +1871,10 @@ async def get_sales_data(
             'data': {
                 'sales': formatted_data,
                 'total': round(total_sales, 2),
-                'count': valid_count
+                'count': valid_count,
+                'completed_count': completed_count,
+                'today_order_count': today_order_count,
+                'completion_rate': round((completed_count / valid_count) * 100, 1) if valid_count else 0.0,
             },
             'message': '获取销售额数据成功'
         }
