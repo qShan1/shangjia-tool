@@ -17075,12 +17075,23 @@ function createOrderRow(order) {
     // 判断是否可以手动发货（允许多次发货，除了交易关闭的订单）
     const canDeliver = !['cancelled', 'refunding'].includes(normalizedStatus);
 
-    let specHtml = '-';
-    if (order.spec_name && order.spec_value) {
-        specHtml = `<small class="text-muted">${specName}:</small><br>${specValue}`;
-        if (order.spec_name_2 && order.spec_value_2) {
-            specHtml += `<br><small class="text-muted">${specName2}:</small><br>${specValue2}`;
+    // 平台历史订单有时只返回规格值或数字规格索引；不能因此把真实规格渲染成“-”。
+    const hasSpec1 = Boolean(String(order.spec_name || '').trim() || String(order.spec_value || '').trim());
+    const hasSpec2 = Boolean(String(order.spec_name_2 || '').trim() || String(order.spec_value_2 || '').trim());
+    let specHtml = '<span class="text-muted">未返回规格</span>';
+    if (hasSpec1) {
+        const label1 = specName || '平台规格';
+        const value1 = specValue || specName || '未返回规格值';
+        specHtml = `<small class="text-muted">${label1}:</small><br>${value1}`;
+        if (hasSpec2) {
+            const label2 = specName2 || '平台规格2';
+            const value2 = specValue2 || specName2 || '未返回规格值';
+            specHtml += `<br><small class="text-muted">${label2}:</small><br>${value2}`;
         }
+    } else if (hasSpec2) {
+        const label2 = specName2 || '平台规格';
+        const value2 = specValue2 || specName2 || '未返回规格值';
+        specHtml = `<small class="text-muted">${label2}:</small><br>${value2}`;
     }
 
     return `
