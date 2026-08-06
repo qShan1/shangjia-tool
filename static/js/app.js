@@ -1121,7 +1121,7 @@ function renderDashboardAccountRuntimeSnapshot(runtimeStatus) {
 }
 
 function renderStatusNoteBadge(statusNote, className) {
-    const noteText = String(statusNote || '').trim();
+    const noteText = normalizeRuntimeErrorMessage(statusNote);
     if (!noteText) {
         return '';
     }
@@ -1158,10 +1158,26 @@ function isVncManualActionAvailable(runtimeStatus) {
     return vncRelevantStatuses.has(tokenStatus);
 }
 
+function normalizeRuntimeErrorMessage(rawMessage) {
+    const raw = String(rawMessage || '').trim();
+    if (!raw) return '';
+    const upper = raw.toUpperCase();
+    if (upper.includes('FAIL_SYS_ILLEGAL_ACCESS')) {
+        return '闲鱼平台拒绝了当前 Token 请求，账号需要重新获取有效 Cookie；请不要复制这段代码。打开账号管理，重新刷新 Cookie，并在出现验证页面时人工完成验证。';
+    }
+    if (upper.includes('FAIL_SYS_API_NOT_FOUNDED')) {
+        return '闲鱼平台暂时不提供当前接口，当前功能已停止自动重试；请稍后刷新状态，或在官方闲鱼端确认账号仍可正常使用。';
+    }
+    if (raw.startsWith('{') && raw.includes('"ret"')) {
+        return '平台返回了无法继续处理的认证结果。请在账号管理中重新刷新 Cookie；如果出现滑块、扫码或其他验证，请人工完成后再刷新状态。';
+    }
+    return raw;
+}
+
 function getManualInterventionAlert(statusNote, runtimeStatus) {
     const noteText = String(statusNote || '').trim();
     const tokenStatus = String(runtimeStatus?.token_refresh_status || '').trim();
-    const tokenError = String(runtimeStatus?.token_refresh_error_message || '').trim();
+    const tokenError = normalizeRuntimeErrorMessage(runtimeStatus?.token_refresh_error_message);
     const riskProtected = Boolean(runtimeStatus?.risk_protected)
         || tokenStatus === 'account_risk_protected'
         || noteText.includes('平台风控保护中');
@@ -17049,7 +17065,7 @@ function displayOrders() {
 function getOrderSpecLabel(specName) {
     const normalized = String(specName || '').trim();
     // 部分历史响应只给出数字索引（例如 "1"），它不是商品名称或真实规格名。
-    return /^\d+$/.test(normalized) ? '平台规格' : normalized;
+    return /^\d+$/.test(normalized) ? '平台订单规格' : normalized;
 }
 
 // 创建订单行HTML
@@ -17071,6 +17087,9 @@ function createOrderRow(order) {
     const isPendingConfirm = normalizedStatus === 'partial_pending_finalize' || order.pending_platform_confirm === true;
     const pendingConfirmError = escapeHtml(order.pending_confirm_error || '');
     const pendingConfirmTitle = pendingConfirmError || (isPendingConfirm ? '卡券已发出，平台确认发货失败，等待补确认' : '');
+    const statusTitle = normalizedStatus === 'refunding'
+        ? '平台当前仍返回退款处理中；本地已处理不等于平台退款成功，需等待下一次同步确认'
+        : pendingConfirmTitle;
 
     // 判断是否可以手动发货（允许多次发货，除了交易关闭的订单）
     const canDeliver = !['cancelled', 'refunding'].includes(normalizedStatus);
@@ -17078,18 +17097,18 @@ function createOrderRow(order) {
     // 平台历史订单有时只返回规格值或数字规格索引；不能因此把真实规格渲染成“-”。
     const hasSpec1 = Boolean(String(order.spec_name || '').trim() || String(order.spec_value || '').trim());
     const hasSpec2 = Boolean(String(order.spec_name_2 || '').trim() || String(order.spec_value_2 || '').trim());
-    let specHtml = '<span class="text-muted">未返回规格</span>';
+    let specHtml = '<span class="text-muted" title="闲鱼订单详情未返回规格字段">未返回规格（平台未提供）</span>';
     if (hasSpec1) {
-        const label1 = specName || '平台规格';
+        const label1 = specName || '平台订单规格';
         const value1 = specValue || specName || '未返回规格值';
-        specHtml = `<small class="text-muted">${label1}:</small><br>${value1}`;
+        specHtml = `<small class="text-muted" title="来自闲鱼订单详情，不代表本地卡券规格设置">${label1}:</small><br>${value1}`;
         if (hasSpec2) {
-            const label2 = specName2 || '平台规格2';
+            const label2 = specName2 || '平台订单规格2';
             const value2 = specValue2 || specName2 || '未返回规格值';
             specHtml += `<br><small class="text-muted">${label2}:</small><br>${value2}`;
         }
     } else if (hasSpec2) {
-        const label2 = specName2 || '平台规格';
+        const label2 = specName2 || '平台订单规格';
         const value2 = specValue2 || specName2 || '未返回规格值';
         specHtml = `<small class="text-muted">${label2}:</small><br>${value2}`;
     }
@@ -17127,7 +17146,7 @@ function createOrderRow(order) {
                 <span class="text-success fw-bold">${amountDisplay}</span>
             </td>
             <td>
-                <span class="badge ${statusClass}" title="${pendingConfirmTitle}">${escapeHtml(statusText)}</span>
+                <span class="badge ${statusClass}" title="${escapeHtml(statusTitle)}">${escapeHtml(statusText)}</span>
                 ${pendingConfirmError ? `<div class="small text-warning text-truncate mt-1" style="max-width: 140px;" title="${pendingConfirmError}">${pendingConfirmError}</div>` : ''}
             </td>
             <td>
@@ -17191,7 +17210,7 @@ function getOrderStatusText(status) {
         'shipped': '已发货',
         'completed': '交易成功',
         'success': '交易成功',
-        'refunding': '申请退款中',
+        'refunding': '退款处理中（平台状态）',
         'refund_cancelled': '退款已撤销',
         'cancelled': '交易关闭',
         'unknown': '未知'

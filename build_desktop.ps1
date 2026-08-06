@@ -5,5 +5,6 @@ if (-not (Test-Path $python)) { throw "venv not found: $python" }
 & $python -m pip install pywebview pyinstaller
 & $python -m PyInstaller --noconfirm --clean --onedir --windowed --name ShangjiaService Start.py
 & $python -m PyInstaller --noconfirm --clean --onedir --windowed --name ShangjiaTool `
+  --icon (Join-Path $root 'static\ShangjiaTool.ico') `
   --add-data "static;static" --add-binary "dist\ShangjiaService\ShangjiaService.exe;." desktop_launcher.py
 Write-Host "Build output: $root\dist\ShangjiaTool"
