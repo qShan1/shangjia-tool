@@ -30,6 +30,7 @@ from config import RISK_CONTROL
 from file_log_collector import setup_file_logging, get_file_log_collector
 from ai_reply_engine import ai_reply_engine
 from ai_site_audit_service import ai_site_audit_service
+from product_compliance import check_product, build_ai_optimization_prompt
 from blacklist_service import blacklist_service
 from message_filter_service import message_filter_service
 from utils.qr_login import qr_login_manager
@@ -7198,8 +7199,8 @@ async def process_qr_login_cookies(cookies: str, unb: str, current_user: Dict[st
                     real_cookies = updated_cookie_info['cookies_str']
                     log_with_user('info', f"已获取真实cookie，长度: {len(real_cookies)}", current_user)
 
-                    qr_login_grace_minutes = max(5, int(RISK_CONTROL.get('qr_login_grace_minutes', 15) or 15))
-                    qr_login_grace_until = int(time.time() + (qr_login_grace_minutes * 60))
+                    qr_login_grace_seconds = max(15, min(120, int(RISK_CONTROL.get('qr_login_grace_seconds', 30) or 30)))
+                    qr_login_grace_until = int(time.time() + qr_login_grace_seconds)
                     task_restarted = False
                     warning_message = None
                     final_cookies = temp_instance.cookies_str or real_cookies
@@ -7221,7 +7222,7 @@ async def process_qr_login_cookies(cookies: str, unb: str, current_user: Dict[st
                             # 表现为"扫码完成但 WS 起不来"（详见 22:43 / 22:08 那两次链路）。
                             XianyuLive.clear_password_login_failure_backoff(account_id)
                             log_with_user('info', f"扫码成功后已清除密码登录失败退避: {account_id}", current_user)
-                            warning_message = f"真实Cookie已获取，账号任务已切换；为降低再次触发风控的概率，将进入 {qr_login_grace_minutes} 分钟稳定期，稳定期内不自动预热Token"
+                            warning_message = f"真实Cookie已保存，账号任务已切换；进入 {qr_login_grace_seconds} 秒稳定化窗口，随后自动探测Token并报告WebSocket状态"
                             log_with_user('warning', f"{warning_message}: {account_id}", current_user)
                         else:
                             warning_message = "真实Cookie已获取，但任务管理器未初始化，未启动账号任务"
@@ -7252,7 +7253,7 @@ async def process_qr_login_cookies(cookies: str, unb: str, current_user: Dict[st
                         try:
                             if task_restarted:
                                 processing_result = '扫码登录真实Cookie获取成功，账号任务已启动'
-                                processing_result += f'；已进入 {qr_login_grace_minutes} 分钟稳定期，稳定期内不自动预热Token'
+                                processing_result += f'；已进入 {qr_login_grace_seconds} 秒稳定化窗口，随后自动探测Token/WebSocket'
                                 db_manager.update_risk_control_log(
                                     log_id=risk_log_id,
                                     processing_status='success',
@@ -10631,6 +10632,18 @@ async def _publish_product_to_account(
     if not cleaned_description:
         raise HTTPException(status_code=400, detail="商品描述不能为空")
 
+    compliance = check_product({
+        'title': cleaned_title,
+        'description': cleaned_description,
+        'category': category_hint,
+        'delivery_choice': delivery_choice,
+    })
+    if not compliance['can_publish']:
+        raise HTTPException(status_code=422, detail={
+            'message': '发布前合规检查未通过，请先修改高风险内容',
+            'compliance': compliance,
+        })
+
     image_payloads = _validate_publish_images(images)
     current_price_value = _parse_optional_non_negative_float(current_price, "现价")
     original_price_value = _parse_optional_non_negative_float(original_price, "原价")
@@ -10928,6 +10941,17 @@ def clear_old_publish_logs(
 ):
     deleted = db_manager.clear_old_publish_logs(current_user['user_id'], days=days)
     return {"success": True, "message": f"已清理 {deleted} 条发布日志", "deleted": deleted}
+
+
+@app.post("/product-publish/precheck")
+def precheck_product_publish(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Run the local conservative compliance review before a publish request."""
+    result = check_product(payload)
+    result['ai_prompt'] = build_ai_optimization_prompt(payload)
+    return {'success': True, 'data': result}
 
 
 @app.post("/product-publish")

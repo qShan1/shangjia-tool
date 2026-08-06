@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>菇-闲鱼管理系统</title>
-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <title>上架 | 闲鱼管理工具</title>
+  <link rel="icon" type="image/svg+xml" href="/static/shangjia-mark.svg">
   <!-- 防止主题闪烁：先隐藏页面，设置好主题后再显示 -->
   <style>
     html { visibility: hidden; }
@@ -61,7 +61,7 @@
   <link rel="stylesheet" href="/static/lib/bootstrap/bootstrap.min.css">
   <link rel="stylesheet" href="/static/lib/bootstrap-icons/bootstrap-icons.css">
 
-<link rel="stylesheet" href="/static/css/app.css?v=2.1.2">
+<link rel="stylesheet" href="/static/css/app.css?v=2.1.3">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     /* Keep the light glass theme readable on translucent surfaces. */
@@ -113,8 +113,8 @@
   <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <a href="#" class="sidebar-brand">
-        <img src="/static/logo.svg" alt="菇 Logo" width="30" height="30" class="me-2">
-        <span>菇-闲鱼管理系统</span>
+        <img src="/static/shangjia-mark.svg" alt="上架 Logo" width="30" height="30" class="me-2 sidebar-brand-logo">
+        <span>上架</span>
       </a>
       <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="切换主题（浅色/深色/跟随系统）">
         <i class="bi bi-moon-fill" id="darkModeIcon"></i>
@@ -143,6 +143,12 @@
         <a href="javascript:void(0)" class="nav-link" onclick="showSection('items')">
           <i class="bi bi-box-seam"></i>
           <span>商品管理</span>
+        </a>
+      </div>
+      <div class="nav-item" data-menu-id="item-search">
+        <a href="javascript:void(0)" class="nav-link" onclick="showSection('item-search')">
+          <i class="bi bi-search"></i>
+          <span>商品搜索</span>
         </a>
       </div>
       <div class="nav-item" data-menu-id="orders">
@@ -942,6 +948,9 @@
                   </div>
 
                   <div class="d-flex flex-wrap gap-2 mt-4">
+                    <button type="button" class="btn btn-outline-warning" id="itemPublishPrecheckBtn" onclick="precheckItemPublishForm()">
+                      <i class="bi bi-shield-check me-1"></i>发布前检查
+                    </button>
                     <button type="submit" class="btn btn-primary" id="itemPublishSubmitBtn">
                       <i class="bi bi-cloud-upload me-1"></i>发布商品
                     </button>
@@ -958,6 +967,7 @@
                       <i class="bi bi-box-seam me-1"></i>查看商品管理
                     </button>
                   </div>
+                  <div id="itemPublishComplianceResult" class="mt-3" aria-live="polite"></div>
                 </form>
               </div>
             </div>
@@ -1348,7 +1358,7 @@
               <button class="btn btn-outline-primary" onclick="refreshOrders()">
                 <i class="bi bi-arrow-clockwise"></i> 刷新
               </button>
-              <button class="btn btn-outline-secondary" onclick="clearOrderFilters()">
+              <button class="btn btn-outline-secondary" id="orderClearFiltersBtn" onclick="clearOrderFilters()" disabled>
                 <i class="bi bi-x-circle"></i> 清空筛选
               </button>
             </div>
@@ -1385,15 +1395,15 @@
                     <th style="width: 4%">
                       <input type="checkbox" id="selectAllOrders" onchange="toggleSelectAllOrders(this)">
                     </th>
-                    <th style="width: 13%">订单ID</th>
-                    <th style="width: 10%">商品ID</th>
-                    <th style="width: 8%">买家ID</th>
-                    <th style="width: 10%">买家昵称</th>
-                    <th style="width: 11%">规格信息</th>
-                    <th style="width: 6%">数量</th>
-                    <th style="width: 8%">金额</th>
-                    <th style="width: 8%">状态</th>
-                    <th style="width: 10%">账号ID</th>
+                    <th style="width: 13%"><button type="button" class="order-sort-trigger" data-order-sort="order_id" onclick="toggleOrderSort('order_id')">订单ID<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
+                    <th style="width: 10%"><button type="button" class="order-sort-trigger" data-order-sort="item_id" onclick="toggleOrderSort('item_id')">商品ID<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
+                    <th style="width: 8%"><button type="button" class="order-sort-trigger" data-order-sort="buyer_id" onclick="toggleOrderSort('buyer_id')">买家ID<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
+                    <th style="width: 10%"><button type="button" class="order-sort-trigger" data-order-sort="buyer_nick" onclick="toggleOrderSort('buyer_nick')">买家昵称<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
+                    <th style="width: 11%"><button type="button" class="order-sort-trigger" data-order-sort="spec" onclick="toggleOrderSort('spec')">规格信息<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
+                    <th style="width: 6%"><button type="button" class="order-sort-trigger" data-order-sort="quantity" onclick="toggleOrderSort('quantity')">数量<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
+                    <th style="width: 8%"><button type="button" class="order-sort-trigger" data-order-sort="amount" onclick="toggleOrderSort('amount')">金额<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
+                    <th style="width: 8%"><button type="button" class="order-sort-trigger" data-order-sort="status" onclick="toggleOrderSort('status')">状态<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
+                    <th style="width: 10%"><button type="button" class="order-sort-trigger" data-order-sort="cookie_id" onclick="toggleOrderSort('cookie_id')">账号ID<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
                     <th style="width: 12%">操作</th>
                   </tr>
                 </thead>
@@ -3016,6 +3026,7 @@
             <div class="chat-panel-body" id="chatAccountsBody">
               <div class="text-center text-muted py-4 small">加载中...</div>
             </div>
+            <div class="px-3 py-2 border-top small text-muted" id="chatRuntimeSummary">运行状态：等待账号</div>
           </div>
           <div class="chat-session-list" id="chatSessionList">
             <div class="chat-panel-header">
@@ -4165,17 +4176,17 @@
           <i class="bi bi-info-circle me-2"></i>
           关于
         </h2>
-        <p class="text-muted mb-0">菇专属运营控制台</p>
+      <p class="text-muted mb-0">闲鱼管理工具</p>
       </div>
       <div class="content-body">
         <section class="about-brand-card" aria-labelledby="aboutBrandTitle">
           <div class="about-brand-header">
             <div class="about-brand-identity">
-              <div class="about-brand-mark" aria-hidden="true"><img src="/static/logo.svg" alt="" width="52" height="52" class="about-brand-logo"></div>
+              <div class="about-brand-mark" aria-hidden="true"><img src="/static/shangjia-mark.svg" alt="上架 Logo" width="52" height="52" class="about-brand-logo"></div>
               <div>
-                <div class="about-brand-name">菇</div>
-                <h3 id="aboutBrandTitle">菇-闲鱼管理系统</h3>
-                <p>账号、商品、订单与自动化运营的本地控制台</p>
+                <div class="about-brand-name">上架</div>
+                <h3 id="aboutBrandTitle">上架</h3>
+                <p>闲鱼账号、商品、订单与自动化运营工具</p>
               </div>
             </div>
             <span class="about-brand-version">本地维护版 <strong id="aboutVersionNumber">加载中...</strong></span>

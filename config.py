@@ -126,7 +126,9 @@ RISK_CONTROL = config.get('RISK_CONTROL', {
     'night_mode_enabled': False,
     'night_start_hour': 1,
     'night_end_hour': 6,
-    'qr_login_grace_minutes': 15,
+    # 扫码后的短暂 Cookie 稳定化窗口。扫码成功后立即进入可观测的认证探测，
+    # 不再让账号静默等待 15 分钟；命中风控时仍由退避策略接管。
+    'qr_login_grace_seconds': 30,
     'night_keepalive_multiplier': 3,
     'night_cookie_refresh_multiplier': 2,
     'backoff_escalation_factor': 1.5,

@@ -1,6 +1,6 @@
 # 🐟 闲鱼管理系统
 
-[![GitHub](https://img.shields.io/badge/GitHub-qShan1%2Fxianyu--smart--butler-blue?logo=github)](https://github.com/qShan1/xianyu-smart-butler)
+[![GitHub](https://img.shields.io/badge/GitHub-qShan1%2Fshangjia--tool-blue?logo=github)](https://github.com/qShan1/shangjia-tool)
 [![Docker Compose](https://img.shields.io/badge/Docker%20Compose-源码构建-blue?logo=docker)](#-快速开始)
 [![Python](https://img.shields.io/badge/Python-3.11+-green?logo=python)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
@@ -28,8 +28,8 @@
 ### Docker Compose（推荐）
 
 ```bash
-git clone https://github.com/qShan1/xianyu-smart-butler.git
-cd xianyu-smart-butler
+git clone https://github.com/qShan1/shangjia-tool.git
+cd shangjia-tool
 docker compose up -d
 ```
 
@@ -42,8 +42,8 @@ docker compose up -d
 ### 本地运行
 
 ```bash
-git clone https://github.com/qShan1/xianyu-smart-butler.git
-cd xianyu-smart-butler
+git clone https://github.com/qShan1/shangjia-tool.git
+cd shangjia-tool
 
 python -m venv venv
 source venv/bin/activate  # Windows 使用 venv\Scripts\activate

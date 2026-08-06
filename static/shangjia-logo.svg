@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="240" viewBox="0 0 720 240" fill="none">
+  <g transform="translate(16 16)">
+    <path d="M36 52H130L201 123L123 201L36 114V52Z" stroke="#171717" stroke-width="17" stroke-linejoin="round"/>
+    <circle cx="76" cy="87" r="12" fill="#171717"/>
+    <path d="M104 116H163M104 148H145" stroke="#171717" stroke-width="15" stroke-linecap="round"/>
+  </g>
+  <text x="270" y="137" fill="#171717" font-family="Microsoft YaHei, Noto Sans SC, sans-serif" font-size="72" font-weight="600" letter-spacing="8">上架</text>
+  <text x="276" y="177" fill="#777777" font-family="Arial, sans-serif" font-size="18" letter-spacing="5">SHANGJIA TOOL</text>
+</svg>

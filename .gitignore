@@ -823,3 +823,6 @@ secure_confirm_ultra.py
 secure_freeshipping_ultra.py
 test_php_stats.py
 .playwright-browsers/
+# 维护审计与回归测试（需要随源码发布）
+!docs/XIANYU_PLATFORM_CAPABILITY_MATRIX.md
+!tests/test_item_polish_module.py
