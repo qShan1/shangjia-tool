@@ -54,6 +54,54 @@ let currentOrdersPage = 1; // 当前页码
 let ordersPerPage = 20; // 每页显示数量
 let totalOrdersPages = 0; // 总页数
 let currentOrderSearchKeyword = ''; // 当前搜索关键词
+let currentOrderSortKey = 'created_at';
+let currentOrderSortDirection = 'desc';
+
+function getOrderSortValue(order, key) {
+    if (key === 'created_at') {
+        return parseUtcDateTime(getOrderPrimarySortTime(order))?.getTime() || 0;
+    }
+    if (key === 'amount' || key === 'quantity') {
+        const number = Number.parseFloat(String(order?.[key] ?? '').replace(/,/g, ''));
+        return Number.isFinite(number) ? number : -Infinity;
+    }
+    if (key === 'status') {
+        const statusRank = {
+            pending_payment: 10, processing: 20, pending_ship: 30,
+            partial_success: 40, partial_pending_finalize: 50,
+            shipped: 60, completed: 70, refunding: 80,
+            cancelled: 90, unknown: 100
+        };
+        return statusRank[normalizeOrderStatus(order?.order_status)] ?? 999;
+    }
+    if (key === 'spec') {
+        return `${order?.spec_name || ''} ${order?.spec_value || ''} ${order?.spec_name_2 || ''} ${order?.spec_value_2 || ''}`.trim();
+    }
+    return String(order?.[key] ?? '').trim();
+}
+
+function toggleOrderSort(key) {
+    if (currentOrderSortKey === key) {
+        currentOrderSortDirection = currentOrderSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentOrderSortKey = key;
+        currentOrderSortDirection = 'desc';
+    }
+    filterOrders(false);
+}
+
+function updateOrderSortIndicators() {
+    document.querySelectorAll('.order-sort-trigger').forEach(button => {
+        const active = button.dataset.orderSort === currentOrderSortKey;
+        const header = button.closest('th');
+        if (header) header.setAttribute('aria-sort', active ? (currentOrderSortDirection === 'asc' ? 'ascending' : 'descending') : 'none');
+        button.classList.toggle('is-active', active);
+        const indicator = button.querySelector('.order-sort-indicator');
+        if (indicator) {
+            indicator.textContent = active ? (currentOrderSortDirection === 'asc' ? '▲' : '▼') : '↕';
+        }
+    });
+}
 let ordersStreamAbortController = null;
 let ordersStreamReconnectTimer = null;
 let ordersStreamRetryCount = 0;
@@ -7481,7 +7529,7 @@ const outgoingConfigs = {
                 id: 'smtp_from',
                 label: '发件人显示名（可选）',
                 type: 'text',
-                placeholder: '菇-闲鱼管理系统',
+                placeholder: '上架',
                 required: false,
                 help: '邮件发件人显示的名称，留空则使用邮箱地址'
             },
@@ -7607,7 +7655,7 @@ const channelTypeConfigs = {
         id: 'title',
         label: '通知标题（可选）',
         type: 'text',
-        placeholder: '菇-闲鱼管理系统通知',
+                placeholder: '上架通知',
         required: false,
         help: '推送通知的标题'
         },
@@ -11945,6 +11993,43 @@ function renderItemPublishLogs() {
     }).join('');
 }
 
+async function precheckItemPublishForm() {
+    const values = getItemPublishFormValues();
+    const resultContainer = document.getElementById('itemPublishComplianceResult');
+    const button = document.getElementById('itemPublishPrecheckBtn');
+    if (button) button.disabled = true;
+    if (resultContainer) resultContainer.innerHTML = '<div class="alert alert-secondary mb-0">正在检查商品文案...</div>';
+    try {
+        const response = await requestItemPublishJson('/product-publish/precheck', {
+            method: 'POST',
+            body: JSON.stringify({
+                title: values.title,
+                description: values.description,
+                category: values.category,
+                delivery_method: values.deliveryChoice,
+            }),
+        });
+        const data = response.data || {};
+        const findings = Array.isArray(data.findings) ? data.findings : [];
+        const suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
+        if (resultContainer) {
+            resultContainer.innerHTML = `
+                <div class="alert ${data.can_publish ? 'alert-warning' : 'alert-danger'} mb-0">
+                    <strong>${data.can_publish ? '可以继续，但请人工复核' : '暂不允许发布'}</strong>
+                    ${findings.length ? `<ul class="mb-1 mt-2">${findings.map(item => `<li>${escapeHtml(item.message)}：${escapeHtml(item.evidence || '')}</li>`).join('')}</ul>` : '<div class="mt-2">未发现明显高风险词。</div>'}
+                    ${suggestions.length ? `<div class="small mt-2">${suggestions.map(item => escapeHtml(item)).join('<br>')}</div>` : ''}
+                    <div class="small mt-2">${escapeHtml(data.notice || '')}</div>
+                </div>`;
+        }
+        return data;
+    } catch (error) {
+        if (resultContainer) resultContainer.innerHTML = `<div class="alert alert-danger mb-0">检查失败：${escapeHtml(error.message || '请稍后重试')}</div>`;
+        throw error;
+    } finally {
+        if (button) button.disabled = false;
+    }
+}
+
 async function submitItemPublishForm() {
     if (itemPublishSubmitting) {
         return;
@@ -11957,6 +12042,17 @@ async function submitItemPublishForm() {
         validateItemPublishValues(values, { requireAccount: true, requireImages: true });
     } catch (error) {
         showToast(error.message || '请完善发布信息', 'warning');
+        return;
+    }
+
+    try {
+        const compliance = await precheckItemPublishForm();
+        if (!compliance.can_publish) {
+            showToast('发布前合规检查未通过，请先修改商品文案', 'warning');
+            return;
+        }
+    } catch (error) {
+        showToast(error.message || '发布前检查失败', 'danger');
         return;
     }
 
@@ -16874,12 +16970,25 @@ function filterOrders(resetPage = true) {
         return matchesSearch && matchesCookie && matchesStatus;
     });
 
+    const direction = currentOrderSortDirection === 'asc' ? 1 : -1;
+    filteredOrdersData.sort((a, b) => {
+        const av = getOrderSortValue(a, currentOrderSortKey);
+        const bv = getOrderSortValue(b, currentOrderSortKey);
+        if (av === bv) return 0;
+        if (typeof av === 'string' && typeof bv === 'string') {
+            const compared = av.localeCompare(bv, 'zh-Hans', { numeric: true, sensitivity: 'base' });
+            return compared * direction;
+        }
+        return av > bv ? direction : -direction;
+    });
+
     currentOrderSearchKeyword = searchKeyword;
     if (resetPage) {
         currentOrdersPage = 1; // 重置到第一页
     }
 
     updateOrdersDisplay();
+    updateOrderSortIndicators();
 }
 
 // 更新订单显示
@@ -16894,6 +17003,20 @@ function updateOrdersDisplay() {
     displayOrders();
     updateOrdersPagination();
     updateOrdersSearchStats();
+    updateOrderFilterResetState();
+}
+
+function updateOrderFilterResetState() {
+    const hasFilter = Boolean(
+        String(document.getElementById('orderSearchInput')?.value || '').trim() ||
+        document.getElementById('orderStatusFilter')?.value ||
+        document.getElementById('orderCookieFilter')?.value
+    );
+    const clearButton = document.getElementById('orderClearFiltersBtn');
+    if (clearButton) {
+        clearButton.disabled = !hasFilter;
+        clearButton.title = hasFilter ? '清除当前搜索、账号和状态筛选' : '当前没有可清除的筛选条件';
+    }
 }
 
 // 显示订单列表
@@ -16923,6 +17046,12 @@ function displayOrders() {
     tbody.innerHTML = pageOrders.map(order => createOrderRow(order)).join('');
 }
 
+function getOrderSpecLabel(specName) {
+    const normalized = String(specName || '').trim();
+    // 部分历史响应只给出数字索引（例如 "1"），它不是商品名称或真实规格名。
+    return /^\d+$/.test(normalized) ? '平台规格' : normalized;
+}
+
 // 创建订单行HTML
 function createOrderRow(order) {
     const statusClass = getOrderStatusClass(order.order_status);
@@ -16933,7 +17062,7 @@ function createOrderRow(order) {
     const buyerId = escapeHtml(order.buyer_id || '-');
     const buyerNick = escapeHtml(order.buyer_nick || '-');
     const cookieId = escapeHtml(order.cookie_id || '-');
-    const specName = escapeHtml(order.spec_name || '');
+    const specName = escapeHtml(getOrderSpecLabel(order.spec_name));
     const specValue = escapeHtml(order.spec_value || '');
     const specName2 = escapeHtml(order.spec_name_2 || '');
     const specValue2 = escapeHtml(order.spec_value_2 || '');
@@ -22306,7 +22435,9 @@ async function showFaceVerification(accountId) {
         toggleLoading(false);
         
         if (!data.success) {
-            showToast(data.message || '未找到验证截图', 'warning');
+            // 轮询和手动查看都不把“当前没有挑战”伪装成失败提示；
+            // 只有后端返回真实截图时才弹出人工操作窗口。
+            showToast(data.message || '当前没有待处理的验证，请等待新的验证挑战', 'info');
             return;
         }
         
@@ -22464,7 +22595,7 @@ async function showVersionInfo(version) {
                         <div class="text-center mt-4">
                             <small style="color: #888; font-size: 14px;">
                                 <i class="bi bi-github me-1"></i>
-                                菇-闲鱼管理系统 | 让店铺管理更轻松
+                                上架 | 让店铺管理更清晰
                             </small>
                         </div>
                     </div>
@@ -23413,7 +23544,8 @@ function mergeChatSessionLists(primarySessions, secondarySessions) {
 function getChatAccountStatus(account) {
     const state = account?.connection_state || 'not_running';
     if (!account?.enabled) return { label: '已断开', className: 'offline' };
-    if (account?.connected) return { label: '已连接', className: 'online' };
+    if (account?.connected && account?.message_stream_ready) return { label: 'IM已连接', className: 'online' };
+    if (account?.connected) return { label: 'WebSocket已连接，消息流未就绪', className: 'pending' };
     if (state === 'connecting' || state === 'reconnecting') return { label: '连接中', className: 'pending' };
     if (account?.running) return { label: '运行中', className: 'pending' };
     return { label: '未连接', className: 'offline' };
@@ -23432,6 +23564,13 @@ async function refreshChatAccounts() {
         const accounts = result.accounts || [];
         chatAccountsCache = accounts;
         chatCurrentAccount = accounts.find(account => account.id === chatCurrentCookieId) || null;
+        const runtimeSummary = document.getElementById('chatRuntimeSummary');
+        if (runtimeSummary) {
+            const current = chatCurrentAccount;
+            runtimeSummary.textContent = current
+                ? '运行状态：' + getChatAccountStatus(current).label + ' · ' + (current.message_stream_note || '暂无平台消息流说明')
+                : '运行状态：请选择账号；会话可能来自平台或本地缓存';
+        }
         if (!accounts.length) {
             body.innerHTML = '<div class="text-center text-muted py-4 small">暂无可用账号</div>';
             return;
@@ -23538,8 +23677,11 @@ async function refreshChatSessions(append = false) {
         chatSessionsHasMore = Boolean(result.has_more && chatSessionsNextCursor);
         const incomingSessions = sortChatSessions(result.sessions || []);
         chatSessionsCache = append ? mergeChatSessionLists(chatSessionsCache, incomingSessions) : incomingSessions;
-        if (!append && result.remote_error) {
-            console.debug('直连IM会话提示:', result.remote_error);
+        const runtimeSummary = document.getElementById('chatRuntimeSummary');
+        if (runtimeSummary && !append) {
+            const source = result.source === 'remote_im' ? '平台 IM' : '本地缓存/订单回退';
+            runtimeSummary.textContent = '会话来源：' + source + (result.remote_error ? ' · 平台提示：' + result.remote_error : '');
+            runtimeSummary.classList.toggle('text-warning', Boolean(result.remote_error));
         }
         if (!chatSessionsCache.length) {
             const hint = result.remote_error || '暂无会话记录';
@@ -24251,8 +24393,12 @@ function formatChatTime(ts) {
     return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-function loadOnlineIm() {
-    refreshChatAccounts();
+async function loadOnlineIm() {
+    await refreshChatAccounts();
+    // 客服页首次打开时预选唯一账号，避免“已连接”却仍要求再次点选。
+    if (!chatCurrentCookieId && chatAccountsCache.length === 1) {
+        await selectChatAccount(chatAccountsCache[0].id);
+    }
     initChatSSE();
 }
 
