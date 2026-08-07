@@ -1,5 +1,7 @@
 import os
+import sys
 import yaml
+from pathlib import Path
 from typing import Dict, Any
 
 class Config:
@@ -24,7 +26,12 @@ class Config:
         从global_config.yml文件中加载配置信息。
         如果文件不存在则抛出FileNotFoundError异常。
         """
-        config_path = os.path.join(os.path.dirname(__file__), 'global_config.yml')
+        # 兼容 PyInstaller 打包：frozen 时用 _MEIPASS
+        if getattr(sys, 'frozen', False):
+            _base = Path(sys._MEIPASS)
+        else:
+            _base = Path(__file__).resolve().parent
+        config_path = os.path.join(str(_base), 'global_config.yml')
         if not os.path.exists(config_path):
             raise FileNotFoundError(f"配置文件不存在: {config_path}")
 
@@ -119,8 +126,8 @@ AUTO_REPLY = config.get('AUTO_REPLY', {
 MANUAL_MODE = config.get('MANUAL_MODE', {})
 LOG_CONFIG = config.get('LOG_CONFIG', {})
 YIFAN_API = config.get('YIFAN_API', {
-    'callback_url': 'http://116.196.116.76/yifan.php',
-    'query_url': 'http://116.196.116.76/yifan.php'
+    'callback_url': '',  # 默认空，需用户在配置文件中指定自己的回调地址
+    'query_url': ''      # 默认空，需用户在配置文件中指定自己的查询地址
 })
 RISK_CONTROL = config.get('RISK_CONTROL', {
     'night_mode_enabled': False,

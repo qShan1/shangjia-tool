@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         闲鱼聊天暗色模式
-// @namespace    https://github.com/xianyu-auto-reply
+// @namespace    https://github.com/qShan1/shangjia-tool
 // @version      2.0.0
 // @description  为闲鱼聊天页面添加暗色模式支持
-// @author       XianyuAutoReply
+// @author       qShan1
 // @match        https://www.goofish.com/im*
 // @match        https://www.goofish.com/personal*
 // @match        https://goofish.com/im*
@@ -13,6 +13,9 @@
 // @grant        GM_registerMenuCommand
 // @run-at       document-start
 // ==/UserScript==
+
+// 本脚本基于 xianyu-auto-reply 项目二次开发，遵循 AGPL-3.0 协议。
+// 原项目: https://github.com/zhinianboke/xianyu-auto-reply
 
 (function() {
     'use strict';

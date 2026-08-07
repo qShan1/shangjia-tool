@@ -1,0 +1,11 @@
+SHANGJIA TOOL（上架工具）
+Copyright (C) 2026 qShan1 <https://github.com/qShan1>
+
+本项目基于开源项目 xianyu-auto-reply
+（https://github.com/zhinianboke/xianyu-auto-reply）二次开发，
+并参考了 myfish、XianYuApis、XianyuAutoAgent 等开源项目。
+
+本项目遵循 GNU Affero General Public License v3.0（AGPL-3.0）开源协议。
+原项目版权归属于其原作者，本项目保留对所有新增与修改部分的版权。
+
+完整许可证文本见 LICENSE 文件，上游贡献者列表见 README.md 特别鸣谢章节。

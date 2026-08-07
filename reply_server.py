@@ -12,6 +12,7 @@ import secrets
 import time
 import json
 import os
+import sys
 import re
 import uuid
 import base64
@@ -71,7 +72,7 @@ KEYWORDS_FILE = Path(__file__).parent / "回复关键字.txt"
 
 # 简单的用户认证配置
 ADMIN_USERNAME = "admin"
-DEFAULT_ADMIN_PASSWORD = "admin123"  # 系统初始化时的默认密码
+DEFAULT_ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")  # 从环境变量读取，未设置则为空（首次启动时随机生成）
 SESSION_TOKENS = {}  # 存储会话token: {token: {'user_id': int, 'username': str, 'timestamp': float}}
 TOKEN_EXPIRE_TIME = 24 * 60 * 60  # token过期时间：24小时
 
@@ -166,8 +167,8 @@ def _get_announcement_remote_url() -> str:
     if configured_url:
         return configured_url
 
-    owner = str(os.getenv('UPDATE_GITHUB_OWNER') or 'GuDong2003').strip() or 'GuDong2003'
-    repo = str(os.getenv('UPDATE_GITHUB_REPO') or 'xianyu-auto-reply-fix').strip() or 'xianyu-auto-reply-fix'
+    owner = str(os.getenv('UPDATE_GITHUB_OWNER') or 'qShan1').strip() or 'qShan1'
+    repo = str(os.getenv('UPDATE_GITHUB_REPO') or 'shangjia-tool').strip() or 'shangjia-tool'
     branch = str(os.getenv('DASHBOARD_ANNOUNCEMENT_BRANCH') or 'main').strip() or 'main'
     file_path = str(os.getenv('DASHBOARD_ANNOUNCEMENT_FILE') or 'announcement.json').strip().lstrip('/')
     return f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{file_path}"
@@ -343,7 +344,7 @@ def _try_load_dashboard_announcement_snapshot_from_remote() -> Tuple[bool, Optio
         request = urllib_request.Request(
             remote_url,
             headers={
-                'User-Agent': 'XianyuDashboardAnnouncement/1.0',
+                'User-Agent': 'ShangjiaToolAnnouncement/1.0',
                 'Accept': 'application/json',
             }
         )
@@ -897,9 +898,9 @@ class ChangePasswordRequest(BaseModel):
 
 class RegisterRequest(BaseModel):
     username: str
-    email: str
     password: str
-    verification_code: str
+    email: str = ""
+    verification_code: str = ""
 
 
 class RegisterResponse(BaseModel):
@@ -1181,9 +1182,9 @@ class PersonalBlacklistToggleRequest(BaseModel):
 
 
 app = FastAPI(
-    title="Xianyu Management API",
+    title="Shangjia Tool API",
     version="1.0.0",
-    description="闲鱼管理系统API",
+    description="上架工具（SHANGJIA TOOL）API",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -1259,7 +1260,12 @@ async def log_requests(request, call_next):
 
 # 提供前端静态文件
 import os
-static_dir = os.path.join(os.path.dirname(__file__), 'static')
+# 兼容 PyInstaller 打包：frozen 时用 _MEIPASS，否则用源码目录
+if getattr(sys, 'frozen', False):
+    _RESOURCE_BASE = Path(sys._MEIPASS)
+else:
+    _RESOURCE_BASE = Path(__file__).resolve().parent
+static_dir = str(_RESOURCE_BASE / 'static')
 if not os.path.exists(static_dir):
     os.makedirs(static_dir, exist_ok=True)
 
@@ -1319,6 +1325,20 @@ async def health_check():
             "timestamp": time.time(),
             "error": str(e)
         }
+
+
+# 系统权益信息端点（本地返回，不再请求外部服务器）
+@app.get('/api/system/benefits')
+async def get_system_benefits():
+    """获取系统权益信息（本地返回，不再请求外部服务器）"""
+    return {
+        "success": True,
+        "benefits": {
+            "version": "SHANGJIA TOOL",
+            "features": [],
+            "description": "开源版本，所有功能本地可用"
+        }
+    }
 
 
 # 重定向根路径到登录页面
@@ -1500,6 +1520,178 @@ async def admin_page():
 
 
 
+
+# ========================= 首次密码初始化 =========================
+
+@app.get('/api/system/init-status')
+async def get_init_status():
+    """查询系统是否首次启动及密码初始化状态"""
+    from db_manager import db_manager
+    try:
+        initialized = db_manager.get_system_setting('admin_password_initialized')
+        # 检查 admin 用户是否存在
+        admin_user = db_manager.get_user_by_username('admin')
+        admin_exists = admin_user is not None
+
+        if not admin_exists:
+            return {
+                "success": True,
+                "first_run": True,
+                "password_initialized": False,
+                "message": "系统尚未初始化"
+            }
+
+        if initialized == 'true':
+            return {
+                "success": True,
+                "first_run": False,
+                "password_initialized": True,
+                "message": "管理员密码已初始化"
+            }
+        else:
+            # 密码是随机生成的，需要用户确认或重新设置
+            has_pending = hasattr(db_manager, '_pending_init_password') and db_manager._pending_init_password
+            return {
+                "success": True,
+                "first_run": True,
+                "password_initialized": False,
+                "has_temp_password": has_pending,
+                "message": "首次启动，请设置管理员密码"
+            }
+    except Exception as e:
+        logger.error(f"查询初始化状态失败: {e}")
+        return {"success": False, "message": f"查询失败: {str(e)}"}
+
+class InitPasswordRequest(BaseModel):
+    new_password: str
+    temp_password: Optional[str] = None  # 可选：如果知道随机密码则验证，否则直接设置
+
+@app.post('/api/system/init-password')
+async def init_admin_password(request: InitPasswordRequest):
+    """首次设置管理员密码（仅在密码未初始化时可用）"""
+    from db_manager import db_manager
+    try:
+        # 检查是否已初始化
+        initialized = db_manager.get_system_setting('admin_password_initialized')
+        if initialized == 'true':
+            return {"success": False, "message": "密码已初始化，请使用修改密码功能"}
+
+        # 验证新密码强度
+        if len(request.new_password) < 6:
+            return {"success": False, "message": "密码长度至少6位"}
+
+        # 如果有随机生成的临时密码，验证用户是否知道
+        has_temp = hasattr(db_manager, '_pending_init_password') and db_manager._pending_init_password
+        if has_temp:
+            temp_pwd = db_manager._pending_init_password
+            if request.temp_password and request.temp_password != temp_pwd:
+                return {"success": False, "message": "临时密码不正确"}
+            # 如果没提供 temp_password，也允许直接设置（首次本地访问，安全风险低）
+
+        # 更新密码
+        success = db_manager.update_user_password('admin', request.new_password)
+        if success:
+            # 标记为已初始化
+            db_manager.set_system_setting('admin_password_initialized', 'true', '管理员密码是否已初始化')
+            # 清除临时密码
+            if hasattr(db_manager, '_pending_init_password'):
+                db_manager._pending_init_password = None
+            logger.info("管理员密码首次设置成功")
+            return {"success": True, "message": "密码设置成功，请使用新密码登录"}
+        else:
+            return {"success": False, "message": "密码设置失败"}
+    except Exception as e:
+        logger.error(f"首次设置密码失败: {e}")
+        return {"success": False, "message": f"设置失败: {str(e)}"}
+
+# 首次使用欢迎弹窗状态
+@app.get('/api/system/welcome-status')
+async def get_welcome_status():
+    """查询是否需要显示欢迎弹窗"""
+    from db_manager import db_manager
+    try:
+        dismissed = db_manager.get_system_setting('welcome_dismissed')
+        return {
+            "success": True,
+            "show_welcome": dismissed != 'true'
+        }
+    except Exception as e:
+        return {"success": True, "show_welcome": True}
+
+@app.post('/api/system/welcome-dismiss')
+async def dismiss_welcome():
+    """关闭欢迎弹窗（下次不再显示）"""
+    from db_manager import db_manager
+    try:
+        db_manager.set_system_setting('welcome_dismissed', 'true', '欢迎弹窗是否已关闭')
+        return {"success": True}
+    except Exception:
+        return {"success": False}
+
+@app.post('/api/system/welcome-restore')
+async def restore_welcome():
+    """重新启用欢迎弹窗（从设置中触发）"""
+    from db_manager import db_manager
+    try:
+        db_manager.set_system_setting('welcome_dismissed', 'false', '欢迎弹窗是否已关闭')
+        return {"success": True, "message": "欢迎弹窗已重新启用，刷新页面后生效"}
+    except Exception:
+        return {"success": False}
+
+# Chromium 安装状态查询
+@app.get('/api/system/chromium-status')
+async def get_chromium_status():
+    """查询 Playwright Chromium 浏览器安装状态"""
+    try:
+        from pathlib import Path
+
+        # 检查可能的位置
+        found = False
+        chrome_path = ""
+
+        # 1. 打包模式：exe 同级 playwright 目录
+        if getattr(sys, 'frozen', False):
+            exe_dir = Path(sys.executable).parent
+            playwright_dir = exe_dir / 'playwright'
+            if playwright_dir.exists():
+                for chromium_dir in playwright_dir.glob('chromium-*'):
+                    chrome_exe = chromium_dir / 'chrome-win' / 'chrome.exe'
+                    if chrome_exe.exists() and chrome_exe.stat().st_size > 0:
+                        found = True
+                        chrome_path = str(chrome_exe)
+                        break
+
+        if not found:
+            # 2. 用户缓存目录
+            possible_paths = []
+            user_cache = Path.home() / '.cache' / 'ms-playwright'
+            possible_paths.append(user_cache)
+            local_appdata = os.getenv('LOCALAPPDATA')
+            if local_appdata:
+                possible_paths.append(Path(local_appdata) / 'ms-playwright')
+            appdata = os.getenv('APPDATA')
+            if appdata:
+                possible_paths.append(Path(appdata) / 'ms-playwright')
+
+            for path in possible_paths:
+                if path.exists():
+                    for chromium_dir in path.glob('chromium-*'):
+                        chrome_exe = chromium_dir / 'chrome-win' / 'chrome.exe'
+                        if chrome_exe.exists() and chrome_exe.stat().st_size > 0:
+                            found = True
+                            chrome_path = str(chrome_exe)
+                            break
+                    if found:
+                        break
+
+        return {
+            "success": True,
+            "installed": found,
+            "path": chrome_path if found else "",
+            "message": "Chromium 已安装" if found else "Chromium 未安装，首次使用人脸验证/滑块验证时会自动下载（约150MB），请耐心等待"
+        }
+    except Exception as e:
+        return {"success": False, "installed": False, "message": f"检测失败: {str(e)}"}
 
 # 登录接口
 @app.post('/login')
@@ -2311,15 +2503,16 @@ async def register(request: RegisterRequest):
         )
 
     try:
-        logger.info(f"【{request.username}】尝试注册，邮箱: {request.email}")
+        logger.info(f"【{request.username}】尝试注册")
 
-        # 验证邮箱验证码
-        if not db_manager.verify_email_code(request.email, request.verification_code):
-            logger.warning(f"【{request.username}】注册失败: 验证码错误或已过期")
-            return RegisterResponse(
-                success=False,
-                message="验证码错误或已过期"
-            )
+        # 如果填写了邮箱，才验证邮箱验证码
+        if request.email:
+            if not db_manager.verify_email_code(request.email, request.verification_code):
+                logger.warning(f"【{request.username}】注册失败: 验证码错误或已过期")
+                return RegisterResponse(
+                    success=False,
+                    message="验证码错误或已过期"
+                )
 
         # 检查用户名是否已存在
         existing_user = db_manager.get_user_by_username(request.username)
@@ -2330,17 +2523,19 @@ async def register(request: RegisterRequest):
                 message="用户名已存在"
             )
 
-        # 检查邮箱是否已注册
-        existing_email = db_manager.get_user_by_email(request.email)
-        if existing_email:
-            logger.warning(f"【{request.username}】注册失败: 邮箱已被注册")
-            return RegisterResponse(
-                success=False,
-                message="该邮箱已被注册"
-            )
+        # 检查邮箱是否已注册（仅在填写了邮箱时）
+        if request.email:
+            existing_email = db_manager.get_user_by_email(request.email)
+            if existing_email:
+                logger.warning(f"【{request.username}】注册失败: 邮箱已被注册")
+                return RegisterResponse(
+                    success=False,
+                    message="该邮箱已被注册"
+                )
 
-        # 创建用户
-        if db_manager.create_user(request.username, request.email, request.password):
+        # 创建用户（邮箱为空时传空字符串）
+        email = request.email or ""
+        if db_manager.create_user(request.username, email, request.password):
             logger.info(f"【{request.username}】注册成功")
             return RegisterResponse(
                 success=True,
@@ -2363,9 +2558,8 @@ async def register(request: RegisterRequest):
 
 # ------------------------- 发送消息接口 -------------------------
 
-# 固定的API秘钥（生产环境中应该从配置文件或环境变量读取）
-# 注意：现在从系统设置中读取QQ回复消息秘钥
-API_SECRET_KEY = "xianyu_api_secret_2024"  # 保留作为后备
+# API秘钥仅从系统设置读取，不再有硬编码后备值
+# 未配置时所有 /send-message 请求将被拒绝
 
 class SendMessageRequest(BaseModel):
     api_key: str
@@ -2381,21 +2575,19 @@ class SendMessageResponse(BaseModel):
 
 
 def verify_api_key(api_key: str) -> bool:
-    """验证API秘钥"""
+    """验证API秘钥 - 仅从系统设置读取，未配置时拒绝所有请求"""
     try:
-        # 从系统设置中获取QQ回复消息秘钥
         from db_manager import db_manager
         qq_secret_key = db_manager.get_system_setting('qq_reply_secret_key')
-
-        # 如果系统设置中没有配置，使用默认值
+        # 未配置秘钥时直接拒绝，不再回退到硬编码值
         if not qq_secret_key:
-            qq_secret_key = API_SECRET_KEY
-
+            logger.warning("QQ回复秘钥未配置，拒绝 /send-message 请求")
+            return False
         return api_key == qq_secret_key
     except Exception as e:
         logger.error(f"验证API秘钥时发生异常: {e}")
-        # 异常情况下使用默认秘钥验证
-        return api_key == API_SECRET_KEY
+        # 异常情况下拒绝请求，不再回退
+        return False
 
 
 @app.post('/send-message', response_model=SendMessageResponse)
@@ -2424,20 +2616,12 @@ async def send_message_api(request: SendMessageRequest):
                 message="API秘钥不能为空"
             )
 
-        # 特殊测试秘钥处理
-        if cleaned_api_key == "zhinina_test_key":
-            logger.info("使用测试秘钥，直接返回成功")
-            return SendMessageResponse(
-                success=True,
-                message="接口验证成功"
-            )
-
         # 验证API秘钥
         if not verify_api_key(cleaned_api_key):
             logger.warning(f"API秘钥验证失败: {mask_sensitive_text(cleaned_api_key)}")
             return SendMessageResponse(
                 success=False,
-                message="API秘钥验证失败"
+                message="API秘钥验证失败，请检查系统设置中的QQ回复秘钥配置"
             )
 
         # 验证必需参数不能为空
@@ -10356,6 +10540,7 @@ class ProductSinglePublishRequest(BaseModel):
     category: Optional[str] = None
     brand: Optional[str] = None
     condition: Optional[str] = "全新"
+    quantity: Optional[int] = 1
 
 
 def _parse_optional_non_negative_float(value: Any, field_label: str) -> Optional[float]:
@@ -10508,7 +10693,7 @@ def _dedupe_int_list(values: List[Any], field_label: str) -> List[int]:
 def _normalize_product_publish_data(data: Dict[str, Any], *, partial: bool = False) -> Dict[str, Any]:
     normalized: Dict[str, Any] = {}
 
-    for field in ('title', 'description', 'category', 'brand', 'condition', 'remark'):
+    for field in ('title', 'description', 'category', 'brand', 'condition', 'quantity', 'remark'):
         if field in data or not partial:
             value = data.get(field)
             if value is None:
@@ -10555,6 +10740,13 @@ def _normalize_product_publish_data(data: Dict[str, Any], *, partial: bool = Fal
         if not isinstance(images, list):
             raise HTTPException(status_code=400, detail="商品图片必须是数组")
         normalized['images'] = images
+
+    if 'quantity' in data or not partial:
+        try:
+            qty = int(data.get('quantity') or 1)
+            normalized['quantity'] = max(1, qty)
+        except (TypeError, ValueError):
+            normalized['quantity'] = 1
 
     return normalized
 
@@ -10611,6 +10803,8 @@ async def _publish_product_to_account(
     post_price: Optional[float],
     can_self_pickup: bool,
     category_hint: Optional[str] = None,
+    condition: Optional[str] = "全新",
+    quantity: int = 1,
     material_id: Optional[int] = None,
     batch_id: Optional[str] = None,
     log_id: Optional[int] = None,
@@ -10688,6 +10882,8 @@ async def _publish_product_to_account(
                 post_price=post_price_value,
                 can_self_pickup=bool(can_self_pickup),
                 category_hint=category_hint,
+                condition=condition,
+                quantity=quantity,
             )
             latest_cookies_str = publisher.cookies_str
             published_item_id = publisher.extract_published_item_id(publish_result)
@@ -10972,6 +11168,7 @@ async def publish_product_json(
         "category": request.category,
         "brand": request.brand,
         "condition": request.condition,
+        "quantity": request.quantity,
     }, partial=False)
     return await _publish_product_to_account(
         current_user=current_user,
@@ -10985,6 +11182,8 @@ async def publish_product_json(
         post_price=data.get('postage'),
         can_self_pickup=bool(data.get('can_self_pickup')),
         category_hint=data.get('category'),
+        condition=data.get('condition'),
+        quantity=data.get('quantity'),
     )
 
 
@@ -11207,6 +11406,8 @@ async def publish_item(
     delivery_choice: str = Form(...),
     post_price: str = Form(default=""),
     can_self_pickup: str = Form(default="false"),
+    condition: str = Form(default="全新"),
+    quantity: str = Form(default="1"),
     images: List[UploadFile] = File(...),
     current_user: Dict[str, Any] = Depends(get_current_user),
 ):
@@ -11237,6 +11438,8 @@ async def publish_item(
         post_price=post_price,
         can_self_pickup=_parse_form_bool(can_self_pickup),
         category_hint=category,
+        condition=condition,
+        quantity=int(quantity) if str(quantity).isdigit() else 1,
     )
 
 

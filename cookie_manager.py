@@ -234,7 +234,8 @@ class CookieManager:
                 # 获取原有的user_id和关键词
                 original_user_id = None
                 original_keywords = []
-                original_status = True
+                # 优先从数据库读取启用状态，避免服务重启后内存丢失导致禁用账号被错误启用
+                original_status = db_manager.get_cookie_status(cookie_id)
 
                 cookie_info = db_manager.get_cookie_details(cookie_id)
                 if cookie_info:
@@ -275,11 +276,13 @@ class CookieManager:
                 self.keywords[cookie_id] = original_keywords
                 self.cookie_status[cookie_id] = original_status
 
-                # 重新启动任务
-                task = self.loop.create_task(self._run_xianyu(cookie_id, new_value, original_user_id))
-                self.tasks[cookie_id] = task
-
-                logger.info(f"已更新Cookie并重启任务: {cookie_id} (用户ID: {original_user_id}, 关键词: {len(original_keywords)}条)")
+                # 只有启用的账号才重启任务；禁用账号保持禁用，不启动任务
+                if original_status:
+                    task = self.loop.create_task(self._run_xianyu(cookie_id, new_value, original_user_id))
+                    self.tasks[cookie_id] = task
+                    logger.info(f"已更新Cookie并重启任务: {cookie_id} (用户ID: {original_user_id}, 关键词: {len(original_keywords)}条)")
+                else:
+                    logger.info(f"已更新Cookie，账号处于禁用状态，未启动任务: {cookie_id} (用户ID: {original_user_id}, 关键词: {len(original_keywords)}条)")
 
         try:
             current_loop = asyncio.get_running_loop()

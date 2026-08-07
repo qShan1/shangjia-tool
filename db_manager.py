@@ -55,6 +55,7 @@ class DBManager:
         self.lock = threading.RLock()  # 使用可重入锁保护数据库操作
         self.secret_fernet = None
         self.secret_key_path = None
+        self._pending_init_password = None
 
         # SQL日志配置 - 默认启用
         self.sql_log_enabled = True  # 默认启用SQL日志
@@ -1008,7 +1009,7 @@ Cookie数量: {cookie_count}
             ('qq_notification_api_url', '', 'QQ 私信通知 API 地址（留空则禁用 QQ 私信通知）'),
             ('auto_comment_api_url', '', '自动好评辅助 API 地址（留空则禁用此功能，避免 Cookie 外发）'),
             ('auto_red_flower_interval_seconds', '300', '自动求小红花后台任务检查间隔秒数'),
-            ('qq_reply_secret_key', 'xianyu_qq_reply_2024', 'QQ回复消息API秘钥')
+            ('qq_reply_secret_key', '', 'QQ回复消息API秘钥（未配置时/send-message接口将被禁用）')
             ''')
 
             # 检查并升级数据库
@@ -1544,8 +1545,24 @@ Cookie数量: {cookie_count}
             admin_exists = cursor.fetchone()[0] > 0
 
             if not admin_exists:
-                # 首次创建admin用户，设置默认密码和管理员权限
-                default_password_hash = hashlib.sha256("admin123".encode()).hexdigest()
+                # 首次创建admin用户：优先用环境变量 ADMIN_PASSWORD，否则随机生成
+                import secrets as _secrets
+                import string as _string
+                # 优先从环境变量读取（兼容 docker-compose 的 ADMIN_PASSWORD）
+                admin_password = os.environ.get("ADMIN_PASSWORD", "").strip()
+                if not admin_password:
+                    # 随机生成16位密码
+                    _alphabet = _string.ascii_letters + _string.digits
+                    admin_password = ''.join(_secrets.choice(_alphabet) for _ in range(16))
+                    logger.warning("=" * 60)
+                    logger.warning("首次启动：已为 admin 用户随机生成密码")
+                    logger.warning(f"初始密码：{admin_password}")
+                    logger.warning("请立即登录并修改密码！此密码仅显示一次。")
+                    logger.warning("如需指定密码，请设置环境变量 ADMIN_PASSWORD 后重启")
+                    logger.warning("=" * 60)
+                else:
+                    logger.info("使用环境变量 ADMIN_PASSWORD 创建 admin 用户")
+                default_password_hash = hashlib.sha256(admin_password.encode()).hexdigest()
                 # 检查is_admin列是否存在
                 try:
                     cursor.execute('SELECT is_admin FROM users LIMIT 1')
@@ -1559,7 +1576,15 @@ Cookie数量: {cookie_count}
                     INSERT INTO users (username, email, password_hash) VALUES
                     ('admin', 'admin@localhost', ?)
                     ''', (default_password_hash,))
-                logger.info("创建默认admin用户，默认密码已初始化，请尽快修改")
+                # 标记密码初始化状态：环境变量设置的视为已初始化，随机生成的标记为待设置
+                if os.environ.get("ADMIN_PASSWORD", "").strip():
+                    # 环境变量预设的密码，标记为已初始化
+                    self.set_system_setting('admin_password_initialized', 'true', '管理员密码是否已初始化')
+                else:
+                    # 随机生成的密码，标记为待用户确认
+                    self.set_system_setting('admin_password_initialized', 'false', '管理员密码是否已初始化（false=随机生成待确认）')
+                    # 将随机密码暂存到内存供 init API 读取（不持久化明文）
+                    self._pending_init_password = admin_password
 
             # 获取admin用户ID，用于历史数据绑定
             self._execute_sql(cursor, "SELECT id FROM users WHERE username = 'admin'")
@@ -4518,13 +4543,13 @@ Cookie数量: {cookie_count}
     async def send_verification_email(self, email: str, code: str) -> bool:
         """发送验证码邮件（支持SMTP和API两种方式）"""
         try:
-            subject = "闲鱼管理系统 - 邮箱验证码"
+            subject = "SHANGJIA TOOL - 邮箱验证码"
             # 使用简单的纯文本邮件内容
-            text_content = f"""【闲鱼管理系统】邮箱验证码
+            text_content = f"""【SHANGJIA TOOL】邮箱验证码
 
 您好！
 
-感谢您使用闲鱼管理系统。为了确保账户安全，请使用以下验证码完成邮箱验证：
+感谢您使用 SHANGJIA TOOL。为了确保账户安全，请使用以下验证码完成邮箱验证：
 
 验证码：{code}
 
@@ -4534,11 +4559,11 @@ Cookie数量: {cookie_count}
 • 如非本人操作，请忽略此邮件
 • 系统不会主动索要您的验证码
 
-感谢您选择闲鱼管理系统！
+感谢您选择 SHANGJIA TOOL！
 
 ---
 此邮件由系统自动发送，请勿直接回复
-© 2026 闲鱼管理系统"""
+© 2026 SHANGJIA TOOL"""
 
             # 从系统设置读取SMTP配置
             try:

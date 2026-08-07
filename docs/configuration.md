@@ -1,68 +1,24 @@
 # 配置说明
 
-> 返回：[README](../README.md) ｜ 相关：[部署与运行指南](deployment.md) ｜ [AI 回复配置](../README.md#-ai-回复配置) ｜ [常见问题](faq.md)
+配置来源按优先级分为环境变量、`global_config.yml` 和管理台保存的运行配置。敏感值只保存在本地运行环境，不能提交到 Git。
 
-本项目的配置分为环境变量、`global_config.yml` 和 Web 管理界面配置。敏感信息建议仅保存在本地环境或运行期数据目录中，不要提交到版本库。
+## 常用环境变量
 
-## 环境变量
+| 变量 | 用途 | 示例 |
+| --- | --- | --- |
+| `API_HOST` | 源码服务监听地址 | `127.0.0.1` |
+| `API_PORT` | 源码服务端口 | `8090` |
+| `APP_DATA_DIR` | 运行数据根目录 | `D:\ShangjiaData` |
+| `DB_PATH` | SQLite 数据库路径 | `D:\ShangjiaData\data\xianyu_data.db` |
+| `SHANGJIA_DATA_DIR` | 桌面端数据目录 | `D:\ShangjiaData` |
+| `SHANGJIA_PORT` | 桌面端服务端口 | `8090` |
+| `ADMIN_PASSWORD` | 首次初始化管理员密码 | 仅在本机设置 |
+| `COOKIES_STR` | 旧单账号兼容入口 | 不要写入仓库 |
 
-系统实际会读取的环境变量主要包括：
+显式设置的 `API_HOST` 和 `API_PORT` 会覆盖 `global_config.yml` 中的服务地址配置，适合本机多实例或隔离测试。
 
-```bash
-# Web 服务
-API_HOST=0.0.0.0
-API_PORT=8090
+## 配置文件
 
-# 数据存储
-DB_PATH=/app/data/xianyu_data.db
+`global_config.yml` 保存非敏感默认参数，包括接口地址、自动回复、心跳和日志设置。使用管理台修改的业务配置以运行数据库为准。
 
-# SQL 日志
-SQL_LOG_ENABLED=true
-SQL_LOG_LEVEL=INFO
-
-# 敏感信息加密
-SECRET_ENCRYPTION_KEY=your-secret-key
-
-# 兼容旧单账号模式（可选）
-COOKIES_STR=your_cookie_string
-
-# Docker 图形模式（可选）
-USE_XVFB=true
-ENABLE_HEADFUL=true
-ENABLE_VNC=false
-DISPLAY=:99
-```
-
-## 全局配置文件
-
-`global_config.yml` 包含详细的系统配置，支持：
-
-- WebSocket 连接参数
-- API 接口配置
-- 自动回复设置
-- 商品管理配置
-- 日志配置
-
-> 其他运行参数（如 WebSocket、心跳、自动回复等）主要在 `global_config.yml` 和 Web 管理界面中配置。
-
-## AI 回复配置
-
-AI 回复通过 Web 管理界面配置，核心字段包括：
-
-- `model_name`：模型名称
-- `api_key`：API Key
-- `base_url`：API 入口地址
-- `api_type`：接口类型
-
-常见接口类型包括 OpenAI-compatible Chat Completions、OpenAI Responses、DashScope、Gemini、Anthropic、Azure OpenAI 等。若某个第三方服务兼容 OpenAI Chat Completions，优先复用 OpenAI-compatible 配置路径，不建议新增专用适配器。
-
-## 运行期数据目录
-
-以下目录属于运行期数据，不要提交到版本库：
-
-- `data/`
-- `logs/`
-- `browser_data/`
-- `update_backup/`
-
-这些目录可能包含数据库、日志、浏览器状态、Cookie 相关状态或更新备份。
+修改配置前备份运行数据。不要把真实 Cookie、API Key、密码、数据库或浏览器会话写进示例文件、Issue、日志或提交记录。

@@ -361,3 +361,10 @@ ENV/
 # order_status_handler.py - 保留，是核心订单处理模块
 php/
 # simple_stats_server.py - 保留，是可选的统计服务器
+
+# 调试脚本不进入生产镜像
+debug_*.py
+# 构建产物
+build/
+dist/
+*.spec.bak

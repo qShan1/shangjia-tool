@@ -259,6 +259,7 @@ function showSection(sectionName) {
 
     if (sectionName !== 'online-im') {
         stopChatStream();
+        stopChatSessionsAutoRefresh();
     }
 
     // 如果切换到非日志页面，停止自动刷新
@@ -1211,7 +1212,10 @@ function getManualInterventionAlert(statusNote, runtimeStatus) {
         return null;
     }
 
-    let title = noteText || '检测到滑块/风控，需要人工处理';
+    const platformTokenRejected = tokenError.includes('闲鱼平台拒绝了当前 Token 请求');
+    let title = noteText || (platformTokenRejected
+        ? '管理台 Token 无效（不代表闲鱼网页已退出）'
+        : '检测到滑块/风控，需要人工处理');
     if (!noteText && tokenStatus === 'password_login_backoff_wait') {
         title = '登录恢复退避中，暂不可接管';
     } else if (!noteText && tokenStatus === 'captcha_max_retries_exceeded') {
@@ -1219,6 +1223,9 @@ function getManualInterventionAlert(statusNote, runtimeStatus) {
     }
 
     let detail = tokenError || '系统检测到认证链路异常。';
+    if (platformTokenRejected) {
+        detail = '你在 Edge 中打开的闲鱼网页登录状态，与管理台保存的 Cookie/Token 是两套会话。网页能打开不等于管理台 Token 可用。请在账号管理中点击“手动刷新 Cookie”，选择该账号并完成验证；不要只刷新闲鱼网页。';
+    }
     if (vncAvailable) {
         detail = tokenError || '当前存在可接管的浏览器流程，请通过远程桌面完成滑块、扫码、人脸或其他风控验证。';
     } else if (tokenStatus === 'password_login_backoff_wait') {
@@ -1361,7 +1368,7 @@ function renderDashboardAccountCard(account) {
                 <div class="dashboard-account-card-side">
                     <span class="dashboard-account-status ${isEnabled ? 'is-enabled' : 'is-disabled'}">
                         <i class="bi bi-${isEnabled ? 'check-circle-fill' : 'pause-circle-fill'}"></i>
-                        ${isEnabled ? '启用中' : '已禁用'}
+                        ${isEnabled ? '本地已启用' : '本地已禁用'}
                     </span>
                     ${renderStatusNoteBadge(statusNoteText, 'dashboard-account-status-note')}
                 </div>
@@ -5179,7 +5186,7 @@ async function loadCookies({ silent = false } = {}) {
     if (cookieDetails.length === 0) {
         tbody.innerHTML = `
         <tr>
-            <td colspan="11" class="text-center py-4 text-muted empty-state">
+            <td colspan="10" class="text-center py-4 text-muted empty-state">
             <i class="bi bi-inbox fs-1 d-block mb-3"></i>
             <h5>暂无账号</h5>
             <p class="mb-0">请添加新的闲鱼账号开始使用</p>
@@ -6951,9 +6958,6 @@ function renderDefaultRepliesList(accounts, defaultReplies) {
             <button class="btn btn-sm btn-outline-primary" onclick="editDefaultReply('${accountId}')" title="编辑">
             <i class="bi bi-pencil"></i>
             </button>
-            <button class="btn btn-sm btn-outline-info" onclick="testDefaultReply('${accountId}')" title="测试">
-            <i class="bi bi-play"></i>
-            </button>
             ${replySettings.reply_once ? `
             <button class="btn btn-sm btn-outline-warning" onclick="clearDefaultReplyRecords('${accountId}')" title="清空记录">
             <i class="bi bi-arrow-clockwise"></i>
@@ -7051,10 +7055,6 @@ async function saveDefaultReply() {
     }
 }
 
-// 测试默认回复（占位函数）
-function testDefaultReply(accountId) {
-    showToast('测试功能开发中...', 'info');
-}
 
 // 清空默认回复记录
 async function clearDefaultReplyRecords(accountId) {
@@ -8886,9 +8886,6 @@ function renderCardsList(cards) {
             <button class="btn btn-sm btn-outline-primary" onclick="editCard(${card.id})" title="编辑">
             <i class="bi bi-pencil"></i>
             </button>
-            <button class="btn btn-sm btn-outline-info" onclick="testCard(${card.id})" title="测试">
-            <i class="bi bi-play"></i>
-            </button>
             <button class="btn btn-sm btn-outline-danger" onclick="deleteCard(${card.id})" title="删除">
             <i class="bi bi-trash"></i>
             </button>
@@ -9613,9 +9610,6 @@ function renderDeliveryRulesList(rules) {
             <button class="btn btn-sm btn-outline-primary" onclick="editDeliveryRule(${rule.id})" title="编辑">
             <i class="bi bi-pencil"></i>
             </button>
-            <button class="btn btn-sm btn-outline-info" onclick="testDeliveryRule(${rule.id})" title="测试">
-            <i class="bi bi-play"></i>
-            </button>
             <button class="btn btn-sm btn-outline-danger" onclick="deleteDeliveryRule(${rule.id})" title="删除">
             <i class="bi bi-trash"></i>
             </button>
@@ -10114,10 +10108,6 @@ async function updateCardWithImage(cardId, cardData, imageFile) {
 
 
 
-// 测试卡券（占位函数）
-function testCard(cardId) {
-    showToast('测试功能开发中...', 'info');
-}
 
 // 删除卡券
 async function deleteCard(cardId) {
@@ -10289,10 +10279,6 @@ async function updateDeliveryRule() {
     }
 }
 
-// 测试发货规则（占位函数）
-function testDeliveryRule(ruleId) {
-    showToast('测试功能开发中...', 'info');
-}
 
 // 删除发货规则
 async function deleteDeliveryRule(ruleId) {
@@ -11657,6 +11643,8 @@ function getItemPublishFormValues() {
         deliveryChoice: document.getElementById('publishDeliveryChoice')?.value || '包邮',
         postPrice: document.getElementById('publishPostPrice')?.value.trim() || '',
         canSelfPickup: document.getElementById('publishCanSelfPickup')?.checked || false,
+        condition: document.getElementById('publishCondition')?.value || '全新',
+        quantity: parseInt(document.getElementById('publishQuantity')?.value, 10) || 1,
         files: Array.from(document.getElementById('publishImages')?.files || [])
     };
 }
@@ -11727,7 +11715,8 @@ function buildItemPublishJsonPayload(values, images) {
         delivery_method: values.deliveryChoice,
         postage: parseOptionalPublishNumber(values.postPrice, '邮费'),
         can_self_pickup: values.canSelfPickup,
-        condition: '全新'
+        condition: values.condition,
+        quantity: values.quantity,
     };
 }
 
@@ -12018,6 +12007,7 @@ async function precheckItemPublishForm() {
     try {
         const response = await requestItemPublishJson('/product-publish/precheck', {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 title: values.title,
                 description: values.description,
@@ -12091,6 +12081,8 @@ async function submitItemPublishForm() {
             formData.append('delivery_choice', values.deliveryChoice);
             formData.append('post_price', values.postPrice);
             formData.append('can_self_pickup', values.canSelfPickup ? 'true' : 'false');
+            formData.append('condition', values.condition);
+            formData.append('quantity', String(values.quantity));
             values.files.forEach(file => formData.append('images', file));
 
             const response = await fetch(`${apiBase}/item-publish`, {
@@ -16815,8 +16807,9 @@ async function startOrdersStream() {
         await consumeOrdersStream(response, controller);
     } catch (error) {
         if (!controller.signal.aborted) {
+            if (error.name === 'AbortError') { return; }
             ordersStreamRetryCount += 1;
-            console.error('订单实时流异常:', error);
+            console.warn('订单实时流异常:', error.message || error);
             scheduleOrdersStreamReconnect();
         }
     } finally {
@@ -17043,7 +17036,7 @@ function displayOrders() {
     if (filteredOrdersData.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="11" class="text-center text-muted py-4">
+                <td colspan="10" class="text-center text-muted py-4">
                     <i class="bi bi-inbox display-6 d-block mb-2"></i>
                     ${currentOrderSearchKeyword ? '没有找到匹配的订单' : '暂无订单数据'}
                 </td>
@@ -17093,24 +17086,23 @@ function createOrderRow(order) {
 
     // 判断是否可以手动发货（允许多次发货，除了交易关闭的订单）
     const canDeliver = !['cancelled', 'refunding'].includes(normalizedStatus);
-
-    // 平台历史订单有时只返回规格值或数字规格索引；不能因此把真实规格渲染成“-”。
-    const hasSpec1 = Boolean(String(order.spec_name || '').trim() || String(order.spec_value || '').trim());
-    const hasSpec2 = Boolean(String(order.spec_name_2 || '').trim() || String(order.spec_value_2 || '').trim());
-    let specHtml = '<span class="text-muted" title="闲鱼订单详情未返回规格字段">未返回规格（平台未提供）</span>';
-    if (hasSpec1) {
-        const label1 = specName || '平台订单规格';
-        const value1 = specValue || specName || '未返回规格值';
-        specHtml = `<small class="text-muted" title="来自闲鱼订单详情，不代表本地卡券规格设置">${label1}:</small><br>${value1}`;
-        if (hasSpec2) {
-            const label2 = specName2 || '平台订单规格2';
-            const value2 = specValue2 || specName2 || '未返回规格值';
-            specHtml += `<br><small class="text-muted">${label2}:</small><br>${value2}`;
+    // 商品链接：优先用商品ID生成闲鱼商品链接，没有ID时显示规格信息作为备选
+    const itemIdRaw = String(order.item_id || '').trim();
+    let specHtml = '';
+    if (itemIdRaw && itemIdRaw !== '-') {
+        const itemUrl = `https://www.goofish.com/item?id=${encodeURIComponent(itemIdRaw)}`;
+        specHtml = `<a href="${itemUrl}" target="_blank" rel="noopener noreferrer" class="text-primary text-decoration-none" title="在闲鱼查看商品">${itemIdRaw}<br><small class="text-muted">点击查看商品</small></a>`;
+    } else {
+        const hasSpec1 = Boolean(String(order.spec_name || '').trim() || String(order.spec_value || '').trim());
+        if (hasSpec1) {
+            specHtml = `<small class="text-muted">${specName || '规格'}:</small><br>${specValue || specName || '-'}`;
+            const hasSpec2 = Boolean(String(order.spec_name_2 || '').trim() || String(order.spec_value_2 || '').trim());
+            if (hasSpec2) {
+                specHtml += `<br><small class="text-muted">${specName2 || '规格2'}:</small><br>${specValue2 || specName2 || '-'}`;
+            }
+        } else {
+            specHtml = '<span class="text-muted">-</span>';
         }
-    } else if (hasSpec2) {
-        const label2 = specName2 || '平台订单规格';
-        const value2 = specValue2 || specName2 || '未返回规格值';
-        specHtml = `<small class="text-muted">${label2}:</small><br>${value2}`;
     }
 
     return `
@@ -17121,11 +17113,6 @@ function createOrderRow(order) {
             <td>
                 <span class="text-truncate d-inline-block" style="max-width: 120px;" title="${orderId}">
                     ${orderId}
-                </span>
-            </td>
-            <td>
-                <span class="text-truncate d-inline-block" style="max-width: 100px;" title="${itemId === '-' ? '' : itemId}">
-                    ${itemId}
                 </span>
             </td>
             <td>
@@ -20900,7 +20887,7 @@ function exportSearchResults() {
 
 
 // 默认版本号（当无法读取 version.txt 时使用）
-const DEFAULT_VERSION = 'v2.1.2';
+const DEFAULT_VERSION = 'v2.1.3';
 
 // 当前本地版本号（动态从 version.txt 读取）
 let LOCAL_VERSION = DEFAULT_VERSION;
@@ -22088,10 +22075,9 @@ async function getBenefitsInfo() {
     if (remoteVersionInfo && remoteVersionInfo.benefits) {
         return remoteVersionInfo;
     }
-
-    // 从远程获取权益信息
+    // 从本地后端获取权益信息（已移除外部IP回调）
     try {
-        const response = await fetch('http://116.196.116.76/version.php', {
+        const response = await fetch('/api/system/benefits', {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
@@ -23132,6 +23118,7 @@ let chatOldestMsgId = null;
 let chatSseAbortController = null;
 let chatSseRetryCount = 0;
 let chatSseShouldRun = false;
+let chatSessionsRefreshTimer = null;
 let chatUserInfoCache = {};
 let chatUserInfoHydrationTimer = null;
 const CHAT_USER_INFO_MISS_TTL_MS = 10 * 60 * 1000;
@@ -23146,7 +23133,12 @@ function buildSafeCheckboxId(prefix, rawValue) {
 }
 
 function normalizeChatSessionPreview(content, contentType) {
-    if (Number(contentType) === 2) return '[图片]';
+    const ct = Number(contentType);
+    if (ct === 2) return '[图片]';
+    if (ct === 3) return '[视频]';
+    if (ct === 4) return '[链接]';
+    if (ct === 5) return '[商品分享]';
+    if (ct === 6) return '[卡片]';
     const text = String(content || '').trim();
     if (!text) return '[暂无文本内容]';
     const hiddenMarkers = new Set(['[系统消息]', '[空消息]', '点击补拉该会话历史消息']);
@@ -24430,6 +24422,23 @@ async function loadOnlineIm() {
         await selectChatAccount(chatAccountsCache[0].id);
     }
     initChatSSE();
+    startChatSessionsAutoRefresh();
+}
+
+function startChatSessionsAutoRefresh() {
+    stopChatSessionsAutoRefresh();
+    chatSessionsRefreshTimer = setInterval(() => {
+        if (chatCurrentCookieId && document.getElementById('online-im-section')?.classList.contains('active')) {
+            refreshChatSessions();
+        }
+    }, 30000);
+}
+
+function stopChatSessionsAutoRefresh() {
+    if (chatSessionsRefreshTimer) {
+        clearInterval(chatSessionsRefreshTimer);
+        chatSessionsRefreshTimer = null;
+    }
 }
 
 function loadImAccountList() {

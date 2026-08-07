@@ -262,7 +262,11 @@
 
 .sidebar.collapsed .sidebar-brand span,
 .sidebar.collapsed .nav-link span {
-  display: none;
+  opacity: 0;
+  visibility: hidden;
+  width: 0;
+  overflow: hidden;
+  transition: opacity 0.12s ease-out, visibility 0.12s ease-out;
 }
 
 .sidebar.collapsed .sidebar-brand {
@@ -294,7 +298,9 @@
 }
 
 .sidebar.collapsed .nav-divider small {
-  display: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease-out, visibility 0.12s ease-out;
 }
 
 .sidebar.collapsed .sidebar-collapse-btn {

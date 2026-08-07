@@ -1,9 +1,11 @@
 #!/bin/bash
 
-# 闲鱼管理系统 Docker 部署脚本
+# SHANGJIA TOOL Docker 部署脚本
 # 支持快速部署和管理
 
 set -e
+
+cd "$(dirname "$0")/.."
 
 # 颜色定义
 RED='\033[0;31m'
@@ -13,7 +15,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # 项目配置
-PROJECT_NAME="xianyu-auto-reply-fix"
+PROJECT_NAME="shangjia-tool"
 COMPOSE_FILE="docker-compose.yml"
 SELECTED_COMPOSE_FILE="$COMPOSE_FILE"
 
@@ -193,7 +195,7 @@ show_access_info() {
     echo ""
     echo "🔐 默认登录信息:"
     echo "   用户名: admin"
-    echo "   密码:   admin123"
+    echo "   密码:   请通过环境变量 ADMIN_PASSWORD 设置（未设置时首次启动随机生成）"
     echo ""
     echo "📊 管理命令:"
     echo "   查看状态: $0 status"
@@ -297,7 +299,7 @@ cleanup() {
 
 # 显示帮助信息
 show_help() {
-    echo "闲鱼管理系统 Docker 部署脚本"
+    echo "SHANGJIA TOOL Docker 部署脚本"
     echo ""
     echo "用法: $0 [命令] [选项]"
     echo ""

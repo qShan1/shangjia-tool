@@ -303,113 +303,13 @@ def _check_and_install_playwright():
             print(f"{_WARN} 提取浏览器文件时出错: {e}")
     
     # 如果没找到，尝试安装
+    # 如果没找到，跳过（不自动下载，避免阻塞启动）
     if not playwright_installed:
-        print(f"{_WARN} 未找到Playwright浏览器，正在自动安装...")
-        print("   这可能需要几分钟时间，请耐心等待...")
-        
-        try:
-            # 方法1: 尝试使用playwright的Python API安装（推荐，适用于打包后的exe）
-            try:
-                # 直接调用playwright的安装函数
-                from playwright._impl._driver import install_driver, install_browsers
-                print("   正在安装Playwright驱动...")
-                install_driver()
-                print("   正在安装Chromium浏览器...")
-                install_browsers(['chromium'])
-                print(f"{_OK} Playwright浏览器安装成功（通过API）")
-                playwright_installed = True
-            except ImportError:
-                # 如果API不可用，使用命令行方式
-                print("   使用命令行方式安装...")
-                import subprocess
-                
-                # 尝试使用playwright的安装命令
-                # 对于打包后的exe，playwright模块应该已经包含
-                creation_flags = 0
-                if sys.platform == 'win32' and hasattr(subprocess, 'CREATE_NO_WINDOW'):
-                    creation_flags = subprocess.CREATE_NO_WINDOW
-                
-                result = subprocess.run(
-                    [sys.executable, '-m', 'playwright', 'install', 'chromium'],
-                    capture_output=True,
-                    text=True,
-                    timeout=600,  # 10分钟超时
-                    creationflags=creation_flags
-                )
-                
-                if result.returncode == 0:
-                    print(f"{_OK} Playwright浏览器安装成功")
-                    playwright_installed = True
-                else:
-                    print(f"{_WARN} Playwright浏览器安装失败")
-                    if result.stdout:
-                        print(f"   输出: {result.stdout[-500:]}")  # 只显示最后500字符
-                    if result.stderr:
-                        print(f"   错误: {result.stderr[-500:]}")
-                    print("   您可以稍后手动运行: playwright install chromium")
-                    return False
-            except Exception as api_error:
-                # API安装失败，尝试命令行方式
-                print(f"   API安装失败，尝试命令行方式: {api_error}")
-                import subprocess
-                
-                creation_flags = 0
-                if sys.platform == 'win32' and hasattr(subprocess, 'CREATE_NO_WINDOW'):
-                    creation_flags = subprocess.CREATE_NO_WINDOW
-                
-                result = subprocess.run(
-                    [sys.executable, '-m', 'playwright', 'install', 'chromium'],
-                    capture_output=True,
-                    text=True,
-                    timeout=600,
-                    creationflags=creation_flags
-                )
-                
-                if result.returncode == 0:
-                    print(f"{_OK} Playwright浏览器安装成功（通过命令行）")
-                    playwright_installed = True
-                else:
-                    print(f"{_WARN} Playwright浏览器安装失败")
-                    if result.stdout:
-                        print(f"   输出: {result.stdout[-500:]}")
-                    if result.stderr:
-                        print(f"   错误: {result.stderr[-500:]}")
-                    print("   您可以稍后手动运行: playwright install chromium")
-                    return False
-            except ImportError:
-                # 如果playwright模块不可用，尝试使用subprocess
-                import subprocess
-                result = subprocess.run(
-                    [sys.executable, '-m', 'playwright', 'install', 'chromium'],
-                    capture_output=True,
-                    text=True,
-                    timeout=600,
-                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' and hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
-                )
-                
-                if result.returncode == 0:
-                    print(f"{_OK} Playwright浏览器安装成功")
-                    playwright_installed = True
-                else:
-                    print(f"{_WARN} Playwright浏览器安装失败")
-                    if result.stdout:
-                        print(f"   输出: {result.stdout}")
-                    if result.stderr:
-                        print(f"   错误: {result.stderr}")
-                    print("   您可以稍后手动运行: playwright install chromium")
-                    return False
-                
-        except subprocess.TimeoutExpired:
-            print(f"{_WARN} Playwright浏览器安装超时（超过10分钟）")
-            print("   您可以稍后手动运行: playwright install chromium")
-            return False
-        except Exception as e:
-            print(f"{_WARN} Playwright浏览器安装失败: {e}")
-            import traceback
-            print(f"   详细错误: {traceback.format_exc()}")
-            print("   您可以稍后手动运行: playwright install chromium")
-            return False
-    
+        print(f"{_WARN} 未找到Playwright浏览器，跳过（不阻塞启动）")
+        print("   人脸验证/滑块验证功能将不可用")
+        print("   如需使用，请手动运行: playwright install chromium")
+        return False
+
     return playwright_installed
 
 # 检查并安装Playwright浏览器
@@ -450,10 +350,10 @@ def _start_api_server():
     host = os.getenv('API_HOST', '0.0.0.0')  # 默认绑定所有接口
     port = int(os.getenv('API_PORT', '8090'))  # 默认端口8090
 
-    # 如果配置文件中有特定配置，则使用配置文件
-    if 'host' in api_conf:
+    # 显式环境变量优先，桌面启动器需要能选择隔离端口。
+    if 'API_HOST' not in os.environ and 'host' in api_conf:
         host = api_conf['host']
-    if 'port' in api_conf:
+    if 'API_PORT' not in os.environ and 'port' in api_conf:
         port = api_conf['port']
 
     # 兼容旧的URL配置方式

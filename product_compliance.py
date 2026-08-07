@@ -50,10 +50,11 @@ def check_product(payload: Dict[str, Any]) -> Dict[str, Any]:
         suggestions.append(_u(r"\u6807\u9898\u5e94\u8bf4\u660e\u5b9e\u9645\u4ea4\u4ed8\u5185\u5bb9\u6216\u670d\u52a1\u7ed3\u679c\uff0c\u907f\u514d\u53ea\u6709\u6cdb\u5316\u8bcd\u3002"))
     if len(description) < 30:
         suggestions.append(_u(r"\u63cf\u8ff0\u5e94\u5199\u6e05\u4ea4\u4ed8\u7269\u3001\u9002\u7528\u8303\u56f4\u3001\u4ea4\u4ed8\u65f6\u95f4\u548c\u552e\u540e\u8fb9\u754c\u3002"))
+    has_review = any(f.get("severity") == "review" for f in findings)
     return {
-        "passed": True,
-        "can_publish": True,
-        "risk_level": "review" if findings else "low",
+        "passed": not has_review,
+        "can_publish": not has_review,
+        "risk_level": "review" if has_review else ("medium" if findings else "low"),
         "findings": findings,
         "suggestions": suggestions,
         "notice": _u(r"\u68c0\u67e5\u7ed3\u679c\u4ec5\u4f9b\u53d1\u5e03\u524d\u590d\u6838\uff0c\u4e0d\u80fd\u4ee3\u66ff\u5e73\u53f0\u6700\u7ec8\u5ba1\u6838\u3002"),

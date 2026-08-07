@@ -11,6 +11,7 @@ from collections import deque
 from datetime import datetime
 from typing import List, Dict, Optional
 from pathlib import Path
+from runtime_paths import runtime_dir, runtime_file
 
 class FileLogCollector:
     """基于文件监控的日志收集器"""
@@ -29,13 +30,14 @@ class FileLogCollector:
     
     def setup_file_monitoring(self):
         """设置文件监控"""
+        logs_dir = runtime_dir("logs")
         # 查找日志文件
         possible_files = [
-            "xianyu.log",
-            "app.log", 
-            "system.log",
-            "logs/xianyu.log",
-            "logs/app.log"
+            runtime_file("xianyu.log"),
+            runtime_file("app.log"),
+            runtime_file("system.log"),
+            str(logs_dir / "xianyu.log"),
+            str(logs_dir / "app.log"),
         ]
         
         for file_path in possible_files:
@@ -45,7 +47,7 @@ class FileLogCollector:
         
         if not self.log_file:
             # 如果没有找到现有文件，创建一个新的
-            self.log_file = "realtime.log"
+            self.log_file = runtime_file("realtime.log")
             
         # 设置loguru输出到文件
         self.setup_loguru_file_output()
@@ -60,8 +62,7 @@ class FileLogCollector:
             from loguru import logger
             
             # 确保logs目录存在
-            logs_dir = Path("logs")
-            logs_dir.mkdir(parents=True, exist_ok=True)
+            logs_dir = runtime_dir("logs")
             
             # 添加实时日志文件输出（用于Web界面实时监控）
             logger.add(
@@ -76,7 +77,7 @@ class FileLogCollector:
             
             # 添加按日期轮转的日志文件输出到logs目录
             logger.add(
-                "logs/xianyu_{time:YYYY-MM-DD}.log",
+                str(logs_dir / "xianyu_{time:YYYY-MM-DD}.log"),
                 format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
                 level="INFO",
                 rotation="00:00",  # 每天午夜轮转

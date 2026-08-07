@@ -291,6 +291,8 @@ class ItemPublisher:
         post_price: Optional[float],
         can_self_pickup: bool,
         category_hint: Optional[str] = None,
+        condition: Optional[str] = "全新",
+        quantity: int = 1,
     ) -> Dict[str, Any]:
         if delivery_choice not in self.ALLOWED_DELIVERY_CHOICES:
             raise ValueError("不支持的运费方式")
@@ -330,6 +332,8 @@ class ItemPublisher:
             post_price=post_price,
             can_self_pickup=can_self_pickup,
             category_result=category_result,
+            condition=condition,
+            quantity=quantity,
         )
 
         publish_res = await self._post_mtop(
@@ -531,6 +535,8 @@ class ItemPublisher:
         post_price: Optional[float],
         can_self_pickup: bool,
         category_result: Optional[Dict[str, Any]] = None,
+        condition: Optional[str] = "全新",
+        quantity: int = 1,
     ) -> Dict[str, Any]:
         category_result = category_result or self._normalize_category_result(
             channel_res.get("data", {}).get("categoryPredictResult", {})
@@ -540,7 +546,7 @@ class ItemPublisher:
         payload = {
             "freebies": False,
             "itemTypeStr": "b",
-            "quantity": "1",
+            "quantity": str(quantity),
             "simpleItem": "true",
             "imageInfoDOList": [
                 {
@@ -560,7 +566,7 @@ class ItemPublisher:
                 for image in uploaded_images
             ],
             "itemTextDTO": {
-                "desc": description,
+                "desc": f"【成色】{condition}\n{description}" if condition and condition != "全新" else description,
                 "title": title,
                 "titleDescSeparate": description != title,
             },

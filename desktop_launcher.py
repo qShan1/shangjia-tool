@@ -10,10 +10,38 @@ import atexit
 from pathlib import Path
 
 APP_NAME = "上架工具"
-ROOT = Path(__file__).resolve().parent
+if getattr(sys, "frozen", False):
+    ROOT = Path(sys.executable).resolve().parent
+else:
+    ROOT = Path(__file__).resolve().parent
 PORT = int(os.environ.get("SHANGJIA_PORT", "8090"))
 DATA_ROOT = Path(os.environ.get("SHANGJIA_DATA_DIR", Path(os.environ.get("LOCALAPPDATA", ROOT)) / "ShangjiaTool"))
 _LOCK_HANDLE = None
+
+
+def desktop_log_path():
+    path = DATA_ROOT / "logs" / "desktop-launcher.log"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def show_error(message):
+    """Windowed builds have no console, so surface startup failures explicitly."""
+    try:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(None, message, APP_NAME, 0x10)
+    except Exception:
+        pass
+
+
+def service_executable():
+    """Return the service location used by the onedir PyInstaller bundle."""
+    candidates = [
+        ROOT / "_internal" / "ShangjiaService.exe",
+        ROOT / "ShangjiaService.exe",  # Compatibility with early desktop builds.
+        Path(getattr(sys, "_MEIPASS", ROOT)) / "ShangjiaService.exe",
+    ]
+    return next((path for path in candidates if path.exists()), candidates[0])
 
 def acquire_single_instance():
     """Use an exclusive lock file so double-clicking does not spawn another service."""
@@ -78,26 +106,42 @@ def main():
     env = os.environ.copy()
     env["APP_DATA_DIR"] = str(DATA_ROOT)
     env["DB_PATH"] = str(DATA_ROOT / "data" / "xianyu_data.db")
+    env["API_PORT"] = str(PORT)
     if not healthy():
         if getattr(sys, "frozen", False):
-            service = Path(getattr(sys, "_MEIPASS", ROOT)) / "ShangjiaService.exe"
+            service = service_executable()
             command = [str(service)]
         else:
             python = ROOT / "venv" / "Scripts" / "python.exe"
             if not python.exists():
                 python = Path(sys.executable)
+            if not python.exists():
+                raise RuntimeError("未找到 Python 解释器，请检查 venv 目录")
             command = [str(python), str(ROOT / "Start.py")]
         if not Path(command[0]).exists():
             raise RuntimeError("桌面服务组件缺失，请重新构建安装包")
-        process = subprocess.Popen(command, cwd=str(ROOT), env=env,
-                                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        with desktop_log_path().open("a", encoding="utf-8") as output:
+            output.write(f"Starting service: {command[0]} on port {PORT}\n")
+            output.flush()
+            process = subprocess.Popen(
+                command,
+                cwd=str(ROOT),
+                env=env,
+                stdout=output,
+                stderr=subprocess.STDOUT,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
         for _ in range(40):
             if healthy():
                 break
             time.sleep(0.75)
         else:
             process.terminate()
-            raise RuntimeError("本地服务未能在 30 秒内启动，请检查用户数据目录中的 logs")
+            exit_code = process.poll()
+            raise RuntimeError(
+                "本地服务未能在 30 秒内启动。"
+                f"服务退出码: {exit_code}; 诊断日志: {desktop_log_path()}"
+            )
     # pywebview 是可选依赖；没有时仍保持一键启动体验。
     try:
         import webview
@@ -107,4 +151,8 @@ def main():
         webbrowser.open(f"http://127.0.0.1:{PORT}/admin")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as error:
+        show_error(str(error))
+        raise

@@ -175,7 +175,7 @@ class AISiteAuditService:
             return self._fallback_report(snapshots, "未找到可用的AI配置")
 
         prompt = {
-            "task": "分析本地闲鱼管理系统的运行质量，输出可直接执行的中文运维巡检报告",
+            "task": "分析本地 SHANGJIA TOOL 的运行质量，输出可直接执行的中文运维巡检报告",
             "rules": [
                 "只根据提供的快照判断，不要臆测外部平台状态",
                 "报告必须分为：1总体结论 2服务/页面可用性 3账号与消息链路 4AI回复质量 5订单/发货/评价任务 6已确认问题 7风险与影响 8按优先级排列的行动清单",

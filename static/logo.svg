@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="logoTitle logoDesc">
-  <title id="logoTitle">菇-闲鱼管理系统</title>
-  <desc id="logoDesc">青绿色蘑菇图形标志</desc>
+  <title id="logoTitle">SHANGJIA TOOL</title>
+  <desc id="logoDesc">上架品牌标志</desc>
   <rect width="64" height="64" rx="16" fill="#0f172a"/>
   <path d="M10 29c0-11 9.4-19 22-19s22 8 22 19H10Z" fill="#14b8a6"/>
   <circle cx="23" cy="21" r="3" fill="#fbbf24"/>
