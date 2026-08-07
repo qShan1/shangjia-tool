@@ -1,6 +1,6 @@
 # SHANGJIA TOOL
 
-上架工具是面向闲鱼运营的本地管理台，提供账号管理、商品管理、订单处理、自动回复和运营记录能力。项目使用 FastAPI、SQLite 和 Playwright 构建，既可以从源码或 Docker 运行，也可以构建为 Windows 桌面端。
+上架工具是面向闲鱼运营的本地管理台，提供账号管理、商品管理、订单处理、自动回复和运营记录能力。项目使用 FastAPI、SQLite 和 Playwright 构建，主要以 Windows 桌面端交付，也支持源码运行。
 
 > 本项目是基于 [xianyu-auto-reply](https://github.com/zhinianboke/xianyu-auto-reply) 的二次开发，遵循 AGPL-3.0。请遵守适用法律、平台规则和上游许可证要求；不要提交或分享真实 Cookie、Token、订单、数据库或验证截图。
 
@@ -10,7 +10,7 @@
 - 关键词和 AI 辅助回复
 - 商品、订单、发货和运营记录管理
 - 本地日志、健康检查和系统状态
-- Windows 桌面端、源码运行和 Docker Compose 部署
+- Windows 桌面端和源码运行
 
 平台侧状态必须以实际响应为准。浏览器登录、缓存数据或本地开关不等同于平台接口可用。
 
@@ -36,23 +36,13 @@ python Start.py
 
 管理台地址为 `http://127.0.0.1:8090/admin`，健康检查为 `http://127.0.0.1:8090/health`。
 
-### Docker Compose
-
-```bash
-git clone https://github.com/qShan1/shangjia-tool.git
-cd shangjia-tool
-docker compose up -d
-```
-
-默认管理台地址为 `http://127.0.0.1:9000`。
-
 ## 文档
 
 | 文档 | 内容 |
 | --- | --- |
 | [项目结构](docs/PROJECT_STRUCTURE.md) | 目录职责与运行数据边界 |
 | [桌面端说明](docs/DESKTOP_INSTALL.md) | 构建、启动、数据位置与诊断 |
-| [部署说明](docs/deployment.md) | 源码与 Docker 部署 |
+| [部署说明](docs/deployment.md) | 源码运行与可选 Docker 部署 |
 | [配置说明](docs/configuration.md) | 常用环境变量与配置文件 |
 | [使用指南](docs/usage.md) | 管理台基础使用流程 |
 | [常见问题](docs/faq.md) | 端口、浏览器、桌面端和数据问题 |
