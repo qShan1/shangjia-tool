@@ -12,7 +12,9 @@ a = Analysis(
     binaries=[
         (service_executable, '.'),
     ],
-    datas=[],
+    datas=[
+        (os.path.join(SPECPATH, 'static', 'version.txt'), 'static'),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
