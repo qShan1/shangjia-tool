@@ -32,6 +32,8 @@
 
 默认数据目录为 `%LOCALAPPDATA%\ShangjiaTool\`，其中包含数据库、浏览器状态、上传文件和日志。安装目录用于程序文件，不应保存用户数据。首次迁移只复制旧目录内容，不删除来源数据。
 
+新发行包根目录只保留 `ShangjiaTool.exe` 与 `_internal`；后者是桌面端的后台服务与运行时，不能删除。旧版本运行后可能在根目录留下 `data` 或 `static`，它们属于旧运行环境而不是新包的必需文件。确认 `%LOCALAPPDATA%\ShangjiaTool\data\` 中的数据可正常使用后，旧安装目录中的 `data` 才可以手动删除；上传素材请保留到 `%LOCALAPPDATA%\ShangjiaTool\`。
+
 可用环境变量：
 
 - `SHANGJIA_DATA_DIR`：指定桌面端数据目录。

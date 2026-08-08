@@ -881,6 +881,19 @@ body.sidebar-collapsed .main-content {
   }
 }
 
+:root[data-liquid-preset="ocean"] { --primary-color: #1677b8; }
+:root[data-liquid-preset="graphite"] { --primary-color: #424853; --liquid-surface: rgba(246, 248, 250, 0.58); }
+:root[data-liquid-preset="rose"] { --primary-color: #b94d6a; --liquid-surface: rgba(255, 249, 251, 0.60); }
+:root[data-liquid-preset="jade"] { --primary-color: #0a7c66; }
+
+#liquidPresetGroup .btn.active {
+  color: #fff;
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.item-stock-label { display: block; margin-top: 2px; font-size: 0.78rem; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1108,4 +1121,111 @@ body.sidebar-collapsed .main-content {
 
 @media (prefers-reduced-motion: reduce), (pointer: coarse) {
   .glass-tilt-surface { transform: none !important; transition: none; }
+}
+
+/* Desktop liquid-glass consolidation. This is intentionally static: glass depth
+   comes from transparency and edge light, never a decorative shimmer animation. */
+:root {
+  --sidebar-open-width: 264px;
+  --sidebar-closed-width: 76px;
+  --liquid-surface: rgba(255, 255, 255, 0.54);
+  --liquid-surface-strong: rgba(255, 255, 255, 0.72);
+  --liquid-border: rgba(255, 255, 255, 0.88);
+  --liquid-shadow: 0 14px 34px rgba(25, 39, 52, 0.10), inset 0 1px rgba(255, 255, 255, 0.82);
+}
+
+body {
+  background: #e8edf1;
+}
+
+.sidebar {
+  width: var(--sidebar-open-width) !important;
+  background: rgba(247, 250, 252, 0.56) !important;
+  border-right: 1px solid var(--liquid-border) !important;
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.72), 12px 0 34px rgba(25, 39, 52, 0.07) !important;
+  backdrop-filter: blur(24px) saturate(1.35);
+  -webkit-backdrop-filter: blur(24px) saturate(1.35);
+  transition: width 220ms ease, box-shadow 220ms ease !important;
+}
+
+.main-content {
+  margin-left: var(--sidebar-open-width) !important;
+  transition: margin-left 220ms ease !important;
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-closed-width) !important;
+}
+
+body.sidebar-collapsed .main-content {
+  margin-left: var(--sidebar-closed-width) !important;
+}
+
+.sidebar::after,
+.content-section .card::before {
+  animation: none !important;
+}
+
+.sidebar-header,
+.sidebar-footer {
+  background: rgba(255, 255, 255, 0.30) !important;
+  border-color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.sidebar-nav {
+  scrollbar-color: rgba(88, 105, 119, 0.34) transparent;
+}
+
+.sidebar .nav-link {
+  min-height: 42px;
+  border: 1px solid transparent;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease !important;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+  background: rgba(255, 255, 255, 0.62) !important;
+  border-color: rgba(255, 255, 255, 0.78) !important;
+  box-shadow: inset 3px 0 #0a7c66, 0 5px 14px rgba(20, 39, 52, 0.06);
+}
+
+.content-section .card,
+.modal-content,
+.dropdown-menu {
+  background: var(--liquid-surface) !important;
+  border: 1px solid var(--liquid-border) !important;
+  box-shadow: var(--liquid-shadow) !important;
+  backdrop-filter: blur(22px) saturate(1.22);
+  -webkit-backdrop-filter: blur(22px) saturate(1.22);
+}
+
+.content-section .card-header,
+.content-section .card-footer {
+  background: rgba(255, 255, 255, 0.26) !important;
+  border-color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.sidebar.collapsed .sidebar-nav {
+  overflow-x: hidden;
+}
+
+.sidebar.collapsed .nav-link,
+.sidebar.collapsed .sidebar-collapse-btn {
+  width: 48px !important;
+  min-width: 48px;
+  margin-left: auto;
+  margin-right: auto;
+  justify-content: center;
+}
+
+.sidebar.collapsed .sidebar-header {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+@media (max-width: 768px) {
+  .sidebar,
+  .sidebar.collapsed { width: var(--sidebar-open-width) !important; }
+  .main-content,
+  body.sidebar-collapsed .main-content { margin-left: 0 !important; }
 }

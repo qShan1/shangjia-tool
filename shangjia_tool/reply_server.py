@@ -310,7 +310,7 @@ def _normalize_dashboard_announcement_snapshot(payload: Any) -> Optional[Dict[st
     history: List[Dict[str, Any]] = []
     for item in announcements_payload:
         normalized_item = _normalize_dashboard_announcement_entry(item)
-        if normalized_item:
+        if normalized_item and normalized_item['status'] != 'disabled':
             history.append(normalized_item)
 
     history.sort(
@@ -429,6 +429,24 @@ def _get_dashboard_announcement_payload(force_refresh: bool = False) -> Dict[str
         'history': list(snapshot.get('history') or []),
     })
     return snapshot
+
+
+def _desktop_settings_file() -> Path:
+    return Path(os.getenv('APP_DATA_DIR') or _PROJECT_ROOT) / 'desktop-settings.json'
+
+
+def _load_desktop_settings() -> Dict[str, Any]:
+    try:
+        payload = json.loads(_desktop_settings_file().read_text(encoding='utf-8'))
+        return payload if isinstance(payload, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _save_desktop_settings(settings: Dict[str, Any]) -> None:
+    path = _desktop_settings_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding='utf-8')
 
 
 def mask_sensitive_text(text: Any) -> str:
@@ -4778,6 +4796,23 @@ def get_cookies_details(current_user: Dict[str, Any] = Depends(get_current_user)
             'runtime_status': runtime_status,
         })
     return result
+
+
+@app.get('/api/desktop/preferences')
+def get_desktop_preferences(current_user: Dict[str, Any] = Depends(get_current_user)):
+    settings = _load_desktop_settings()
+    return {'success': True, 'auto_check_updates': settings.get('auto_check_updates', True) is not False}
+
+
+@app.put('/api/desktop/preferences')
+def save_desktop_preferences(payload: Dict[str, Any], current_user: Dict[str, Any] = Depends(get_current_user)):
+    settings = _load_desktop_settings()
+    if 'auto_check_updates' in payload:
+        settings['auto_check_updates'] = bool(payload.get('auto_check_updates'))
+    if payload.get('manual_update_check'):
+        settings['manual_update_check'] = True
+    _save_desktop_settings(settings)
+    return {'success': True, 'auto_check_updates': settings.get('auto_check_updates', True) is not False}
 
 
 @app.get("/api/announcement")
