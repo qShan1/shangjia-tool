@@ -1,5 +1,17 @@
 # Windows 桌面端
 
+## 首次安装
+
+从 GitHub Releases 下载 `ShangjiaTool-v版本号-windows-x64.zip`，解压到普通可写目录，例如 `D:\Apps\ShangjiaTool`。不要直接在压缩包内运行，也不要只复制单个 EXE。双击 `ShangjiaTool\ShangjiaTool.exe` 启动。
+
+程序文件位于解压目录；数据库、浏览器登录状态、上传文件和日志位于 `%LOCALAPPDATA%\ShangjiaTool\`，替换程序包不会删除这些运行数据。
+
+## 桌面更新
+
+启动器会检查 GitHub 最新 Release。发现新版本后必须经用户确认才会下载完整 ZIP；下载后校验 SHA-256，备份旧程序目录，再替换并重启。替换失败会恢复旧目录。更新日志位于 `%LOCALAPPDATA%\ShangjiaTool\logs\desktop-update.log`。
+
+管理后台中的“热更新”接口仅用于源码部署，不用于替换已打包的 Windows EXE。
+
 `ShangjiaTool.exe` 是桌面启动器，`ShangjiaService.exe` 是后台服务。两者必须保留在同一个 `ShangjiaTool` 文件夹中，不能只复制单个 EXE。
 
 ## 启动

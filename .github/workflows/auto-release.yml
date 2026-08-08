@@ -11,6 +11,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.exists.outputs.release_exists == 'false' }}
     env:
       UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
       UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
@@ -70,7 +72,7 @@ jobs:
   desktop:
     name: Build Windows desktop bundle
     needs: release
-    if: needs.release.result == 'success'
+    if: needs.release.result == 'success' && needs.release.outputs.release_created == 'true'
     runs-on: windows-latest
     permissions:
       contents: write

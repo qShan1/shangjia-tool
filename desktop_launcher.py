@@ -7,6 +7,8 @@ import urllib.request
 import webbrowser
 import shutil
 import atexit
+import hashlib
+import json
 from pathlib import Path
 
 APP_NAME = "上架工具"
@@ -17,6 +19,122 @@ else:
 PORT = int(os.environ.get("SHANGJIA_PORT", "8090"))
 DATA_ROOT = Path(os.environ.get("SHANGJIA_DATA_DIR", Path(os.environ.get("LOCALAPPDATA", ROOT)) / "ShangjiaTool"))
 _LOCK_HANDLE = None
+GITHUB_RELEASE_URL = "https://api.github.com/repos/qShan1/shangjia-tool/releases/latest"
+
+
+def current_version():
+    for path in (ROOT / "static" / "version.txt", ROOT / "_internal" / "static" / "version.txt"):
+        try:
+            version = path.read_text(encoding="utf-8").strip()
+            if version:
+                return version
+        except OSError:
+            pass
+    return "v0.0.0"
+
+
+def _version_key(value):
+    return tuple(int(part) for part in str(value).lstrip("vV").split(".") if part.isdigit())
+
+
+def show_question(message):
+    try:
+        import ctypes
+        return ctypes.windll.user32.MessageBoxW(None, message, APP_NAME, 0x24) == 6
+    except Exception:
+        return False
+
+
+def release_update():
+    request = urllib.request.Request(GITHUB_RELEASE_URL, headers={"User-Agent": "ShangjiaTool"})
+    try:
+        with urllib.request.urlopen(request, timeout=8) as response:
+            release = json.load(response)
+    except Exception as error:
+        with desktop_log_path().open("a", encoding="utf-8") as output:
+            output.write(f"Update check skipped: {error}\n")
+        return None
+    tag = str(release.get("tag_name") or "").strip()
+    if not tag or _version_key(tag) <= _version_key(current_version()):
+        return None
+    for asset in release.get("assets", []):
+        name = str(asset.get("name") or "")
+        if name.startswith("ShangjiaTool-") and name.endswith("-windows-x64.zip"):
+            return {"tag": tag, "name": name, "url": asset.get("browser_download_url"), "digest": asset.get("digest", "")}
+    return None
+
+
+def _download_update(update):
+    staging = DATA_ROOT / "updates" / "staging"
+    staging.mkdir(parents=True, exist_ok=True)
+    archive = staging / update["name"]
+    request = urllib.request.Request(update["url"], headers={"User-Agent": "ShangjiaTool"})
+    with urllib.request.urlopen(request, timeout=90) as response, archive.open("wb") as target:
+        shutil.copyfileobj(response, target)
+    digest = str(update.get("digest") or "")
+    if digest.startswith("sha256:"):
+        actual = hashlib.sha256(archive.read_bytes()).hexdigest()
+        if actual != digest.split(":", 1)[1]:
+            archive.unlink(missing_ok=True)
+            raise RuntimeError("Update archive checksum verification failed")
+    return archive
+
+
+def schedule_desktop_update(update):
+    archive = _download_update(update)
+    staging = DATA_ROOT / "updates" / "staging"
+    script = staging / "apply-desktop-update.ps1"
+    backup = ROOT.parent / f"{ROOT.name}.backup-{current_version().lstrip('v')}"
+    log = DATA_ROOT / "logs" / "desktop-update.log"
+    script.write_text(
+        "param([int]$ProcessId, [string]$Archive, [string]$InstallDir, [string]$BackupDir, [string]$LogFile)\n"
+        "$ErrorActionPreference = 'Stop'\n"
+        "function Log([string]$message) { Add-Content -LiteralPath $LogFile -Value ((Get-Date -Format s) + ' ' + $message) }\n"
+        "Start-Sleep -Seconds 2\n"
+        "try { Wait-Process -Id $ProcessId -ErrorAction SilentlyContinue } catch {}\n"
+        "$incoming = Join-Path (Split-Path -Parent $InstallDir) ('.shangjia-incoming-' + [guid]::NewGuid().ToString())\n"
+        "try {\n"
+        "  Log 'Extracting update archive'\n"
+        "  Expand-Archive -LiteralPath $Archive -DestinationPath $incoming -Force\n"
+        "  $payload = Join-Path $incoming 'ShangjiaTool'\n"
+        "  if (-not (Test-Path (Join-Path $payload 'ShangjiaTool.exe'))) { throw 'Update archive does not contain ShangjiaTool.exe' }\n"
+        "  if (Test-Path $BackupDir) { Remove-Item -LiteralPath $BackupDir -Recurse -Force }\n"
+        "  Move-Item -LiteralPath $InstallDir -Destination $BackupDir\n"
+        "  Move-Item -LiteralPath $payload -Destination $InstallDir\n"
+        "  Start-Process -FilePath (Join-Path $InstallDir 'ShangjiaTool.exe')\n"
+        "  Log 'Update installed and launcher restarted'\n"
+        "} catch {\n"
+        "  Log ('Update failed: ' + $_.Exception.Message)\n"
+        "  if (Test-Path $BackupDir) {\n"
+        "    if (Test-Path $InstallDir) { Remove-Item -LiteralPath $InstallDir -Recurse -Force -ErrorAction SilentlyContinue }\n"
+        "    Move-Item -LiteralPath $BackupDir -Destination $InstallDir\n"
+        "    Log 'Previous desktop bundle restored'\n"
+        "  }\n"
+        "  if (Test-Path (Join-Path $InstallDir 'ShangjiaTool.exe')) { Start-Process -FilePath (Join-Path $InstallDir 'ShangjiaTool.exe') }\n"
+        "} finally { if (Test-Path $incoming) { Remove-Item -LiteralPath $incoming -Recurse -Force -ErrorAction SilentlyContinue } }\n",
+        encoding="utf-8",
+    )
+    subprocess.Popen([
+        "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script),
+        "-ProcessId", str(os.getpid()), "-Archive", str(archive), "-InstallDir", str(ROOT),
+        "-BackupDir", str(backup), "-LogFile", str(log),
+    ], creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+
+
+def offer_desktop_update():
+    if not getattr(sys, "frozen", False):
+        return False
+    update = release_update()
+    if not update:
+        return False
+    if not show_question(f"A new version {update['tag']} is available.\n\nDownload, install, and restart now? Existing data will not be modified."):
+        return False
+    try:
+        schedule_desktop_update(update)
+        return True
+    except Exception as error:
+        show_error(f"Update download failed: {error}\n\nThe current version will continue to start.")
+        return False
 
 
 def desktop_log_path():
@@ -97,6 +215,8 @@ def healthy():
 
 def main():
     DATA_ROOT.mkdir(parents=True, exist_ok=True)
+    if offer_desktop_update():
+        return
     if not acquire_single_instance():
         if healthy():
             webbrowser.open(f"http://127.0.0.1:{PORT}/admin")
