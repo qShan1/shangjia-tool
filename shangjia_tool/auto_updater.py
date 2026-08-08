@@ -95,8 +95,8 @@ class AutoUpdater:
     # 默认 GitHub 更新源配置
     DEFAULT_GITHUB_API_BASE = "https://api.github.com"
     DEFAULT_GITHUB_RAW_BASE = "https://raw.githubusercontent.com"
-    DEFAULT_GITHUB_OWNER = "GuDong2003"
-    DEFAULT_GITHUB_REPO = "xianyu-auto-reply-fix"
+    DEFAULT_GITHUB_OWNER = "qShan1"
+    DEFAULT_GITHUB_REPO = "shangjia-tool"
     
     # 可热更新的静态文件类型（通常不需要重启）
     HOT_UPDATABLE_EXTENSIONS = {
@@ -264,7 +264,7 @@ class AutoUpdater:
     def _build_request_headers(self, accept_json: bool = True) -> Dict[str, str]:
         """构建 GitHub 请求头"""
         headers = {
-            "User-Agent": f"XianyuAutoReplyUpdater/{self.current_version}",
+            "User-Agent": f"ShangjiaToolUpdater/{self.current_version}",
         }
         if accept_json:
             headers["Accept"] = "application/vnd.github+json"
@@ -1015,7 +1015,7 @@ def get_updater() -> AutoUpdater:
         # 尝试从版本文件读取当前版本
         version = "1.0.0"
         try:
-            version_file = Path(__file__).parent / "static" / "version.txt"
+            version_file = Path(__file__).resolve().parent.parent / "static" / "version.txt"
             if version_file.exists():
                 version = version_file.read_text().strip()
         except:

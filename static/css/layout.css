@@ -73,6 +73,50 @@
   border-radius: 8px;
 }
 
+/* 品牌标记为黑色线稿；浅色玻璃侧栏保持原色，深色主题再反色。 */
+.sidebar-brand-logo {
+  width: 30px !important;
+  height: 30px !important;
+  flex: 0 0 30px !important;
+  border-radius: 0 !important;
+  object-fit: contain;
+  filter: none;
+}
+
+[data-theme="dark"] .sidebar-brand-logo {
+  filter: invert(1);
+}
+
+.order-sort-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+}
+
+.order-sort-indicator {
+  display: inline-block;
+  min-width: 1em;
+  color: var(--text-secondary, #8e8e93);
+  font-size: 0.7em;
+  opacity: 0;
+  transform: translateY(1px);
+  transition: opacity 120ms ease;
+}
+
+.order-sort-trigger:hover .order-sort-indicator,
+.order-sort-trigger:focus-visible .order-sort-indicator,
+.order-sort-trigger.is-active .order-sort-indicator {
+  opacity: 1;
+}
+
 .sidebar-brand span {
   min-width: 0;
   overflow: hidden;
@@ -218,7 +262,11 @@
 
 .sidebar.collapsed .sidebar-brand span,
 .sidebar.collapsed .nav-link span {
-  display: none;
+  opacity: 0;
+  visibility: hidden;
+  width: 0;
+  overflow: hidden;
+  transition: opacity 0.12s ease-out, visibility 0.12s ease-out;
 }
 
 .sidebar.collapsed .sidebar-brand {
@@ -227,6 +275,11 @@
 
 .sidebar.collapsed .sidebar-brand img {
   margin: 0 !important;
+}
+
+.sidebar.collapsed .sidebar-brand-logo {
+  width: 30px !important;
+  flex-basis: 30px !important;
 }
 
 .sidebar.collapsed .nav-link {
@@ -245,7 +298,9 @@
 }
 
 .sidebar.collapsed .nav-divider small {
-  display: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease-out, visibility 0.12s ease-out;
 }
 
 .sidebar.collapsed .sidebar-collapse-btn {

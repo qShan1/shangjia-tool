@@ -15,20 +15,20 @@ AUTO_REPLY:
     port: 8090     # Web服务端口
     timeout: 10
     url: http://localhost:8090/xianyu/reply  # 修复URL地址
-  default_message: 亲爱的"{send_user_name}" 老板你好！所有宝贝都可以拍，秒发货的哈~不满意的话可以直接申请退款哈~
+  default_message: 亲爱的"{send_user_name}" 老板你好！商品在售，可以直接拍下哦~如有问题请随时联系客服~
   enabled: true
   max_retry: 3
   retry_interval: 5
 ITEM_DETAIL:
   auto_fetch:
     enabled: true  # 是否启用自动获取商品详情
-    api_url: https://selfapi.zhinianboke.com/api/getItemDetail  # 外部API地址
+    api_url: ""  # 留空禁用外部商品详情API，由本地处理
     timeout: 30  # 请求超时时间（秒）
     max_concurrent: 3  # 最大并发请求数
     retry_delay: 0.5  # 请求间隔（秒）
 YIFAN_API:
-  callback_url: http://116.196.116.76/yifan.php  # 亦凡API回调地址（中转服务器）
-  query_url: http://116.196.116.76/yifan.php  # 订单查询页面地址
+  callback_url: ""  # 亦凡API回调地址，请配置自己的中转服务器地址（留空则禁用亦凡API发货）
+  query_url: ""  # 订单查询页面地址，请配置自己的查询页面（留空则不显示查询链接）
 COOKIES:
   last_update_time: ''
   value: ''

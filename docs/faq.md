@@ -1,61 +1,27 @@
 # 常见问题
 
-> 返回：[README](../README.md) ｜ 相关：[部署与运行指南](deployment.md) ｜ [配置说明](configuration.md) ｜ [使用指南](usage.md)
-
 ## 端口被占用
 
-- Docker Compose：修改 `docker-compose.yml` 或 `docker-compose-cn.yml` 中的端口映射。
-- 本地运行：修改 `API_PORT` 环境变量，或调整 `global_config.yml` 中的 `AUTO_REPLY.api.port`。
+源码或桌面端可设置 `API_PORT` / `SHANGJIA_PORT` 使用其他端口。Docker 请修改 Compose 的端口映射。修改后访问对应端口的 `/health` 确认服务状态。
 
-## 数据库连接失败
+## 桌面端双击没有反应
 
-检查 `data/` 目录和数据库文件权限，确保应用有读写权限；如使用自定义路径，确认 `DB_PATH` 配置正确。
+保留完整的 `ShangjiaTool` 目录，检查 `_internal\ShangjiaService.exe` 是否存在，再查看 `%LOCALAPPDATA%\ShangjiaTool\logs\desktop-launcher.log`。常见原因是端口占用、旧服务仍在运行、杀毒软件隔离后台服务或只复制了启动器 EXE。
 
-## WebSocket 连接失败
+## Playwright Chromium 缺失
 
-检查网络和防火墙设置，并确认闲鱼账号 Cookie 仍然有效。
+在源码虚拟环境中运行：
 
-## Playwright 浏览器缺失或安装卡住
-
-本地运行需要安装 Chromium：
-
-```bash
-source venv/bin/activate
+```powershell
 playwright install chromium
 ```
 
-如网络较慢，可尝试配置可用的下载镜像后再安装。
+浏览器自动化能力需要有效的本地浏览器和账户授权。不要通过反复自动重试来绕过平台验证。
 
-## Shell 脚本执行错误（Linux/macOS）
+## Cookie 或 Token 失效
 
-如果遇到 `bad interpreter` 错误，说明脚本行结束符格式不正确：
+在管理台重新导入或刷新相应账号的有效授权信息，并按页面提示人工完成验证。网页端仍处于登录状态，不代表管理台保存的 Cookie 或接口 Token 可用。
 
-```bash
-sed -i 's/\r$//' docker-deploy.sh
-chmod +x docker-deploy.sh
-./docker-deploy.sh
-```
+## 数据库或日志在哪里
 
-或直接使用：
-
-```bash
-bash docker-deploy.sh
-```
-
-## Docker 容器启动失败
-
-如果遇到 `exec /app/entrypoint.sh: no such file or directory` 错误：
-
-```bash
-docker compose down
-docker compose build --no-cache
-docker compose up -d
-```
-
-## Windows 系统部署
-
-Windows 用户建议直接使用批处理脚本：
-
-```cmd
-docker-deploy.bat
-```
+桌面端在 `%LOCALAPPDATA%\ShangjiaTool\`；源码运行默认在项目目录的运行数据位置。升级、重装或清理前先备份这些文件，尤其是数据库和浏览器档案。

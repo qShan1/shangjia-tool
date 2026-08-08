@@ -443,7 +443,7 @@ async def _send_webhook_notification(config_data: Dict[str, Any], message: str, 
         'type': notification_type,
         'notification_type': notification_type,
         'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-        'source': 'xianyu-auto-reply',
+        'source': 'shangjia-tool',
     }
 
     async with aiohttp.ClientSession() as session:
@@ -493,7 +493,7 @@ async def _send_telegram_notification(config_data: Dict[str, Any], message: str,
             return False
 
 
-async def send_channel_notification(channel_type: Any, config_data: Dict[str, Any], message: str, *, title: str = '闲鱼管理系统通知', notification_type: str = 'info', attachment_path: Optional[str] = None, account_id: str = '') -> bool:
+async def send_channel_notification(channel_type: Any, config_data: Dict[str, Any], message: str, *, title: str = 'SHANGJIA TOOL 通知', notification_type: str = 'info', attachment_path: Optional[str] = None, account_id: str = '') -> bool:
     normalized_type = normalize_channel_type(channel_type)
     if normalized_type == 'qq':
         return await _send_qq_notification(config_data, message, account_id=account_id)
@@ -516,7 +516,7 @@ async def send_channel_notification(channel_type: Any, config_data: Dict[str, An
     return False
 
 
-async def dispatch_notifications(notifications: Iterable[Dict[str, Any]], message: str, *, title: str = '闲鱼管理系统通知', notification_type: str = 'info', attachment_path: Optional[str] = None, account_id: str = '') -> bool:
+async def dispatch_notifications(notifications: Iterable[Dict[str, Any]], message: str, *, title: str = 'SHANGJIA TOOL 通知', notification_type: str = 'info', attachment_path: Optional[str] = None, account_id: str = '') -> bool:
     notification_sent = False
 
     for notification in notifications or []:
@@ -545,7 +545,7 @@ async def dispatch_notifications(notifications: Iterable[Dict[str, Any]], messag
     return notification_sent
 
 
-async def dispatch_account_notifications(account_id: str, message: str, *, title: str = '闲鱼管理系统通知', notification_type: str = 'info', attachment_path: Optional[str] = None) -> bool:
+async def dispatch_account_notifications(account_id: str, message: str, *, title: str = 'SHANGJIA TOOL 通知', notification_type: str = 'info', attachment_path: Optional[str] = None) -> bool:
     from db_manager import db_manager
 
     try:
@@ -568,7 +568,7 @@ async def dispatch_account_notifications(account_id: str, message: str, *, title
     )
 
 
-def dispatch_account_notifications_sync(account_id: str, message: str, *, title: str = '闲鱼管理系统通知', notification_type: str = 'info', attachment_path: Optional[str] = None) -> bool:
+def dispatch_account_notifications_sync(account_id: str, message: str, *, title: str = 'SHANGJIA TOOL 通知', notification_type: str = 'info', attachment_path: Optional[str] = None) -> bool:
     result: Dict[str, bool] = {'sent': False}
 
     async def runner() -> None:

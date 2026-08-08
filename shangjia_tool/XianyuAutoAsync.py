@@ -330,7 +330,7 @@ class XianyuLive:
 
     # 扫码登录后的短期缓冲状态：首轮 token 刷新命中风控时，先做浏览器侧稳定化再决定是否上滑块
     _qr_login_grace_state = {}  # {cookie_id: {'timestamp': float, 'captcha_buffer_used': bool, 'browser_stabilized': bool}}
-    _qr_login_grace_ttl = max(300, int(RISK_CONTROL.get('qr_login_grace_minutes', 15) or 15) * 60)
+    _qr_login_grace_ttl = max(15, min(120, int(RISK_CONTROL.get('qr_login_grace_seconds', 30) or 30)))
 
     @classmethod
     def _cleanup_auth_prewarmed_tokens(cls):
@@ -580,7 +580,7 @@ class XianyuLive:
 
     @classmethod
     def get_qr_login_grace_ttl_seconds(cls) -> int:
-        return max(300, int(RISK_CONTROL.get('qr_login_grace_minutes', 15) or 15) * 60)
+        return max(15, min(120, int(RISK_CONTROL.get('qr_login_grace_seconds', 30) or 30)))
 
     @classmethod
     def get_qr_login_grace(cls, cookie_id: str) -> Optional[Dict[str, Any]]:
@@ -661,8 +661,8 @@ class XianyuLive:
         if remaining <= 0:
             return False
         self.last_token_refresh_status = "qr_login_grace_wait"
-        self.last_token_refresh_error_message = f"扫码登录稳定期中，剩余{remaining}秒"
-        logger.warning(f"【{self.cookie_id}】扫码登录稳定期中，暂缓自动认证恢复，还需等待 {remaining} 秒")
+        self.last_token_refresh_error_message = f"扫码登录稳定化中，剩余{remaining}秒；结束后自动探测Token/WebSocket"
+        logger.warning(f"【{self.cookie_id}】扫码登录稳定化中，暂缓认证恢复，还需等待 {remaining} 秒")
         return True
 
     @classmethod
@@ -10545,55 +10545,12 @@ class XianyuLive:
             return {"config": config}
 
     async def _send_qq_notification(self, config_data: dict, message: str):
-        """发送QQ通知"""
+        """发送QQ通知 - 统一使用 notification_dispatcher 实现，不再硬编码外部地址"""
         try:
-            import aiohttp
-
-            logger.info(f"📱 QQ通知 - 开始处理配置数据: {config_data}")
-
-            # 解析配置（QQ号码）
-            qq_number = config_data.get('qq_number') or config_data.get('config', '')
-            qq_number = qq_number.strip() if qq_number else ''
-
-            logger.info(f"📱 QQ通知 - 解析到QQ号码: {qq_number}")
-
-            if not qq_number:
-                logger.warning("📱 QQ通知 - QQ号码配置为空，无法发送通知")
-                return False
-
-            # 构建请求URL
-            api_url = "http://36.111.68.231:3000/sendPrivateMsg"
-            params = {
-                'qq': qq_number,
-                'msg': message
-            }
-
-            logger.info(f"📱 QQ通知 - 请求URL: {api_url}")
-            logger.info(f"📱 QQ通知 - 请求参数: qq={qq_number}, msg长度={len(message)}")
-
-            # 发送GET请求
-            async with aiohttp.ClientSession() as session:
-                async with session.get(api_url, params=params, timeout=10) as response:
-                    response_text = await response.text()
-                    logger.info(f"📱 QQ通知 - 响应状态: {response.status}")
-
-                    # 需求：502 视为成功，且不打印返回内容
-                    if response.status == 502:
-                        logger.info(f"📱 QQ通知发送成功: {qq_number} (状态码: {response.status})")
-                        return True
-                    elif response.status == 200:
-                        logger.info(f"📱 QQ通知发送成功: {qq_number} (状态码: {response.status})")
-                        logger.warning(f"📱 QQ通知 - 响应内容: {response_text}")
-                        return True
-                    else:
-                        logger.warning(f"📱 QQ通知发送失败: HTTP {response.status}")
-                        logger.warning(f"📱 QQ通知 - 响应内容: {response_text}")
-                        return False
-
+            from utils.notification_dispatcher import _send_qq_notification as _dispatch_qq
+            return await _dispatch_qq(config_data, message)
         except Exception as e:
-            logger.error(f"📱 发送QQ通知异常: {self._safe_str(e)}")
-            import traceback
-            logger.error(f"📱 QQ通知异常详情: {traceback.format_exc()}")
+            logger.error(f"📱 发送QQ通知异常（调用dispatcher失败）: {self._safe_str(e)}")
             return False
 
     async def _send_dingtalk_notification(self, config_data: dict, message: str):
@@ -10628,7 +10585,7 @@ class XianyuLive:
             data = {
                 "msgtype": "markdown",
                 "markdown": {
-                    "title": "闲鱼管理系统通知",
+                    "title": "SHANGJIA TOOL 通知",
                     "text": message
                 }
             }
@@ -10738,7 +10695,7 @@ class XianyuLive:
             # 解析配置
             server_url = config_data.get('server_url', 'https://api.day.app').rstrip('/')
             device_key = config_data.get('device_key', '')
-            title = config_data.get('title', '闲鱼管理系统通知')
+            title = config_data.get('title', 'SHANGJIA TOOL 通知')
             sound = config_data.get('sound', 'default')
             icon = config_data.get('icon', '')
             group = config_data.get('group', 'xianyu')
@@ -10841,7 +10798,7 @@ class XianyuLive:
             msg = MIMEMultipart()
             msg['From'] = email_user
             msg['To'] = recipient_email
-            msg['Subject'] = "闲鱼管理系统通知"
+            msg['Subject'] = "SHANGJIA TOOL 通知"
 
             # 添加邮件正文
             msg.attach(MIMEText(message, 'plain', 'utf-8'))
@@ -10975,7 +10932,7 @@ class XianyuLive:
             data = {
                 'message': message,
                 'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-                'source': 'xianyu-auto-reply'
+                'source': 'shangjia-tool'
             }
 
             async with aiohttp.ClientSession() as session:
@@ -11190,7 +11147,7 @@ class XianyuLive:
             notification_sent = await dispatch_account_notifications(
                 self.cookie_id,
                 notification_msg,
-                title='闲鱼管理系统通知',
+                title='SHANGJIA TOOL 通知',
                 notification_type=notification_type,
                 attachment_path=attachment_path,
             )
@@ -12769,7 +12726,10 @@ class XianyuLive:
             user_key = api_config.get('user_key')
             goods_id = api_config.get('goods_id')
             # 回调地址：优先使用卡券配置中的，如果没有则从全局配置读取，最后使用默认地址
-            callback_url = (api_config.get('callback_url') or '').strip() or (YIFAN_API.get('callback_url') or '').strip() or 'http://116.196.116.76/yifan.php'
+            callback_url = (api_config.get('callback_url') or '').strip() or (YIFAN_API.get('callback_url') or '').strip()
+            if not callback_url:
+                logger.error(f"亦凡API回调地址未配置，规则ID: {rule.get('id')}。请在 global_config.yml 的 YIFAN_API 中配置 callback_url")
+                return None
             require_account = api_config.get('require_account', False)
 
             if not user_id or not user_key or not goods_id:
@@ -12857,10 +12817,11 @@ class XianyuLive:
                                 success_msg += f"商家订单号: {us_order_no}\n"
                             
                             # 添加查询地址（从全局配置读取）
-                            query_url = YIFAN_API.get('query_url', 'http://116.196.116.76/yifan.php')
-                            success_msg += f"\n🔍 查询卡密：\n"
-                            success_msg += f"{query_url}\n"
-                            success_msg += f"(输入订单号查询)\n"
+                            query_url = YIFAN_API.get('query_url', '')
+                            if query_url:
+                                success_msg += f"\n🔍 查询卡密：\n"
+                                success_msg += f"{query_url}\n"
+                                success_msg += f"(输入订单号查询)\n"
                             
                             # 添加提示信息
                             success_msg += f"\n⏰ 温馨提示：\n"
@@ -13700,6 +13661,93 @@ class XianyuLive:
             pass
         return None
 
+    def _extract_rich_fields_from_message(self, message: dict, raw_content_type: int):
+        """从消息结构中提取富媒体字段，返回 (归一化content_type, image_url, media_url, link_url, extra_json)"""
+        try:
+            message_1 = message.get('1', {})
+            if not isinstance(message_1, dict):
+                return raw_content_type, None, None, None, None
+            message_6 = message_1.get('6', {})
+            if not isinstance(message_6, dict):
+                return raw_content_type, None, None, None, None
+            message_6_3 = message_6.get('3', {})
+            if not isinstance(message_6_3, dict):
+                return raw_content_type, None, None, None, None
+            content_json_str = message_6_3.get('5', '')
+            if not content_json_str:
+                return raw_content_type, None, None, None, None
+            import json as _json
+            payload = _json.loads(content_json_str)
+            if not isinstance(payload, dict):
+                return raw_content_type, None, None, None, None
+
+            dx_card = payload.get('dxCard', {}) if isinstance(payload, dict) else {}
+            dx_item = dx_card.get('item', {}) if isinstance(dx_card, dict) else {}
+            main = dx_item.get('main', {}) if isinstance(dx_item, dict) else {}
+            ex_content = main.get('exContent', {}) if isinstance(main, dict) else {}
+            title = str(ex_content.get('title') or main.get('title') or payload.get('title') or '').strip()
+            content_text = str(ex_content.get('content') or payload.get('text') or '').strip()
+            button_text = str((ex_content.get('button') or {}).get('text') or '').strip()
+
+            image_url = None
+            img_obj = payload.get('image')
+            if isinstance(img_obj, dict) and (img_obj.get('pics') or []):
+                image_url = img_obj['pics'][0].get('url')
+
+            video_url = (
+                ((payload.get('video') or {}).get('playUrl'))
+                or ((payload.get('video') or {}).get('url'))
+                or ((main.get('video') or {}).get('playUrl') if isinstance(main.get('video'), dict) else None)
+            )
+
+            link_url = (
+                str(payload.get('targetUrl') or '').strip()
+                or str(payload.get('url') or '').strip()
+                or str((ex_content.get('button') or {}).get('actionUrl') or '').strip()
+            ) or None
+
+            item_id = dx_item.get('itemId') or dx_item.get('id') if isinstance(dx_item, dict) else None
+            item_title = dx_item.get('title') or title if isinstance(dx_item, dict) else None
+            item_image = dx_item.get('itemMainPic') or dx_item.get('pic') if isinstance(dx_item, dict) else None
+
+            normalized_ct = raw_content_type
+            result_image = image_url
+            result_media = None
+            result_link = link_url
+            extra = None
+
+            if video_url:
+                normalized_ct = 3
+                result_media = str(video_url).strip()
+                result_image = image_url or item_image
+            elif image_url:
+                normalized_ct = 2
+                result_image = str(image_url).strip()
+            elif item_id or item_title:
+                normalized_ct = 5
+                result_image = item_image
+            elif link_url:
+                normalized_ct = 4
+            elif title or content_text or button_text:
+                normalized_ct = 6
+
+            if normalized_ct in (2, 3, 4, 5, 6):
+                extra = {
+                    'payload': payload,
+                    'title': title or None,
+                    'button_text': button_text or None,
+                    'item_share': {
+                        'item_id': item_id,
+                        'title': item_title,
+                        'image_url': item_image,
+                        'seller_id': dx_item.get('itemSellerId') if isinstance(dx_item, dict) else None,
+                    } if (item_id or item_title or item_image) else None,
+                }
+
+            extra_json = _json.dumps(extra, ensure_ascii=False) if extra else None
+            return normalized_ct, result_image, result_media, result_link, extra_json
+        except Exception:
+            return raw_content_type, None, None, None, None
     async def send_heartbeat(self, ws):
         """发送心跳包"""
         # 检查WebSocket连接状态，如果已关闭则不发送
@@ -16915,10 +16963,7 @@ class XianyuLive:
                 try:
                     from db_manager import db_manager as _db
                     from chat_event_hub import publish_chat_message
-                    image_url = self._extract_image_url_from_message(message) if content_type == 2 else None
-                    media_url = None
-                    link_url = None
-                    extra_json = None
+                    content_type, image_url, media_url, link_url, extra_json = self._extract_rich_fields_from_message(message, content_type)
                     _msg_id_db = _db.save_chat_message(
                         cookie_id=self.cookie_id, chat_id=chat_id,
                         sender_id=self.myid, sender_name=self.cookie_id,
@@ -16953,10 +16998,7 @@ class XianyuLive:
                 try:
                     from db_manager import db_manager as _db
                     from chat_event_hub import publish_chat_message
-                    image_url = self._extract_image_url_from_message(message) if content_type == 2 else None
-                    media_url = None
-                    link_url = None
-                    extra_json = None
+                    content_type, image_url, media_url, link_url, extra_json = self._extract_rich_fields_from_message(message, content_type)
                     _msg_id_db = _db.save_chat_message(
                         cookie_id=self.cookie_id, chat_id=chat_id,
                         sender_id=send_user_id, sender_name=send_user_name,

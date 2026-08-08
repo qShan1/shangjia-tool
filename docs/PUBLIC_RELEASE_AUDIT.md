@@ -1,7 +1,7 @@
 # Public Release Audit
 
 Date: 2026-08-05
-Repository: `qShan1/xianyu-smart-butler`
+Repository: `qShan1/shangjia-tool`
 
 ## Scope
 

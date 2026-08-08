@@ -1,5 +1,7 @@
 # Security Policy
 
+本项目仓库地址：https://github.com/qShan1/shangjia-tool
+
 ## Supported Versions
 
 目前仅对最新稳定版本提供安全修复支持。

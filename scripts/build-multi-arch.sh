@@ -7,13 +7,15 @@
 
 set -e
 
+cd "$(dirname "$0")/.."
+
 echo "========================================"
 echo "  多架构 Docker 镜像构建脚本"
 echo "========================================"
 echo
 
 # 设置镜像标签（可通过环境变量覆盖）
-IMAGE_NAME="${IMAGE_NAME:-xianyu-auto-reply-fix}"
+IMAGE_NAME="${IMAGE_NAME:-shangjia-tool}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 DOCKERFILE="${DOCKERFILE:-Dockerfile-cn}"
 
@@ -179,7 +181,7 @@ echo "使用方法:"
 if [ "$PUSH_IMAGE" = "y" ]; then
     echo "  docker pull $FULL_IMAGE_NAME"
 fi
-echo "  docker run -d -p 8090:8090 --name xianyu-auto-reply-fix $FULL_IMAGE_NAME"
+echo "  docker run -d -p 8090:8090 --name shangjia-tool $FULL_IMAGE_NAME"
 echo
 echo "验证多架构镜像:"
 if [ "$PUSH_IMAGE" = "y" ]; then

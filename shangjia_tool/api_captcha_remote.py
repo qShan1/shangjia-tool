@@ -360,7 +360,7 @@ async def get_captcha_status(session_id: str):
 @router.get("/control", response_class=HTMLResponse)
 async def captcha_control_page():
     """返回滑块控制页面"""
-    html_file = "captcha_control.html"
+    html_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'captcha_control.html')
     
     if os.path.exists(html_file):
         return FileResponse(html_file, media_type="text/html")
@@ -384,7 +384,7 @@ async def captcha_control_page():
 @router.get("/control/{session_id}", response_class=HTMLResponse)
 async def captcha_control_page_with_session(session_id: str):
     """返回带会话ID的滑块控制页面"""
-    html_file = "captcha_control.html"
+    html_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'captcha_control.html')
     
     if os.path.exists(html_file):
         with open(html_file, 'r', encoding='utf-8') as f:
@@ -398,4 +398,3 @@ async def captcha_control_page_with_session(session_id: str):
             return HTMLResponse(content=html_content)
     else:
         raise HTTPException(status_code=404, detail="前端页面不存在")
-

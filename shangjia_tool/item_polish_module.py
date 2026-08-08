@@ -214,7 +214,11 @@ class ItemPolishModule:
         else:
             message = f'擦亮完成：刚刚擦亮 {polished - already_polished} 个，{already_polished} 个已是最新，失败 {failed} 个'
         return {
-            'success': True,
+            # 至少一个商品真正擦亮成功（或平台明确表示近期已擦亮）才算本次有成功结果。
+            # 过去这里固定返回 True，导致全部商品均被平台拒绝时，定时任务仍被记录为成功。
+            'success': polished > 0,
+            'complete_success': failed == 0,
+            'partial_success': polished > 0 and failed > 0,
             'message': message,
             'total': total,
             'polished': polished,

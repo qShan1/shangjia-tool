@@ -1,14 +1,15 @@
 @echo off
 chcp 65001 >nul
 setlocal enabledelayedexpansion
+cd /d "%~dp0\.."
 
-REM 闲鱼管理系统 Docker 部署脚本 (Windows版本)
+REM SHANGJIA TOOL Docker 部署脚本 (Windows版本)
 REM 支持快速部署和管理
 
-title 闲鱼管理系统 Docker 部署
+title SHANGJIA TOOL Docker 部署
 
 REM 项目配置
-set PROJECT_NAME=xianyu-auto-reply-fix
+set PROJECT_NAME=shangjia-tool
 set COMPOSE_FILE=docker-compose.yml
 set "COMPOSE_CMD=docker-compose"
 
@@ -194,7 +195,7 @@ echo    HTTP: http://localhost:%WEB_PORT%
 echo.
 echo 🔐 默认登录信息:
 echo    用户名: admin
-echo    密码:   admin123
+echo    密码:   请通过环境变量 ADMIN_PASSWORD 设置（未设置时首次启动随机生成）
 echo.
 echo 📊 管理命令:
 echo    查看状态: %~nx0 status
@@ -205,7 +206,7 @@ echo.
 goto :eof
 
 :show_help
-echo 闲鱼管理系统 Docker 部署脚本 (Windows版本)
+echo SHANGJIA TOOL Docker 部署脚本 (Windows版本)
 echo.
 echo 用法: %~nx0 [命令]
 echo.

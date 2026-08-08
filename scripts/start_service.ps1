@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $python = Join-Path $root 'venv\Scripts\python.exe'
 $healthUrl = 'http://127.0.0.1:8090/health'
 

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>菇-闲鱼管理系统</title>
-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <title>SHANGJIA TOOL | 闲鱼管理台</title>
+  <link rel="icon" type="image/svg+xml" href="/static/shangjia-mark.svg">
   <!-- 防止主题闪烁：先隐藏页面，设置好主题后再显示 -->
   <style>
     html { visibility: hidden; }
@@ -61,7 +61,7 @@
   <link rel="stylesheet" href="/static/lib/bootstrap/bootstrap.min.css">
   <link rel="stylesheet" href="/static/lib/bootstrap-icons/bootstrap-icons.css">
 
-<link rel="stylesheet" href="/static/css/app.css?v=2.1.2">
+<link rel="stylesheet" href="/static/css/app.css?v=2.1.3">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     /* Keep the light glass theme readable on translucent surfaces. */
@@ -113,8 +113,8 @@
   <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <a href="#" class="sidebar-brand">
-        <img src="/static/logo.svg" alt="菇 Logo" width="30" height="30" class="me-2">
-        <span>菇-闲鱼管理系统</span>
+        <img src="/static/shangjia-mark.svg" alt="上架 Logo" width="30" height="30" class="me-2 sidebar-brand-logo">
+        <span>上架</span>
       </a>
       <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="切换主题（浅色/深色/跟随系统）">
         <i class="bi bi-moon-fill" id="darkModeIcon"></i>
@@ -127,6 +127,7 @@
           <span>仪表盘</span>
         </a>
       </div>
+      <div class="nav-divider"><small class="text-white-50">账号与商品</small></div>
       <div class="nav-item" data-menu-id="accounts">
         <a href="javascript:void(0)" class="nav-link" onclick="showSection('accounts')">
           <i class="bi bi-person-circle"></i>
@@ -145,12 +146,20 @@
           <span>商品管理</span>
         </a>
       </div>
+      <div class="nav-item" data-menu-id="item-search">
+        <a href="javascript:void(0)" class="nav-link" onclick="showSection('item-search')">
+          <i class="bi bi-search"></i>
+          <span>商品搜索</span>
+        </a>
+      </div>
+      <div class="nav-divider"><small class="text-white-50">交易</small></div>
       <div class="nav-item" data-menu-id="orders">
         <a href="javascript:void(0)" class="nav-link" onclick="showSection('orders')">
           <i class="bi bi-receipt-cutoff"></i>
           <span>订单管理</span>
         </a>
       </div>
+      <div class="nav-divider"><small class="text-white-50">自动化</small></div>
       <div class="nav-item" data-menu-id="auto-reply">
         <a href="javascript:void(0)" class="nav-link" onclick="showSection('auto-reply')">
           <i class="bi bi-chat-left-text"></i>
@@ -181,6 +190,7 @@
           <span>自动发货</span>
         </a>
       </div>
+      <div class="nav-divider"><small class="text-white-50">通知</small></div>
       <div class="nav-item" data-menu-id="notification-channels">
         <a href="javascript:void(0)" class="nav-link" onclick="showSection('notification-channels')">
           <i class="bi bi-bell"></i>
@@ -193,6 +203,7 @@
           <span>消息通知</span>
         </a>
       </div>
+      <div class="nav-divider"><small class="text-white-50">客服</small></div>
       <div class="nav-item" data-menu-id="online-im">
         <a href="javascript:void(0)" class="nav-link" onclick="showSection('online-im')">
           <i class="bi bi-headset"></i>
@@ -205,6 +216,7 @@
           <span>黑名单管理</span>
         </a>
       </div>
+      <div class="nav-divider"><small class="text-white-50">系统</small></div>
       <div class="nav-item" data-menu-id="system-settings">
         <a href="javascript:void(0)" class="nav-link" onclick="showSection('system-settings')">
           <i class="bi bi-gear"></i>
@@ -913,6 +925,20 @@
                       </div>
                     </div>
 
+                    <div class="col-md-6">
+                      <label for="publishCondition" class="form-label">成色</label>
+                      <select class="form-select" id="publishCondition">
+                        <option value="全新">全新</option>
+                        <option value="几乎全新">几乎全新</option>
+                        <option value="轻微使用痕迹">轻微使用痕迹</option>
+                        <option value="明显使用痕迹">明显使用痕迹</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="publishQuantity" class="form-label">数量</label>
+                      <input type="number" class="form-control" id="publishQuantity" min="1" step="1" value="1">
+                    </div>
+
                     <div class="col-12">
                       <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="publishCanSelfPickup">
@@ -942,6 +968,9 @@
                   </div>
 
                   <div class="d-flex flex-wrap gap-2 mt-4">
+                    <button type="button" class="btn btn-outline-warning" id="itemPublishPrecheckBtn" onclick="precheckItemPublishForm()">
+                      <i class="bi bi-shield-check me-1"></i>发布前检查
+                    </button>
                     <button type="submit" class="btn btn-primary" id="itemPublishSubmitBtn">
                       <i class="bi bi-cloud-upload me-1"></i>发布商品
                     </button>
@@ -958,6 +987,7 @@
                       <i class="bi bi-box-seam me-1"></i>查看商品管理
                     </button>
                   </div>
+                  <div id="itemPublishComplianceResult" class="mt-3" aria-live="polite"></div>
                 </form>
               </div>
             </div>
@@ -1348,7 +1378,7 @@
               <button class="btn btn-outline-primary" onclick="refreshOrders()">
                 <i class="bi bi-arrow-clockwise"></i> 刷新
               </button>
-              <button class="btn btn-outline-secondary" onclick="clearOrderFilters()">
+              <button class="btn btn-outline-secondary" id="orderClearFiltersBtn" onclick="clearOrderFilters()" disabled>
                 <i class="bi bi-x-circle"></i> 清空筛选
               </button>
             </div>
@@ -1385,21 +1415,20 @@
                     <th style="width: 4%">
                       <input type="checkbox" id="selectAllOrders" onchange="toggleSelectAllOrders(this)">
                     </th>
-                    <th style="width: 13%">订单ID</th>
-                    <th style="width: 10%">商品ID</th>
-                    <th style="width: 8%">买家ID</th>
-                    <th style="width: 10%">买家昵称</th>
-                    <th style="width: 11%">规格信息</th>
-                    <th style="width: 6%">数量</th>
-                    <th style="width: 8%">金额</th>
-                    <th style="width: 8%">状态</th>
-                    <th style="width: 10%">账号ID</th>
+                    <th style="width: 13%"><button type="button" class="order-sort-trigger" data-order-sort="order_id" onclick="toggleOrderSort('order_id')">订单ID<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
+                    <th style="width: 8%"><button type="button" class="order-sort-trigger" data-order-sort="buyer_id" onclick="toggleOrderSort('buyer_id')">买家ID<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
+                    <th style="width: 10%"><button type="button" class="order-sort-trigger" data-order-sort="buyer_nick" onclick="toggleOrderSort('buyer_nick')">买家昵称<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
+                    <th style="width: 15%"><button type="button" class="order-sort-trigger" data-order-sort="item_id" onclick="toggleOrderSort('item_id')">商品链接<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
+                    <th style="width: 6%"><button type="button" class="order-sort-trigger" data-order-sort="quantity" onclick="toggleOrderSort('quantity')">数量<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
+                    <th style="width: 8%"><button type="button" class="order-sort-trigger" data-order-sort="amount" onclick="toggleOrderSort('amount')">金额<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
+                    <th style="width: 8%"><button type="button" class="order-sort-trigger" data-order-sort="status" onclick="toggleOrderSort('status')">状态<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
+                    <th style="width: 10%"><button type="button" class="order-sort-trigger" data-order-sort="cookie_id" onclick="toggleOrderSort('cookie_id')">账号ID<span class="order-sort-indicator" aria-hidden="true"></span></button></th>
                     <th style="width: 12%">操作</th>
                   </tr>
                 </thead>
                 <tbody id="ordersTableBody">
                   <tr>
-                    <td colspan="11" class="text-center text-muted">加载中...</td>
+                    <td colspan="10" class="text-center text-muted">加载中...</td>
                   </tr>
                 </tbody>
               </table>
@@ -1743,7 +1772,7 @@
                       <tr>
                         <th>卡券名称</th>
                         <th>类型</th>
-                        <th>规格信息</th>
+                        <th>商品信息</th>
                         <th>数据量</th>
                         <th>延时时间</th>
                         <th>状态</th>
@@ -3016,6 +3045,7 @@
             <div class="chat-panel-body" id="chatAccountsBody">
               <div class="text-center text-muted py-4 small">加载中...</div>
             </div>
+            <div class="px-3 py-2 border-top small text-muted" id="chatRuntimeSummary">运行状态：等待账号</div>
           </div>
           <div class="chat-session-list" id="chatSessionList">
             <div class="chat-panel-header">
@@ -3810,6 +3840,23 @@
           </div>
         </div>
 
+        <!-- 使用说明 -->
+        <div class="row mt-4">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header">
+                <i class="bi bi-question-circle me-2"></i>使用说明
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-3">如果需要重新查看首次使用的欢迎引导说明，可以点击下方按钮重新启用，刷新页面后将自动弹出。</p>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="restoreWelcome()">
+                  <i class="bi bi-info-circle me-1"></i>重新显示使用说明
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- API安全设置 (仅管理员可见) -->
         <div id="api-security-settings" class="row mt-4" style="display: none;">
           <div class="col-md-12">
@@ -4165,17 +4212,17 @@
           <i class="bi bi-info-circle me-2"></i>
           关于
         </h2>
-        <p class="text-muted mb-0">菇专属运营控制台</p>
+      <p class="text-muted mb-0">闲鱼管理工具</p>
       </div>
       <div class="content-body">
         <section class="about-brand-card" aria-labelledby="aboutBrandTitle">
           <div class="about-brand-header">
             <div class="about-brand-identity">
-              <div class="about-brand-mark" aria-hidden="true"><img src="/static/logo.svg" alt="" width="52" height="52" class="about-brand-logo"></div>
+              <div class="about-brand-mark" aria-hidden="true"><img src="/static/shangjia-mark.svg" alt="上架 Logo" width="52" height="52" class="about-brand-logo"></div>
               <div>
-                <div class="about-brand-name">菇</div>
-                <h3 id="aboutBrandTitle">菇-闲鱼管理系统</h3>
-                <p>账号、商品、订单与自动化运营的本地控制台</p>
+                <div class="about-brand-name">上架</div>
+                <h3 id="aboutBrandTitle">上架</h3>
+                <p>闲鱼账号、商品、订单与自动化运营工具</p>
               </div>
             </div>
             <span class="about-brand-version">本地维护版 <strong id="aboutVersionNumber">加载中...</strong></span>
@@ -4190,11 +4237,15 @@
               <h5><i class="bi bi-shield-check me-2"></i>维护方式</h5>
               <p>本地配置和业务数据优先保留。GitHub 后续有更新时，先逐文件对照，再按需人工合入。</p>
             </div>
+            <div>
+              <h5><i class="bi bi-git me-2"></i>项目来源</h5>
+              <p>本项目基于开源项目 <a href="https://github.com/zhinianboke/xianyu-auto-reply" target="_blank" rel="noopener noreferrer">xianyu-auto-reply</a> 二次开发，遵循 AGPL-3.0 协议。源码仓库：<a href="https://github.com/qShan1/shangjia-tool" target="_blank" rel="noopener noreferrer">qShan1/shangjia-tool</a>。</p>
+            </div>
           </div>
 
           <div class="about-support-section">
             <div class="about-support-copy">
-              <h5><i class="bi bi-heart me-2"></i>支持菇持续维护</h5>
+              <h5><i class="bi bi-heart me-2"></i>支持上架持续维护</h5>
               <p>用于支持本地系统维护与运营改进。</p>
             </div>
             <div class="about-support-grid">
@@ -4603,7 +4654,7 @@
                 </div>
                 <div class="mb-3">
                   <label class="form-label">回调地址</label>
-                  <input type="url" class="form-control" id="yifanCallbackUrl" placeholder="http://116.196.116.76/yifan.php">
+                  <input type="url" class="form-control" id="yifanCallbackUrl" placeholder="http://your-server/yifan.php">
                   <small class="form-text text-muted">订单状态回调通知地址（选填，留空使用我自己搭建的回调地址，有条件的可以参考亦凡API文档自己搭建回调地址）</small>
                 </div>
                 <div class="mb-3">
@@ -4929,7 +4980,7 @@
                 </div>
                 <div class="mb-3">
                   <label class="form-label">回调地址</label>
-                  <input type="url" class="form-control" id="editYifanCallbackUrl" placeholder="http://116.196.116.76/yifan.php">
+                  <input type="url" class="form-control" id="editYifanCallbackUrl" placeholder="http://your-server/yifan.php">
                   <small class="form-text text-muted">订单状态回调通知地址（选填，留空使用我自己搭建的回调地址，有条件的可以参考亦凡API文档自己搭建回调地址）</small>
                 </div>
                 <div class="mb-3">
@@ -5224,7 +5275,7 @@
 
   <!-- JS依赖 -->
   <script src="/static/lib/bootstrap/bootstrap.bundle.min.js"></script>
-<script src="/static/js/app.js?v=2.1.2"></script>
+<script src="/static/js/app.js?v=2.1.3"></script>
 
   <!-- 默认回复管理模态框 -->
   <div class="modal fade" id="defaultReplyModal" tabindex="-1" aria-labelledby="defaultReplyModalLabel" aria-hidden="true">
@@ -5995,6 +6046,121 @@
       </div>
     </div>
   </div>
+
+<!-- 首次使用欢迎弹窗 -->
+<div class="modal fade" id="welcomeModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-stars me-2"></i>欢迎使用 SHANGJIA TOOL
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <h6><i class="bi bi-1-circle me-1"></i>账号登录</h6>
+          <p class="text-muted small mb-2">在「账号管理」页面点击「添加账号」，使用闲鱼App扫码登录。系统会自动维护Cookie有效性，但如遇平台风控（滑块/人脸验证），需手动处理。</p>
+        </div>
+        <div class="mb-3">
+          <h6><i class="bi bi-2-circle me-1"></i>账号状态</h6>
+          <p class="text-muted small mb-2">账号列表中的状态（已连接/连接中/已断开）反映WebSocket实时连接状态。「已连接」表示可正常收发消息，「连接中」表示正在建立连接。</p>
+        </div>
+        <div class="mb-3">
+          <h6><i class="bi bi-3-circle me-1"></i>Cookie 有效性</h6>
+          <p class="text-muted small mb-2">Cookie过期后需重新扫码。系统会在Token即将过期时自动刷新，但网络异常或平台策略变更可能导致Cookie失效。建议定期检查账号状态。</p>
+        </div>
+        <div class="mb-3">
+          <h6><i class="bi bi-4-circle me-1"></i>人工验证</h6>
+          <p class="text-muted small mb-2">涉及发布商品、发货、评价、擦亮等操作时，请先在小范围内人工验证，确认无误后再开启自动化。系统不会自动执行退款操作。</p>
+        </div>
+        <div class="mb-3">
+          <h6><i class="bi bi-5-circle me-1"></i>数据目录</h6>
+          <p class="text-muted small mb-2" id="welcomeDataDir">数据库、日志和配置文件存储在本地数据目录中。桌面端数据目录：<code>%LOCALAPPDATA%\ShangjiaTool\</code></p>
+        </div>
+        <div class="alert alert-warning py-2" id="welcomeChromiumAlert" style="display:none;">
+          <i class="bi bi-download me-1"></i>
+          <strong>Chromium 浏览器：</strong><span id="welcomeChromiumMsg">检测中...</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="form-check me-auto">
+          <input class="form-check-input" type="checkbox" id="welcomeDontShowAgain">
+          <label class="form-check-label small text-muted" for="welcomeDontShowAgain">下次不再显示</label>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="closeWelcomeModal()">
+          <i class="bi bi-check-lg me-1"></i>开始使用
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 首次使用欢迎弹窗
+async function checkAndShowWelcome() {
+    try {
+        const response = await fetch('/api/system/welcome-status');
+        const data = await response.json();
+        if (data.success && data.show_welcome) {
+            const modal = new bootstrap.Modal(document.getElementById('welcomeModal'));
+            modal.show();
+            // 同时检查 Chromium 状态
+            checkChromiumStatus();
+        }
+    } catch (e) {
+        console.log('欢迎弹窗检查失败:', e);
+    }
+}
+
+async function checkChromiumStatus() {
+    try {
+        const response = await fetch('/api/system/chromium-status');
+        const data = await response.json();
+        const alertDiv = document.getElementById('welcomeChromiumAlert');
+        const msgSpan = document.getElementById('welcomeChromiumMsg');
+        if (alertDiv && msgSpan) {
+            if (data.success && !data.installed) {
+                alertDiv.style.display = 'block';
+                msgSpan.textContent = data.message || 'Chromium 未安装，首次使用人脸验证/滑块验证时会自动下载';
+            } else {
+                alertDiv.style.display = 'none';
+            }
+        }
+    } catch (e) {
+        console.log('Chromium状态检查失败:', e);
+    }
+}
+
+async function closeWelcomeModal() {
+    const dontShow = document.getElementById('welcomeDontShowAgain')?.checked;
+    if (dontShow) {
+        try {
+            await fetch('/api/system/welcome-dismiss', { method: 'POST' });
+        } catch (e) {
+            console.log('关闭欢迎弹窗失败:', e);
+        }
+    }
+    bootstrap.Modal.getInstance(document.getElementById('welcomeModal'))?.hide();
+}
+
+// 重新显示使用说明
+async function restoreWelcome() {
+    try {
+        const response = await fetch('/api/system/welcome-restore', { method: 'POST' });
+        const data = await response.json();
+        if (data.success) {
+            showToast('已重新启用，刷新页面后生效', 'success');
+        }
+    } catch (e) {
+        showToast('操作失败', 'danger');
+    }
+}
+
+// 登录成功后检查是否显示欢迎弹窗（在页面加载完成后调用）
+// 延迟调用以确保其他初始化完成
+setTimeout(() => { checkAndShowWelcome(); }, 2000);
+</script>
 
 </body>
 </html>

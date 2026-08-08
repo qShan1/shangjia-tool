@@ -24,8 +24,9 @@ class AISiteAuditService:
     MAX_REPORTS = 30
 
     def __init__(self):
-        self.project_root = Path(__file__).resolve().parent
-        self.report_dir = self.project_root / "data" / "ai_site_audit_reports"
+        from runtime_paths import PROJECT_ROOT, runtime_dir
+        self.project_root = PROJECT_ROOT
+        self.report_dir = runtime_dir("ai_site_audit_reports")
         self.report_dir.mkdir(parents=True, exist_ok=True)
         self.task: Optional[asyncio.Task] = None
         self.stop_event: Optional[asyncio.Event] = None
@@ -175,7 +176,7 @@ class AISiteAuditService:
             return self._fallback_report(snapshots, "未找到可用的AI配置")
 
         prompt = {
-            "task": "分析本地闲鱼管理系统的运行质量，输出可直接执行的中文运维巡检报告",
+            "task": "分析本地 SHANGJIA TOOL 的运行质量，输出可直接执行的中文运维巡检报告",
             "rules": [
                 "只根据提供的快照判断，不要臆测外部平台状态",
                 "报告必须分为：1总体结论 2服务/页面可用性 3账号与消息链路 4AI回复质量 5订单/发货/评价任务 6已确认问题 7风险与影响 8按优先级排列的行动清单",
