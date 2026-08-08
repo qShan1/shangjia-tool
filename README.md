@@ -2,8 +2,7 @@
 
 上架工具是面向闲鱼运营的本地管理台，提供账号管理、商品管理、订单处理、自动回复和运营记录能力。项目使用 FastAPI、SQLite 和 Playwright 构建，主要以 Windows 桌面端交付，也支持源码运行。
 
-> 本项目是基于 [xianyu-auto-reply](https://github.com/zhinianboke/xianyu-auto-reply) 的二次开发，遵循 AGPL-3.0。请遵守适用法律、平台规则和上游许可证要求；不要提交或分享真实 Cookie、Token、订单、数据库或验证截图。
-
+> 本项目是基于 [xianyu-auto-reply](https://github.com/zhinianboke/xianyu-auto-reply) 的二次开发，遵循 AGPL-3.0。请遵守适用法律、平台规则和上游许可证要求；
 ## 功能范围
 
 - 多账号 Cookie 管理与状态查看
