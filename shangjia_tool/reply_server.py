@@ -1642,9 +1642,10 @@ async def restore_welcome():
 # Chromium 安装状态查询
 @app.get('/api/system/chromium-status')
 async def get_chromium_status():
-    """查询 Playwright Chromium 浏览器安装状态"""
+    """Describe the optional browser available for login/verification flows."""
     try:
         from pathlib import Path
+        from browser_runtime import find_system_browser
 
         # 检查可能的位置
         found = False
@@ -1685,11 +1686,13 @@ async def get_chromium_status():
                     if found:
                         break
 
+        system_browser = find_system_browser()
         return {
             "success": True,
-            "installed": found,
-            "path": chrome_path if found else "",
-            "message": "Chromium 已安装" if found else "Chromium 未安装，首次使用人脸验证/滑块验证时会自动下载（约150MB），请耐心等待"
+            "installed": bool(found or system_browser),
+            "path": str(system_browser or chrome_path) if (found or system_browser) else "",
+            "source": "system" if system_browser else ("playwright" if found else "none"),
+            "message": "已识别系统浏览器，仅在登录或验证时使用" if system_browser else ("已准备自动化浏览器，仅在登录或验证时使用" if found else "日常桌面管理不需要额外浏览器；仅在登录或人工验证时按需准备")
         }
     except Exception as e:
         return {"success": False, "installed": False, "message": f"检测失败: {str(e)}"}

@@ -9518,10 +9518,8 @@ class XianyuLive:
                     '--use-mock-keychain'
                 ])
 
-            browser = await playwright.chromium.launch(
-                headless=True,  # 移动模式使用无头模式
-                args=browser_args
-            )
+            from browser_runtime import launch_options
+            browser = await playwright.chromium.launch(**launch_options(browser_args, headless=True))
 
             # 创建移动设备浏览器上下文（模拟iPhone）
             context = await browser.new_context(
@@ -14303,10 +14301,8 @@ class XianyuLive:
                 ])
 
             # 使用无头浏览器
-            browser = await playwright.chromium.launch(
-                headless=True,  # 改回无头模式
-                args=browser_args
-            )
+            from browser_runtime import launch_options
+            browser = await playwright.chromium.launch(**launch_options(browser_args, headless=True))
 
             # 创建浏览器上下文
             context_options = {
@@ -14694,10 +14690,8 @@ class XianyuLive:
             # 读取账号配置以决定浏览器模式（默认无头）
             account_info = db_manager.get_cookie_details(self.cookie_id) or {}
             show_browser = bool(account_info.get('show_browser', False))
-            browser = await playwright.chromium.launch(
-                headless=not show_browser,
-                args=browser_args
-            )
+            from browser_runtime import launch_options
+            browser = await playwright.chromium.launch(**launch_options(browser_args, headless=not show_browser))
 
             # 创建浏览器上下文
             context_options = {
@@ -14984,10 +14978,8 @@ class XianyuLive:
             # Cookie刷新模式：读取账号配置以决定浏览器模式（默认无头）
             account_info = db_manager.get_cookie_details(self.cookie_id) or {}
             show_browser = bool(account_info.get('show_browser', False))
-            browser = await playwright.chromium.launch(
-                headless=not show_browser,
-                args=browser_args
-            )
+            from browser_runtime import launch_options
+            browser = await playwright.chromium.launch(**launch_options(browser_args, headless=not show_browser))
 
             # 创建浏览器上下文
             context_options = {
