@@ -12,7 +12,7 @@ if (-not (Test-Path $python)) {
     if (-not $python) { throw "Python not found" }
 }
 Write-Host "Using Python: $python"
-& $python -m pip install --upgrade pywebview pyinstaller
+& $python -m pip install --upgrade pywebview pystray pyinstaller
 
 # 第一步：构建 ShangjiaService（onefile 模式，打包静态资源和配置）
 Write-Host "Building ShangjiaService (onefile)..."

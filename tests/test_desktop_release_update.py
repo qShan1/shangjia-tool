@@ -95,3 +95,52 @@ def test_download_update_accepts_matching_checksum(tmp_path):
         archive = launcher._download_update(update)
 
     assert archive.read_bytes() == content
+
+
+def test_stop_service_terminates_only_launcher_child():
+    launcher = load_launcher()
+
+    class Process:
+        def __init__(self):
+            self.terminated = False
+            self.waits = []
+
+        def poll(self):
+            return None
+
+        def terminate(self):
+            self.terminated = True
+
+        def wait(self, timeout):
+            self.waits.append(timeout)
+
+    process = Process()
+    launcher._SERVICE_PROCESS = process
+    launcher.stop_service()
+
+    assert process.terminated
+    assert process.waits == [8]
+    assert launcher._SERVICE_PROCESS is None
+
+
+def test_title_bar_close_allows_real_exit():
+    launcher = load_launcher()
+    assert launcher.allow_window_close() is True
+
+
+def test_minimize_to_tray_hides_window():
+    launcher = load_launcher()
+    launcher._EXIT_REQUESTED = False
+
+    class Window:
+        def __init__(self):
+            self.hidden = False
+
+        def hide(self):
+            self.hidden = True
+
+    window = Window()
+    with patch.object(launcher, "_start_tray", return_value=True):
+        launcher.minimize_to_tray(window)
+
+    assert window.hidden is True

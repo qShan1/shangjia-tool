@@ -9,6 +9,7 @@ import shutil
 import atexit
 import hashlib
 import json
+import threading
 from pathlib import Path
 
 APP_NAME = "上架工具"
@@ -19,6 +20,9 @@ else:
 PORT = int(os.environ.get("SHANGJIA_PORT", "8090"))
 DATA_ROOT = Path(os.environ.get("SHANGJIA_DATA_DIR", Path(os.environ.get("LOCALAPPDATA", ROOT)) / "ShangjiaTool"))
 _LOCK_HANDLE = None
+_SERVICE_PROCESS = None
+_EXIT_REQUESTED = False
+_TRAY_ICON = None
 GITHUB_RELEASE_URL = "https://api.github.com/repos/qShan1/shangjia-tool/releases/latest"
 
 
@@ -190,6 +194,95 @@ def release_single_instance():
     _LOCK_HANDLE.close()
     _LOCK_HANDLE = None
 
+
+def stop_service():
+    """Stop only the service process launched by this desktop instance."""
+    global _SERVICE_PROCESS
+    process = _SERVICE_PROCESS
+    _SERVICE_PROCESS = None
+    if process is None or process.poll() is not None:
+        return
+    try:
+        process.terminate()
+        process.wait(timeout=8)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=3)
+    except OSError:
+        pass
+
+
+def request_exit(window=None):
+    """Leave tray mode and close both the window and its local service."""
+    global _EXIT_REQUESTED
+    _EXIT_REQUESTED = True
+    if _TRAY_ICON is not None:
+        try:
+            _TRAY_ICON.stop()
+        except Exception:
+            pass
+    if window is not None:
+        try:
+            window.destroy()
+        except Exception:
+            pass
+
+
+def _start_tray(window):
+    """Create a Windows tray menu after the user closes the main window."""
+    global _TRAY_ICON
+    if _TRAY_ICON is not None:
+        return True
+    try:
+        import pystray
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGBA", (64, 64), (27, 93, 166, 255))
+        draw = ImageDraw.Draw(image)
+        draw.rectangle((16, 14, 48, 50), fill=(255, 255, 255, 255))
+        draw.rectangle((22, 20, 42, 26), fill=(27, 93, 166, 255))
+
+        def show_window(_icon, _item):
+            try:
+                window.show()
+                window.restore()
+            except Exception:
+                pass
+
+        def exit_app(_icon, _item):
+            request_exit(window)
+
+        _TRAY_ICON = pystray.Icon(
+            "ShangjiaTool",
+            image,
+            APP_NAME,
+            menu=pystray.Menu(
+                pystray.MenuItem("打开商家工具", show_window, default=True),
+                pystray.MenuItem("退出", exit_app),
+            ),
+        )
+        threading.Thread(target=_TRAY_ICON.run, name="shangjia-tray", daemon=True).start()
+        return True
+    except Exception as error:
+        with desktop_log_path().open("a", encoding="utf-8") as output:
+            output.write(f"Tray is unavailable: {error}\\n")
+        return False
+
+
+def minimize_to_tray(window):
+    """A minimized desktop window becomes a tray-resident background app."""
+    if _EXIT_REQUESTED or not _start_tray(window):
+        return
+    try:
+        window.hide()
+    except Exception:
+        pass
+
+
+def allow_window_close():
+    """The title-bar close button always performs a real application exit."""
+    return True
+
 def migrate_runtime_data():
     """Copy legacy runtime folders once; never remove or overwrite source data."""
     for name in ("data", "browser_data", "logs", "trajectory_history", "update_backup"):
@@ -214,6 +307,7 @@ def healthy():
         return False
 
 def main():
+    global _SERVICE_PROCESS
     DATA_ROOT.mkdir(parents=True, exist_ok=True)
     if offer_desktop_update():
         return
@@ -251,6 +345,7 @@ def main():
                 stderr=subprocess.STDOUT,
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
+            _SERVICE_PROCESS = process
         for _ in range(40):
             if healthy():
                 break
@@ -265,10 +360,14 @@ def main():
     # pywebview 是可选依赖；没有时仍保持一键启动体验。
     try:
         import webview
-        webview.create_window(APP_NAME, f"http://127.0.0.1:{PORT}/admin", width=1440, height=900)
+        window = webview.create_window(APP_NAME, f"http://127.0.0.1:{PORT}/admin", width=1440, height=900)
+        window.events.closing += allow_window_close
+        window.events.minimized += lambda: minimize_to_tray(window)
         webview.start()
     except ImportError:
         webbrowser.open(f"http://127.0.0.1:{PORT}/admin")
+    finally:
+        stop_service()
 
 if __name__ == "__main__":
     try:

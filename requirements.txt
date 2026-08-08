@@ -95,4 +95,5 @@ zstandard>=0.22.0
 # email, smtplib, imaplib, poplib, ftplib, telnetlib, configparser, argparse
 # 桌面端打包（可选，仅构建时需要）
 pywebview>=5.0
+pystray>=0.19.5
 pyinstaller>=6.0
