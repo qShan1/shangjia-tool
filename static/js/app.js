@@ -11034,7 +11034,7 @@ async function downloadDatabaseBackup() {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
 
-        showToast('数据库备份下载成功', 'success');
+        showToast(`数据库备份已开始下载：${filename}。默认保存到 Windows“下载”文件夹；若系统设置为每次询问，请在弹出的保存窗口选择位置。`, 'success');
     } else {
         const error = await response.text();
         showToast(`下载失败: ${error}`, 'danger');
@@ -12473,7 +12473,10 @@ function displayCurrentPageItems() {
             </td>
             <td>${escapeHtml(item.cookie_id)}</td>
             <td>${escapeHtml(item.item_id)}</td>
-            <td title="${escapeHtml(item.item_title || '未设置')}">${escapeHtml(itemTitleDisplay)}</td>
+            <td title="${escapeHtml(item.item_title || '未设置')}">
+                <div>${escapeHtml(itemTitleDisplay)}</div>
+                <small class="text-muted item-stock-label">库存：${escapeHtml(item.stock ?? item.quantity ?? '未同步')}</small>
+            </td>
             <td title="${escapeHtml(getItemDetailText(item.item_detail || ''))}">${escapeHtml(itemDetailDisplay)}</td>
             <td>${escapeHtml(item.item_price || '未设置')}</td>
             <td>${multiSpecDisplay}</td>
@@ -24700,3 +24703,150 @@ async function savePolishSchedule() {
         console.error('保存定时擦亮设置失败:', error);
     }
 }
+
+// Desktop-only controls are inserted here so older deployments can receive the
+// operational settings without duplicating the large system-settings markup.
+async function saveDesktopUpdatePreference(payload) {
+    const token = localStorage.getItem('auth_token');
+    const response = await fetch('/api/desktop/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+}
+
+async function checkDesktopReleaseNow() {
+    const button = document.getElementById('desktopReleaseCheckBtn');
+    if (button) button.disabled = true;
+    try {
+        const [releaseResponse, versionResponse] = await Promise.all([
+            fetch('https://api.github.com/repos/qShan1/shangjia-tool/releases/latest', { headers: { Accept: 'application/vnd.github+json' } }),
+            fetch(`/static/version.txt?ts=${Date.now()}`, { cache: 'no-store' }),
+        ]);
+        if (!releaseResponse.ok || !versionResponse.ok) throw new Error('release lookup failed');
+        const release = await releaseResponse.json();
+        const installed = (await versionResponse.text()).trim();
+        const latest = String(release.tag_name || '').trim();
+        const available = latest && latest !== installed;
+        const status = document.getElementById('desktopReleaseStatus');
+        if (status) status.textContent = available
+            ? `发现 ${latest}，当前为 ${installed}。选择“下次启动安装”后退出并重新打开软件。`
+            : `已是最新版本 ${installed}。`;
+        if (available && window.confirm(`发现 ${latest}。是否在下次启动时下载、校验并安装？`)) {
+            await saveDesktopUpdatePreference({ manual_update_check: true });
+            showToast('已安排下次启动安装。请从托盘菜单选择“退出”，再重新打开商家工具。', 'success');
+        }
+    } catch (error) {
+        console.warn('desktop release check failed', error);
+        showToast('检查桌面更新失败，请检查网络后重试。', 'warning');
+    } finally {
+        if (button) button.disabled = false;
+    }
+}
+
+async function initializeDesktopExperienceControls() {
+    const host = document.querySelector('#system-settings-section .content-body');
+    if (!host || document.getElementById('desktopExperienceCard')) return;
+    host.insertAdjacentHTML('afterbegin', `
+        <section class="card mb-4" id="desktopExperienceCard">
+            <div class="card-header"><i class="bi bi-pc-display-horizontal me-2"></i>桌面运行与支持</div>
+            <div class="card-body">
+                <div class="row g-3 align-items-center">
+                    <div class="col-lg-5">
+                        <div class="form-check form-switch mb-1">
+                            <input class="form-check-input" type="checkbox" id="desktopAutoUpdateToggle">
+                            <label class="form-check-label" for="desktopAutoUpdateToggle">启动时自动检查桌面更新</label>
+                        </div>
+                        <small class="text-muted">关闭后不会在启动时联网；仍可手动检查。</small>
+                    </div>
+                    <div class="col-lg-4 d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-outline-primary" id="desktopReleaseCheckBtn"><i class="bi bi-arrow-repeat me-1"></i>检查更新</button>
+                        <a class="btn btn-outline-secondary" href="https://github.com/qShan1/shangjia-tool/issues/new/choose" target="_blank" rel="noopener"><i class="bi bi-chat-square-text me-1"></i>反馈问题</a>
+                    </div>
+                    <div class="col-lg-3"><small class="text-muted" id="desktopReleaseStatus">正在读取更新偏好...</small></div>
+                </div>
+                <hr>
+                <div class="row g-3 align-items-center">
+                    <div class="col-lg-5"><strong class="d-block mb-1">液态玻璃预设</strong><small class="text-muted">选择材质和主色，不影响业务数据。</small></div>
+                    <div class="col-lg-7 d-flex flex-wrap gap-2" id="liquidPresetGroup">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-liquid-preset="jade">玉石</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-liquid-preset="ocean">海蓝</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-liquid-preset="graphite">石墨</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-liquid-preset="rose">玫瑰</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    `);
+    const toggle = document.getElementById('desktopAutoUpdateToggle');
+    const checkButton = document.getElementById('desktopReleaseCheckBtn');
+    checkButton?.addEventListener('click', checkDesktopReleaseNow);
+    try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch('/api/desktop/preferences', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        const preferences = await response.json();
+        if (toggle) toggle.checked = preferences.auto_check_updates !== false;
+        const status = document.getElementById('desktopReleaseStatus');
+        if (status) status.textContent = toggle?.checked ? '自动检查已开启。' : '自动检查已关闭。';
+    } catch (error) {
+        const status = document.getElementById('desktopReleaseStatus');
+        if (status) status.textContent = '无法读取更新偏好。';
+    }
+    toggle?.addEventListener('change', async () => {
+        try {
+            await saveDesktopUpdatePreference({ auto_check_updates: toggle.checked });
+            document.getElementById('desktopReleaseStatus').textContent = toggle.checked ? '自动检查已开启。' : '自动检查已关闭。';
+        } catch (error) {
+            toggle.checked = !toggle.checked;
+            showToast('保存更新偏好失败。', 'danger');
+        }
+    });
+    const activePreset = localStorage.getItem('liquid_glass_preset') || 'jade';
+    document.documentElement.dataset.liquidPreset = activePreset;
+    host.querySelectorAll('[data-liquid-preset]').forEach(button => {
+        button.classList.toggle('active', button.dataset.liquidPreset === activePreset);
+        button.addEventListener('click', () => {
+            const preset = button.dataset.liquidPreset;
+            localStorage.setItem('liquid_glass_preset', preset);
+            document.documentElement.dataset.liquidPreset = preset;
+            host.querySelectorAll('[data-liquid-preset]').forEach(item => item.classList.toggle('active', item === button));
+        });
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeDesktopExperienceControls, { once: true });
+} else {
+    initializeDesktopExperienceControls();
+}
+
+function hideEmptySidebarGroups() {
+    const nav = document.querySelector('#sidebar .sidebar-nav');
+    if (!nav) return;
+    const children = Array.from(nav.children);
+    children.forEach((node, index) => {
+        if (!node.classList.contains('nav-divider')) return;
+        let hasVisibleItem = false;
+        for (let cursor = index + 1; cursor < children.length; cursor += 1) {
+            const next = children[cursor];
+            if (next.classList.contains('nav-divider')) break;
+            if (next.classList.contains('nav-item') && getComputedStyle(next).display !== 'none') {
+                hasVisibleItem = true;
+                break;
+            }
+            if (next.id === 'adminMenuSection' && getComputedStyle(next).display !== 'none') {
+                hasVisibleItem = Boolean(next.querySelector('.nav-item:not([style*="display: none"])'));
+                break;
+            }
+        }
+        node.hidden = !hasVisibleItem;
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    hideEmptySidebarGroups();
+    const nav = document.querySelector('#sidebar .sidebar-nav');
+    if (nav) new MutationObserver(hideEmptySidebarGroups).observe(nav, { attributes: true, subtree: true, attributeFilter: ['style', 'class'] });
+}, { once: true });

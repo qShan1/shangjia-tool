@@ -37,6 +37,49 @@ def current_version():
     return "v0.0.0"
 
 
+def desktop_settings_path():
+    return DATA_ROOT / "desktop-settings.json"
+
+
+def desktop_settings():
+    try:
+        payload = json.loads(desktop_settings_path().read_text(encoding="utf-8"))
+        return payload if isinstance(payload, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def desktop_auto_update_enabled():
+    return desktop_settings().get("auto_check_updates", True) is not False
+
+
+def desktop_update_requested():
+    return desktop_settings().get("manual_update_check") is True
+
+
+def clear_desktop_update_request():
+    settings = desktop_settings()
+    if not settings.pop("manual_update_check", None):
+        return
+    try:
+        desktop_settings_path().write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def mark_tray_notice_seen():
+    settings = desktop_settings()
+    if settings.get("tray_notice_seen"):
+        return False
+    settings["tray_notice_seen"] = True
+    try:
+        desktop_settings_path().parent.mkdir(parents=True, exist_ok=True)
+        desktop_settings_path().write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError:
+        return False
+    return True
+
+
 def _version_key(value):
     return tuple(int(part) for part in str(value).lstrip("vV").split(".") if part.isdigit())
 
@@ -128,7 +171,12 @@ def schedule_desktop_update(update):
 def offer_desktop_update():
     if not getattr(sys, "frozen", False):
         return False
+    manually_requested = desktop_update_requested()
+    if not desktop_auto_update_enabled() and not manually_requested:
+        return False
     update = release_update()
+    if manually_requested:
+        clear_desktop_update_request()
     if not update:
         return False
     if not show_question(f"A new version {update['tag']} is available.\n\nDownload, install, and restart now? Existing data will not be modified."):
@@ -152,6 +200,14 @@ def show_error(message):
     try:
         import ctypes
         ctypes.windll.user32.MessageBoxW(None, message, APP_NAME, 0x10)
+    except Exception:
+        pass
+
+
+def show_info(message):
+    try:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(None, message, APP_NAME, 0x40)
     except Exception:
         pass
 
@@ -275,6 +331,8 @@ def minimize_to_tray(window):
         return
     try:
         window.hide()
+        if mark_tray_notice_seen():
+            show_info("商家工具仍在后台运行。\n\n请在 Windows 右下角通知区域点击商家工具图标，可打开窗口或选择“退出”。")
     except Exception:
         pass
 
@@ -339,7 +397,8 @@ def main():
             output.flush()
             process = subprocess.Popen(
                 command,
-                cwd=str(ROOT),
+                # Frozen services must never create runtime folders beside the app bundle.
+                cwd=str(DATA_ROOT if getattr(sys, "frozen", False) else ROOT),
                 env=env,
                 stdout=output,
                 stderr=subprocess.STDOUT,

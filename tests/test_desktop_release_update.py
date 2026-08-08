@@ -144,3 +144,16 @@ def test_minimize_to_tray_hides_window():
         launcher.minimize_to_tray(window)
 
     assert window.hidden is True
+
+
+def test_desktop_update_preferences_persist_outside_install_directory(tmp_path):
+    launcher = load_launcher()
+    launcher.DATA_ROOT = tmp_path
+    launcher.desktop_settings_path().write_text('{"auto_check_updates": false, "manual_update_check": true}', encoding='utf-8')
+
+    assert launcher.desktop_auto_update_enabled() is False
+    assert launcher.desktop_update_requested() is True
+
+    launcher.clear_desktop_update_request()
+
+    assert launcher.desktop_update_requested() is False
