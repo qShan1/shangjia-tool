@@ -99,19 +99,19 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex: 0 0 52px;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
+    flex: 0 1 216px;
+    width: 216px;
+    height: 72px;
+    border-radius: 0;
     color: #fff;
     background: transparent;
 }
 
 .about-brand-logo {
     display: block;
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
+    width: 216px;
+    height: 72px;
+    border-radius: 0;
 }
 
 .about-brand-name {
