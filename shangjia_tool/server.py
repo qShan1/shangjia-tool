@@ -312,13 +312,8 @@ def _check_and_install_playwright():
 
     return playwright_installed
 
-# 检查并安装Playwright浏览器
-try:
-    _check_and_install_playwright()
-except Exception as e:
-    print(f"{_WARN} Playwright浏览器检查失败: {e}")
-    print("   程序将继续启动，但Playwright功能可能不可用")
-    # 继续启动，不影响主程序运行
+# Do not probe or download an automation browser at desktop startup.  It is
+# only needed for platform login/verification flows and is resolved on demand.
 
 # ==================== 现在可以安全地导入其他模块 ====================
 import asyncio

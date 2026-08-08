@@ -6078,9 +6078,9 @@
           <h6><i class="bi bi-5-circle me-1"></i>数据目录</h6>
           <p class="text-muted small mb-2" id="welcomeDataDir">数据库、日志和配置文件存储在本地数据目录中。桌面端数据目录：<code>%LOCALAPPDATA%\ShangjiaTool\</code></p>
         </div>
-        <div class="alert alert-warning py-2" id="welcomeChromiumAlert" style="display:none;">
-          <i class="bi bi-download me-1"></i>
-          <strong>Chromium 浏览器：</strong><span id="welcomeChromiumMsg">检测中...</span>
+        <div class="alert alert-light border py-2 mb-0">
+          <i class="bi bi-window-stack me-1"></i>
+          日常桌面管理不需要额外浏览器。仅在扫码登录或人工验证时，程序才会按需使用系统 Edge/Chrome 或受控浏览器。
         </div>
       </div>
       <div class="modal-footer">
@@ -6105,30 +6105,9 @@ async function checkAndShowWelcome() {
         if (data.success && data.show_welcome) {
             const modal = new bootstrap.Modal(document.getElementById('welcomeModal'));
             modal.show();
-            // 同时检查 Chromium 状态
-            checkChromiumStatus();
         }
     } catch (e) {
         console.log('欢迎弹窗检查失败:', e);
-    }
-}
-
-async function checkChromiumStatus() {
-    try {
-        const response = await fetch('/api/system/chromium-status');
-        const data = await response.json();
-        const alertDiv = document.getElementById('welcomeChromiumAlert');
-        const msgSpan = document.getElementById('welcomeChromiumMsg');
-        if (alertDiv && msgSpan) {
-            if (data.success && !data.installed) {
-                alertDiv.style.display = 'block';
-                msgSpan.textContent = data.message || 'Chromium 未安装，首次使用人脸验证/滑块验证时会自动下载';
-            } else {
-                alertDiv.style.display = 'none';
-            }
-        }
-    } catch (e) {
-        console.log('Chromium状态检查失败:', e);
     }
 }
 

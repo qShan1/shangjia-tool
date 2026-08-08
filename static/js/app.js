@@ -80,6 +80,29 @@ function getOrderSortValue(order, key) {
     return String(order?.[key] ?? '').trim();
 }
 
+function initGlassPointerTilt() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce), (pointer: coarse)').matches) return;
+    const surfaces = document.querySelectorAll('.content-section .card, #dashboard-section .card');
+    surfaces.forEach((surface) => {
+        surface.classList.add('glass-tilt-surface');
+        surface.addEventListener('pointermove', (event) => {
+            const box = surface.getBoundingClientRect();
+            const x = (event.clientX - box.left) / box.width - 0.5;
+            const y = (event.clientY - box.top) / box.height - 0.5;
+            surface.style.setProperty('--glass-tilt-x', `${(-y * 2.2).toFixed(2)}deg`);
+            surface.style.setProperty('--glass-tilt-y', `${(x * 2.2).toFixed(2)}deg`);
+            surface.classList.add('is-pointer-active');
+        });
+        surface.addEventListener('pointerleave', () => {
+            surface.style.setProperty('--glass-tilt-x', '0deg');
+            surface.style.setProperty('--glass-tilt-y', '0deg');
+            surface.classList.remove('is-pointer-active');
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', initGlassPointerTilt, { once: true });
+
 function toggleOrderSort(key) {
     if (currentOrderSortKey === key) {
         currentOrderSortDirection = currentOrderSortDirection === 'asc' ? 'desc' : 'asc';
