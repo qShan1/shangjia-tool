@@ -112,9 +112,9 @@
   <!-- 侧边栏 -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <a href="#" class="sidebar-brand">
-        <img src="/static/shangjia-mark.svg" alt="上架 Logo" width="30" height="30" class="me-2 sidebar-brand-logo">
-        <span>上架</span>
+      <a href="#" class="sidebar-brand" aria-label="上架工具首页">
+        <img src="/static/shangjia-logo.svg" alt="上架工具" class="sidebar-brand-logo sidebar-brand-logo-full">
+        <img src="/static/shangjia-mark.svg" alt="" aria-hidden="true" class="sidebar-brand-logo sidebar-brand-logo-mark">
       </a>
       <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="切换主题（浅色/深色/跟随系统）">
         <i class="bi bi-moon-fill" id="darkModeIcon"></i>
@@ -4218,7 +4218,7 @@
         <section class="about-brand-card" aria-labelledby="aboutBrandTitle">
           <div class="about-brand-header">
             <div class="about-brand-identity">
-              <div class="about-brand-mark" aria-hidden="true"><img src="/static/shangjia-mark.svg" alt="上架 Logo" width="52" height="52" class="about-brand-logo"></div>
+              <div class="about-brand-mark"><img src="/static/shangjia-logo.svg" alt="上架工具" class="about-brand-logo"></div>
               <div>
                 <div class="about-brand-name">上架</div>
                 <h3 id="aboutBrandTitle">上架</h3>
@@ -5275,7 +5275,7 @@
 
   <!-- JS依赖 -->
   <script src="/static/lib/bootstrap/bootstrap.bundle.min.js"></script>
-<script src="/static/js/app.js?v=2.1.7"></script>
+<script src="/static/js/app.js?v=2.1.8"></script>
 
   <!-- 默认回复管理模态框 -->
   <div class="modal fade" id="defaultReplyModal" tabindex="-1" aria-labelledby="defaultReplyModalLabel" aria-hidden="true">

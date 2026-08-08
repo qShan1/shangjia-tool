@@ -75,15 +75,27 @@ textarea {
 }
 
 .sidebar-brand img {
-  width: 32px;
-  height: 32px;
-  flex-basis: 32px;
   border-radius: 0;
   box-shadow: none;
   border: none;
   outline: none;
   background: transparent;
   object-fit: contain;
+}
+
+.sidebar-brand-logo-full {
+  display: block;
+  width: min(154px, 100%);
+  height: 44px;
+  flex: 0 1 154px;
+  object-position: left center;
+}
+
+.sidebar-brand-logo-mark {
+  display: none;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
 }
 
 .dark-mode-toggle {
@@ -248,7 +260,6 @@ textarea {
 /* 折叠状态：隐藏菜单文字，只显示图标（用 opacity 避免切换时闪现） */
 .sidebar.collapsed .nav-link span,
 .sidebar.collapsed .nav-divider,
-.sidebar.collapsed .sidebar-brand span,
 .sidebar.collapsed .sidebar-collapse-btn span {
   opacity: 0 !important;
   visibility: hidden !important;
@@ -278,6 +289,14 @@ textarea {
 
 .sidebar.collapsed .sidebar-brand img {
   margin: 0 auto;
+}
+
+.sidebar.collapsed .sidebar-brand-logo-full {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-brand-logo-mark {
+  display: block;
 }
 
 .sidebar.collapsed .dark-mode-toggle {
@@ -315,9 +334,7 @@ body.sidebar-collapsed .main-content {
 }
 
 .card:hover {
-  transform: perspective(1000px) rotateX(1.4deg) rotateY(-1.6deg) translateY(-3px);
   border-color: rgba(255, 255, 255, 0.78);
-  box-shadow: 0 24px 56px rgba(15, 23, 42, 0.14), 0 6px 16px rgba(15, 23, 42, 0.07);
 }
 
 .card-header {
@@ -1107,20 +1124,23 @@ body.sidebar-collapsed .main-content {
   backdrop-filter: blur(28px) saturate(1.45);
 }
 
-.glass-tilt-surface {
-  transform: perspective(900px) rotateX(var(--glass-tilt-x, 0deg)) rotateY(var(--glass-tilt-y, 0deg)) translateY(var(--glass-lift, 0));
+.content-section .card.glass-tilt-surface,
+#dashboard-section .card.glass-tilt-surface {
+  transform: perspective(1000px) rotateX(var(--glass-tilt-x, 0deg)) rotateY(var(--glass-tilt-y, 0deg)) translateY(var(--glass-lift, 0)) !important;
   transform-style: preserve-3d;
-  transition: transform 180ms ease-out, box-shadow 180ms ease-out;
+  transition: transform 260ms cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 260ms cubic-bezier(0.2, 0.7, 0.2, 1), border-color 180ms ease !important;
   will-change: transform;
 }
 
-.glass-tilt-surface.is-pointer-active {
-  --glass-lift: -2px;
-  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.11), 0 2px 8px rgba(15, 23, 42, 0.05);
+.content-section .card.glass-tilt-surface.is-pointer-active,
+#dashboard-section .card.glass-tilt-surface.is-pointer-active {
+  --glass-lift: -1px;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.11), 0 2px 8px rgba(15, 23, 42, 0.05) !important;
 }
 
 @media (prefers-reduced-motion: reduce), (pointer: coarse) {
-  .glass-tilt-surface { transform: none !important; transition: none; }
+  .content-section .card.glass-tilt-surface,
+  #dashboard-section .card.glass-tilt-surface { transform: none !important; transition: none !important; }
 }
 
 /* Desktop liquid-glass consolidation. This is intentionally static: glass depth

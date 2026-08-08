@@ -82,23 +82,42 @@ function getOrderSortValue(order, key) {
 
 function initGlassPointerTilt() {
     if (window.matchMedia('(prefers-reduced-motion: reduce), (pointer: coarse)').matches) return;
-    const surfaces = document.querySelectorAll('.content-section .card, #dashboard-section .card');
-    surfaces.forEach((surface) => {
-        surface.classList.add('glass-tilt-surface');
-        surface.addEventListener('pointermove', (event) => {
-            const box = surface.getBoundingClientRect();
-            const x = (event.clientX - box.left) / box.width - 0.5;
-            const y = (event.clientY - box.top) / box.height - 0.5;
-            surface.style.setProperty('--glass-tilt-x', `${(-y * 2.2).toFixed(2)}deg`);
-            surface.style.setProperty('--glass-tilt-y', `${(x * 2.2).toFixed(2)}deg`);
-            surface.classList.add('is-pointer-active');
-        });
-        surface.addEventListener('pointerleave', () => {
-            surface.style.setProperty('--glass-tilt-x', '0deg');
-            surface.style.setProperty('--glass-tilt-y', '0deg');
-            surface.classList.remove('is-pointer-active');
-        });
-    });
+    const selector = '.content-section .card, #dashboard-section .card';
+    let activeSurface = null;
+
+    const resetSurface = (surface) => {
+        if (!surface) return;
+        surface.style.setProperty('--glass-tilt-x', '0deg');
+        surface.style.setProperty('--glass-tilt-y', '0deg');
+        surface.classList.remove('is-pointer-active');
+    };
+
+    document.addEventListener('pointermove', (event) => {
+        const surface = event.target.closest(selector);
+        if (!surface) {
+            if (activeSurface) resetSurface(activeSurface);
+            activeSurface = null;
+            return;
+        }
+
+        if (activeSurface && activeSurface !== surface) resetSurface(activeSurface);
+        activeSurface = surface;
+        surface.classList.add('glass-tilt-surface', 'is-pointer-active');
+
+        const box = surface.getBoundingClientRect();
+        if (!box.width || !box.height) return;
+        const x = Math.max(-0.5, Math.min(0.5, (event.clientX - box.left) / box.width - 0.5));
+        const y = Math.max(-0.5, Math.min(0.5, (event.clientY - box.top) / box.height - 0.5));
+        surface.style.setProperty('--glass-tilt-x', `${(-y * 2).toFixed(2)}deg`);
+        surface.style.setProperty('--glass-tilt-y', `${(x * 2).toFixed(2)}deg`);
+    }, { passive: true });
+
+    document.addEventListener('pointerout', (event) => {
+        if (!activeSurface || !activeSurface.contains(event.target)) return;
+        if (event.relatedTarget && activeSurface.contains(event.relatedTarget)) return;
+        resetSurface(activeSurface);
+        activeSurface = null;
+    }, { passive: true });
 }
 
 document.addEventListener('DOMContentLoaded', initGlassPointerTilt, { once: true });

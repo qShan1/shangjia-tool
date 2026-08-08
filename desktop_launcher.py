@@ -291,12 +291,17 @@ def _start_tray(window):
         return True
     try:
         import pystray
-        from PIL import Image, ImageDraw
+        from PIL import Image
 
-        image = Image.new("RGBA", (64, 64), (27, 93, 166, 255))
-        draw = ImageDraw.Draw(image)
-        draw.rectangle((16, 14, 48, 50), fill=(255, 255, 255, 255))
-        draw.rectangle((22, 20, 42, 26), fill=(27, 93, 166, 255))
+        image = None
+        for icon_path in (ROOT / "_internal" / "static" / "ShangjiaTool.ico", ROOT / "static" / "ShangjiaTool.ico"):
+            if not icon_path.exists():
+                continue
+            with Image.open(icon_path) as icon_source:
+                image = icon_source.convert("RGBA").resize((64, 64), Image.Resampling.LANCZOS)
+            break
+        if image is None:
+            image = Image.new("RGBA", (64, 64), (23, 23, 23, 255))
 
         def show_window(_icon, _item):
             try:
