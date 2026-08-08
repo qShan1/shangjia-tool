@@ -15,7 +15,7 @@ a = Analysis(
     datas=[
         (os.path.join(SPECPATH, 'static', 'version.txt'), 'static'),
     ],
-    hiddenimports=[],
+    hiddenimports=['pystray._win32', 'PIL.Image', 'PIL.ImageDraw'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
