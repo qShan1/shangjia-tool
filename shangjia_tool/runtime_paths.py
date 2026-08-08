@@ -5,7 +5,7 @@
 import os
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_ROOT = Path(os.environ.get("APP_DATA_DIR", PROJECT_ROOT)).expanduser().resolve()
 
 def runtime_dir(name: str) -> Path:

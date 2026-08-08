@@ -24,8 +24,9 @@ class AISiteAuditService:
     MAX_REPORTS = 30
 
     def __init__(self):
-        self.project_root = Path(__file__).resolve().parent
-        self.report_dir = self.project_root / "data" / "ai_site_audit_reports"
+        from runtime_paths import PROJECT_ROOT, runtime_dir
+        self.project_root = PROJECT_ROOT
+        self.report_dir = runtime_dir("ai_site_audit_reports")
         self.report_dir.mkdir(parents=True, exist_ok=True)
         self.task: Optional[asyncio.Task] = None
         self.stop_event: Optional[asyncio.Event] = None

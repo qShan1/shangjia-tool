@@ -68,7 +68,8 @@ except ImportError:
     CAPTCHA_ROUTER_AVAILABLE = False
 
 # 关键字文件路径
-KEYWORDS_FILE = Path(__file__).parent / "回复关键字.txt"
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+KEYWORDS_FILE = _PROJECT_ROOT / "回复关键字.txt"
 
 # 简单的用户认证配置
 ADMIN_USERNAME = "admin"
@@ -176,7 +177,7 @@ def _get_announcement_remote_url() -> str:
 
 def _get_announcement_local_path() -> Path:
     file_path = str(os.getenv('DASHBOARD_ANNOUNCEMENT_FILE') or 'announcement.json').strip().lstrip('/')
-    return Path(__file__).parent / file_path
+    return _PROJECT_ROOT / file_path
 
 
 def _parse_announcement_datetime(value: Any) -> Optional[datetime]:
@@ -1264,7 +1265,7 @@ import os
 if getattr(sys, 'frozen', False):
     _RESOURCE_BASE = Path(sys._MEIPASS)
 else:
-    _RESOURCE_BASE = Path(__file__).resolve().parent
+    _RESOURCE_BASE = Path(__file__).resolve().parent.parent
 static_dir = str(_RESOURCE_BASE / 'static')
 if not os.path.exists(static_dir):
     os.makedirs(static_dir, exist_ok=True)
