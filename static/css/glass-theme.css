@@ -557,12 +557,18 @@ body.sidebar-collapsed .main-content {
   border-top-color: var(--ui-border);
 }
 
-.toast {
+.toast:not([class*="bg-"]) {
   background: rgba(255, 255, 255, 0.54);
   border: 1px solid rgba(255, 255, 255, 0.66);
   border-radius: 14px;
   color: var(--ui-ink);
   box-shadow: var(--ui-shadow);
+}
+
+.toast[class*="bg-"] {
+  border: 0;
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
 }
 
 .color-preset {
@@ -821,7 +827,7 @@ body.sidebar-collapsed .main-content {
 
 [data-theme="dark"] .card,
 [data-theme="dark"] .modal-content,
-[data-theme="dark"] .toast {
+[data-theme="dark"] .toast:not([class*="bg-"]) {
   background: var(--ui-surface-strong);
   border-color: var(--ui-border);
 }
@@ -1331,7 +1337,7 @@ body.sidebar-collapsed .main-content {
 [data-theme="dark"] .content-section .card,
 [data-theme="dark"] .modal-content,
 [data-theme="dark"] .dropdown-menu,
-[data-theme="dark"] .toast,
+[data-theme="dark"] .toast:not([class*="bg-"]),
 [data-theme="dark"] .content-section .card.glass-tilt-surface {
   background: rgba(38, 38, 41, 0.82) !important;
   border-color: rgba(235, 235, 245, 0.14) !important;
@@ -1379,4 +1385,179 @@ body.sidebar-collapsed .main-content {
 [data-theme="dark"] .btn-danger:hover {
   color: #ffffff !important;
   background: #b91c1c !important;
+}
+
+/* 警告徽章使用深色文字，保证可读性 */
+.badge.bg-warning {
+  color: #111827 !important;
+}
+
+
+/* ================================================================
+   管理台遗留问题修复（深扫确认）
+   ================================================================ */
+
+/* 系统设置 / AI 巡检卡片：index.html 内联样式为浅色硬编码，
+   深色模式下必须恢复深色玻璃可读性 */
+[data-theme="dark"] #system-settings-section .card,
+[data-theme="dark"] #aiSiteAuditCard {
+  color: var(--ui-ink);
+}
+
+[data-theme="dark"] #system-settings-section .text-muted,
+[data-theme="dark"] #aiSiteAuditCard .text-muted,
+[data-theme="dark"] #system-settings-section .form-text {
+  color: var(--ui-muted) !important;
+}
+
+[data-theme="dark"] #system-settings-section .form-label,
+[data-theme="dark"] #aiSiteAuditCard .form-label,
+[data-theme="dark"] #aiSiteAuditCard .form-check-label {
+  color: var(--ui-ink);
+  font-weight: 600;
+}
+
+[data-theme="dark"] #system-settings-section .form-control,
+[data-theme="dark"] #system-settings-section .form-select,
+[data-theme="dark"] #aiSiteAuditCard .form-control,
+[data-theme="dark"] #aiSiteAuditCard .form-select {
+  color: var(--ui-ink);
+  background-color: var(--input-bg) !important;
+  border-color: var(--input-border);
+}
+
+[data-theme="dark"] #system-settings-section .form-control::placeholder,
+[data-theme="dark"] #aiSiteAuditCard .form-control::placeholder {
+  color: var(--ui-muted);
+  opacity: 1;
+}
+
+[data-theme="dark"] #aiSiteAuditCard .btn-primary {
+  color: #ffffff !important;
+  background: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+}
+
+/* 用户管理统计卡：玻璃覆盖了 bootstrap bg-* 语义色，浅色下白字不可见 */
+#user-management-section .card[class*="bg-"] {
+  border-color: transparent !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.10), inset 0 1px rgba(255, 255, 255, 0.22) !important;
+}
+
+#user-management-section .card.bg-primary { background-color: var(--primary-color) !important; }
+#user-management-section .card.bg-info { background-color: #0ea5e9 !important; }
+#user-management-section .card.bg-success { background-color: #16a34a !important; }
+#user-management-section .card.bg-warning {
+  background-color: #f59e0b !important;
+  color: #111827 !important;
+}
+
+/* 折叠按钮：浅色模式文字/图标加深，保证可读 */
+.sidebar-collapse-btn {
+  color: var(--ui-ink);
+}
+
+.sidebar-collapse-btn:hover {
+  color: var(--primary-color);
+}
+
+.sidebar-collapse-btn i {
+  color: inherit;
+}
+
+/* outline 信息/警告按钮：浅色模式加深文字，保证对比度 */
+.btn-outline-info {
+  color: #0e7490 !important;
+  border-color: rgba(14, 116, 144, 0.42) !important;
+  background: rgba(14, 116, 144, 0.06) !important;
+}
+
+.btn-outline-info:hover {
+  color: #ffffff !important;
+  background: #0e7490 !important;
+  border-color: #0e7490 !important;
+}
+
+.btn-outline-warning {
+  color: #a15c00 !important;
+  border-color: rgba(161, 92, 0, 0.4) !important;
+  background: rgba(161, 92, 0, 0.06) !important;
+}
+
+.btn-outline-warning:hover {
+  color: #ffffff !important;
+  background: #a15c00 !important;
+  border-color: #a15c00 !important;
+}
+
+[data-theme="dark"] .btn-outline-info {
+  color: #67e8f9 !important;
+  border-color: rgba(103, 232, 249, 0.32) !important;
+  background: rgba(103, 232, 249, 0.08) !important;
+}
+
+[data-theme="dark"] .btn-outline-info:hover {
+  color: #083344 !important;
+  background: #67e8f9 !important;
+  border-color: #67e8f9 !important;
+}
+
+[data-theme="dark"] .btn-outline-warning {
+  color: #fbbf24 !important;
+  border-color: rgba(251, 191, 36, 0.32) !important;
+  background: rgba(251, 191, 36, 0.08) !important;
+}
+
+[data-theme="dark"] .btn-outline-warning:hover {
+  color: #451a03 !important;
+  background: #fbbf24 !important;
+  border-color: #fbbf24 !important;
+}
+
+/* 信息色 Toast / 徽章：青蓝底配白字对比不足，改用深色文字 */
+.toast.bg-info {
+  background-color: #0ea5e9 !important;
+  color: #083344 !important;
+}
+
+.toast.bg-info .btn-close {
+  filter: none !important;
+  opacity: 0.65;
+}
+
+.badge.bg-info {
+  color: #083344 !important;
+}
+
+/* 用户管理统计卡：info/success 加深，保证白字对比度 */
+#user-management-section .card.bg-info { background-color: #0284c7 !important; }
+#user-management-section .card.bg-success { background-color: #15803d !important; }
+
+/* 绿色扫码按钮：默认文字为深色，改为白字保证对比 */
+.qr-login-btn,
+.qr-login-btn .fw-bold {
+  color: #ffffff !important;
+}
+
+.qr-login-btn small.opacity-75 {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+/* 暗色：bg-warning 统计卡内标题/段落被全局深色标题规则刷成浅色，
+   在琥珀底上不可读，强制保持深色 */
+[data-theme="dark"] #user-management-section .card.bg-warning h3,
+[data-theme="dark"] #user-management-section .card.bg-warning p,
+[data-theme="dark"] #user-management-section .card.bg-warning h3 *,
+[data-theme="dark"] #user-management-section .card.bg-warning p * {
+  color: #111827 !important;
+}
+
+/* 扫码登录按钮：加深绿色渐变，保证白色文字对比度（大文本 ≥3:1） */
+.qr-login-btn {
+  background: linear-gradient(135deg, #1e9e50 0%, #128464 100%) !important;
+  box-shadow: 0 4px 15px rgba(18, 132, 100, 0.35) !important;
+}
+
+.qr-login-btn:hover {
+  background: linear-gradient(135deg, #178a44 0%, #0e7052 100%) !important;
 }
