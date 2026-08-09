@@ -67,18 +67,18 @@
 }
 
 .sidebar-brand img {
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
-  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 0;
 }
 
 /* 品牌标记为黑色线稿；浅色玻璃侧栏保持原色，深色主题再反色。 */
 .sidebar-brand-logo {
-  width: 30px !important;
-  height: 30px !important;
-  flex: 0 0 30px !important;
-  border-radius: 0 !important;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 0;
   object-fit: contain;
   filter: none;
 }
@@ -278,8 +278,8 @@
 }
 
 .sidebar.collapsed .sidebar-brand-logo {
-  width: 30px !important;
-  flex-basis: 30px !important;
+  width: 34px !important;
+  flex-basis: 34px !important;
 }
 
 .sidebar.collapsed .nav-link {

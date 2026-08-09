@@ -84,18 +84,37 @@ textarea {
 }
 
 .sidebar-brand-logo-full {
-  display: block;
-  width: min(154px, 100%);
-  height: 44px;
-  flex: 0 1 154px;
-  object-position: left center;
+  display: none;
 }
 
 .sidebar-brand-logo-mark {
-  display: none;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
+  display: block;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+}
+
+.sidebar-brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.18;
+}
+
+.sidebar-brand-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ui-ink);
+  white-space: nowrap;
+}
+
+.sidebar-brand-subtitle {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--ui-muted);
+  white-space: nowrap;
 }
 
 .dark-mode-toggle {
@@ -257,15 +276,11 @@ textarea {
   justify-content: center;
 }
 
-/* 折叠状态：隐藏菜单文字，只显示图标（用 opacity 避免切换时闪现） */
+/* 折叠状态：隐藏菜单文字，只显示图标（display:none 避免 0 宽文本换行撑高行高） */
 .sidebar.collapsed .nav-link span,
 .sidebar.collapsed .nav-divider,
 .sidebar.collapsed .sidebar-collapse-btn span {
-  opacity: 0 !important;
-  visibility: hidden !important;
-  width: 0 !important;
-  overflow: hidden !important;
-  transition: opacity 0.12s ease-out, visibility 0.12s ease-out;
+  display: none !important;
 }
 
 /* 折叠状态：图标居中显示 */
@@ -297,6 +312,10 @@ textarea {
 
 .sidebar.collapsed .sidebar-brand-logo-mark {
   display: block;
+}
+
+.sidebar.collapsed .sidebar-brand-text {
+  display: none;
 }
 
 .sidebar.collapsed .dark-mode-toggle {
@@ -1248,4 +1267,116 @@ body.sidebar-collapsed .main-content {
   .sidebar.collapsed { width: var(--sidebar-open-width) !important; }
   .main-content,
   body.sidebar-collapsed .main-content { margin-left: 0 !important; }
+}
+
+
+/* ================================================================
+   深色模式玻璃表面修正：consolidation 块此前以 !important 强制浅色
+   玻璃，导致深色主题下出现"白字浅底"不可读。此处以更高优先级覆盖。
+   ================================================================ */
+[data-theme="dark"] .sidebar {
+  background: rgba(28, 28, 30, 0.74) !important;
+  border-color: rgba(235, 235, 245, 0.14) !important;
+  border-right-color: rgba(235, 235, 245, 0.14) !important;
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.05), 12px 0 34px rgba(0, 0, 0, 0.22) !important;
+}
+
+[data-theme="dark"] .sidebar-header,
+[data-theme="dark"] .sidebar-footer {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(235, 235, 245, 0.1) !important;
+}
+
+[data-theme="dark"] .sidebar .nav-link {
+  color: var(--ui-muted) !important;
+}
+
+[data-theme="dark"] .sidebar .nav-link:hover,
+[data-theme="dark"] .sidebar .nav-link.active {
+  color: var(--ui-ink) !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: inset 3px 0 var(--primary-color), 0 4px 12px rgba(0, 0, 0, 0.16) !important;
+}
+
+[data-theme="dark"] .sidebar .nav-link i {
+  color: var(--ui-muted);
+}
+
+[data-theme="dark"] .sidebar .nav-link:hover i,
+[data-theme="dark"] .sidebar .nav-link.active i {
+  color: var(--primary-color);
+}
+
+[data-theme="dark"] .sidebar-collapse-btn {
+  color: var(--ui-muted) !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(235, 235, 245, 0.12) !important;
+}
+
+[data-theme="dark"] .sidebar-collapse-btn:hover {
+  color: var(--ui-ink) !important;
+  background: rgba(255, 255, 255, 0.13) !important;
+}
+
+[data-theme="dark"] .sidebar-brand-title {
+  color: var(--ui-ink);
+}
+
+[data-theme="dark"] .sidebar-brand-subtitle {
+  color: var(--ui-muted);
+}
+
+/* 深色：卡片 / 弹窗 / 下拉 / Toast 保持深色玻璃，文字仍为浅色 */
+[data-theme="dark"] .content-section .card,
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .dropdown-menu,
+[data-theme="dark"] .toast,
+[data-theme="dark"] .content-section .card.glass-tilt-surface {
+  background: rgba(38, 38, 41, 0.82) !important;
+  border-color: rgba(235, 235, 245, 0.14) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.26), inset 0 1px rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme="dark"] .content-section .card-header,
+[data-theme="dark"] .content-section .card-footer {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(235, 235, 245, 0.1) !important;
+}
+
+[data-theme="dark"] .content-section .card:hover {
+  border-color: rgba(235, 235, 245, 0.22) !important;
+}
+
+/* 深色：登录/注册页由各自内联样式处理；这里只兜底常见浅色小控件 */
+[data-theme="dark"] .sales-period-buttons,
+[data-theme="dark"] .date-range-picker {
+  background: rgba(44, 44, 46, 0.72) !important;
+  border-color: rgba(235, 235, 245, 0.14) !important;
+}
+
+/* 深色：强调色主按钮使用实心品牌色，保证操作语义清晰 */
+[data-theme="dark"] .btn-primary,
+[data-theme="dark"] .btn-success {
+  color: #ffffff !important;
+  background: var(--primary-color) !important;
+  border-color: color-mix(in srgb, var(--primary-color) 80%, #000000) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.16), 0 4px 14px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-theme="dark"] .btn-primary:hover,
+[data-theme="dark"] .btn-success:hover {
+  color: #ffffff !important;
+  background: var(--primary-hover) !important;
+}
+
+[data-theme="dark"] .btn-danger {
+  color: #ffffff !important;
+  background: rgba(220, 38, 38, 0.85) !important;
+  border-color: rgba(220, 38, 38, 0.9) !important;
+}
+
+[data-theme="dark"] .btn-danger:hover {
+  color: #ffffff !important;
+  background: #b91c1c !important;
 }
