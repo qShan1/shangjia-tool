@@ -1938,8 +1938,10 @@ function toggleDateRangePicker() {
 
 // 渲染销售额图表
 function renderSalesChart(salesData, period) {
-    const ctx = document.getElementById('salesChart').getContext('2d');
-    
+    const canvas = document.getElementById('salesChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
     // 准备数据
     const labels = salesData.map(item => item.date);
     const data = salesData.map(item => item.amount);
@@ -1950,23 +1952,25 @@ function renderSalesChart(salesData, period) {
     gradient.addColorStop(0.5, 'rgba(0, 123, 255, 0.15)');
     gradient.addColorStop(1, 'rgba(0, 123, 255, 0.02)');
 
-    // 如果图表已存在，使用平滑更新
-    if (salesChartInstance) {
+    // 通过 Chart.js 注册表查找已存在的实例，避免变量作用域被遮蔽导致重建失败
+    const existing = typeof Chart !== 'undefined' ? Chart.getChart(canvas) : null;
+    if (existing) {
         // 使用动画更新数据
-        salesChartInstance.data.labels = labels;
-        salesChartInstance.data.datasets[0].data = data;
-        salesChartInstance.data.datasets[0].backgroundColor = gradient;
-        
+        existing.data.labels = labels;
+        existing.data.datasets[0].data = data;
+        existing.data.datasets[0].backgroundColor = gradient;
+
         // 更新标题
-        salesChartInstance.options.plugins.title.text = getChartTitle(period);
-        
+        existing.options.plugins.title.text = getChartTitle(period);
+
         // 平滑过渡更新
-        salesChartInstance.update('active');
+        existing.update('active');
+        salesChartInstance = existing;
         return;
     }
 
     // 创建新图表
-    salesChartInstance = new Chart(ctx, {
+    const newChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
@@ -2095,6 +2099,7 @@ function renderSalesChart(salesData, period) {
             }
         }
     });
+    salesChartInstance = newChart;
 }
 
 // 获取图表标题
@@ -10550,6 +10555,7 @@ const DEFAULT_MENU_ITEMS = [
     { id: 'accounts', name: '账号管理', icon: 'bi-person-circle', required: false },
     { id: 'item-publish', name: '商品发布', icon: 'bi-bag-plus', required: false },
     { id: 'items', name: '商品管理', icon: 'bi-box-seam', required: false },
+    { id: 'item-search', name: '商品搜索', icon: 'bi-search', required: false },
     { id: 'orders', name: '订单管理', icon: 'bi-receipt-cutoff', required: false },
     { id: 'auto-reply', name: '自动回复', icon: 'bi-chat-left-text', required: false },
     { id: 'message-filters', name: '消息过滤', icon: 'bi-funnel', required: false },
@@ -10824,12 +10830,31 @@ function applyMenuSettings() {
         adminSection.style.order = 100;
     }
 
-    // 底部分隔符和登出按钮在最后（order: 200+）
-    const dividers = sidebar.querySelectorAll('.nav-divider');
-    dividers.forEach((divider, idx) => {
+    // 分组分隔符跟随所属分组：与其分组第一个可见菜单项保持同序，
+    // 若整组都被隐藏则隐藏分隔符，避免在侧边栏底部堆叠成"空标题"。
+    sidebar.querySelectorAll('.nav-divider').forEach(divider => {
         // 跳过管理员区块内的分隔符
-        if (!divider.closest('#adminMenuSection')) {
-            divider.style.order = 200 + idx;
+        if (divider.closest('#adminMenuSection')) return;
+        const groupOrders = [];
+        let node = divider.nextElementSibling;
+        while (node) {
+            if (node.classList.contains('nav-divider') || node.id === 'adminMenuSection') break;
+            if (node.classList.contains('nav-item')) {
+                const menuId = node.dataset.menuId;
+                if (!menuId) {
+                    // 登出等无 data-menu-id 的菜单项始终可见，保留其上方分隔符
+                    groupOrders.push(999);
+                } else if (node.style.display !== 'none') {
+                    groupOrders.push(parseInt(node.style.order, 10) || 0);
+                }
+            }
+            node = node.nextElementSibling;
+        }
+        if (groupOrders.length) {
+            divider.style.display = '';
+            divider.style.order = Math.min(...groupOrders);
+        } else {
+            divider.style.display = 'none';
         }
     });
 

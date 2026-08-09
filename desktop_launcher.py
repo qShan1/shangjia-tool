@@ -424,7 +424,19 @@ def main():
     # pywebview 是可选依赖；没有时仍保持一键启动体验。
     try:
         import webview
-        window = webview.create_window(APP_NAME, f"http://127.0.0.1:{PORT}/admin", width=1440, height=900)
+        # 窗口/任务栏图标：优先取打包后的 _internal/static，其次源码 static
+        window_icon = None
+        for icon_path in (ROOT / "_internal" / "static" / "ShangjiaTool.ico", ROOT / "static" / "ShangjiaTool.ico"):
+            if icon_path.exists():
+                window_icon = str(icon_path)
+                break
+        window = webview.create_window(
+            APP_NAME,
+            f"http://127.0.0.1:{PORT}/admin",
+            width=1440,
+            height=900,
+            icon=window_icon,
+        )
         window.events.closing += allow_window_close
         window.events.minimized += lambda: minimize_to_tray(window)
         webview.start()

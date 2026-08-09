@@ -1561,3 +1561,370 @@ body.sidebar-collapsed .main-content {
 .qr-login-btn:hover {
   background: linear-gradient(135deg, #178a44 0%, #0e7052 100%) !important;
 }
+
+/* ================================================================
+   Apple Liquid Glass v2.2.2
+   半透明折射玻璃 · 边缘高光 · 层级透明度逐级增强 · 弹性动效
+   动效服务层级与反馈，克制、专业、可读；支持 prefers-reduced-motion
+   与低性能降级（prefers-reduced-transparency / 无 backdrop-filter）。
+   ================================================================ */
+:root {
+  --lg-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --lg-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --lg-dur: 220ms;
+  --lg-dur-spring: 240ms;
+  /* 玻璃层级：内容区 < 导航/工具栏 < 浮层/弹窗，透明度逐级增强 */
+  --lg-glass-1: rgba(255, 255, 255, 0.5);   /* 内容区卡片 */
+  --lg-glass-2: rgba(250, 252, 253, 0.62);  /* 侧边栏 */
+  --lg-glass-3: rgba(255, 255, 255, 0.74);  /* 弹窗 / 下拉菜单 */
+}
+
+/* ---------- 背景：为玻璃提供可折射的柔和光场（滚动时轻微视差） ---------- */
+body {
+  background:
+    radial-gradient(1100px 720px at 88% -12%, rgba(10, 124, 102, 0.13), transparent 62%),
+    radial-gradient(980px 680px at -8% 28%, rgba(59, 130, 246, 0.09), transparent 58%),
+    radial-gradient(900px 820px at 55% 118%, rgba(168, 85, 247, 0.07), transparent 60%),
+    var(--bg-color);
+  background-attachment: fixed;
+}
+
+[data-theme="dark"] body {
+  background:
+    radial-gradient(1100px 720px at 88% -12%, rgba(16, 185, 129, 0.10), transparent 62%),
+    radial-gradient(980px 680px at -8% 28%, rgba(59, 130, 246, 0.07), transparent 58%),
+    radial-gradient(900px 820px at 55% 118%, rgba(168, 85, 247, 0.05), transparent 60%),
+    var(--bg-color);
+  background-attachment: fixed;
+}
+
+/* 自定义背景优先，玻璃折射其上的真实图像 */
+html.has-custom-background body {
+  background: var(--custom-background-image) center / cover no-repeat fixed !important;
+}
+
+/* ---------- 侧边栏：更透的玻璃，顶部边缘高光模拟厚度 ---------- */
+.sidebar {
+  background: linear-gradient(180deg, rgba(252, 253, 254, 0.68), rgba(238, 243, 246, 0.52)) !important;
+  border-color: rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    1px 0 0 rgba(255, 255, 255, 0.78),
+    16px 0 44px rgba(25, 39, 52, 0.08) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  backdrop-filter: blur(30px) saturate(1.5);
+}
+
+/* 侧边栏悬停菜单项：轻微提亮与高光位移，不带位移以免喧宾夺主 */
+.sidebar .nav-link {
+  transition: background-color var(--lg-dur) ease, border-color var(--lg-dur) ease,
+              color var(--lg-dur) ease, box-shadow var(--lg-dur) ease !important;
+}
+
+.sidebar .nav-link:hover {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border-color: rgba(255, 255, 255, 0.86) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 4px 12px rgba(20, 39, 52, 0.05) !important;
+}
+
+/* 激活项：主色浅染的液态玻璃 + 左侧强调条 */
+.sidebar .nav-link.active {
+  background: color-mix(in srgb, var(--primary-color) 11%, rgba(255, 255, 255, 0.66)) !important;
+  border-color: color-mix(in srgb, var(--primary-color) 26%, rgba(255, 255, 255, 0.8)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 3px 0 var(--primary-color),
+    0 6px 16px rgba(20, 39, 52, 0.06) !important;
+}
+
+/* ---------- 内容顶栏：更强的毛玻璃，随滚动保留悬浮层次 ---------- */
+.content-header {
+  background: rgba(248, 250, 252, 0.52) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.04), 0 8px 24px rgba(25, 39, 52, 0.05) !important;
+  -webkit-backdrop-filter: blur(34px) saturate(1.6);
+  backdrop-filter: blur(34px) saturate(1.6);
+}
+
+/* ---------- 内容卡片：半透明折射玻璃 + 顶部亮缘 ---------- */
+.content-section .card {
+  background: var(--lg-glass-1) !important;
+  border-top-color: rgba(255, 255, 255, 0.96) !important;
+  border-bottom-color: rgba(15, 23, 42, 0.06) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 14px 34px rgba(25, 39, 52, 0.10),
+    0 2px 8px rgba(25, 39, 52, 0.04) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(1.5);
+  backdrop-filter: blur(26px) saturate(1.5);
+  transition: transform var(--lg-dur-spring) var(--lg-spring), box-shadow var(--lg-dur) ease,
+              border-color var(--lg-dur) ease !important;
+}
+
+.content-section .card:hover {
+  border-top-color: rgba(255, 255, 255, 1) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 18px 42px rgba(25, 39, 52, 0.13),
+    0 3px 10px rgba(25, 39, 52, 0.05) !important;
+}
+
+/* ---------- 控件圆角：适中（11px），避免过于圆润玩具化 ---------- */
+.btn {
+  position: relative;
+  overflow: hidden;
+  border-radius: 11px !important;
+  transition: transform var(--lg-dur-spring) var(--lg-spring), box-shadow var(--lg-dur) ease,
+              background-color 180ms ease, border-color 180ms ease, color 180ms ease !important;
+  will-change: transform;
+}
+
+/* 点击涟漪式高光：从顶部洒下的柔和光晕，非扩散圆 */
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(130% 170% at 50% 0%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 55%);
+  opacity: 0;
+  transition: opacity 160ms ease;
+  pointer-events: none;
+}
+
+.btn:hover {
+  transform: translateY(-1px) !important;
+}
+
+.btn:hover::after {
+  opacity: 1;
+}
+
+.btn:active {
+  transform: translateY(1px) scale(0.975) !important;
+}
+
+.btn:active::after {
+  opacity: 0.65;
+  transition-duration: 60ms;
+}
+
+/* 主操作按钮：清晰的强调色语义（浅色用浅染玻璃，深色用实心） */
+.btn-primary,
+.btn-success {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 0 0 1px color-mix(in srgb, var(--primary-color) 18%, transparent),
+    0 4px 14px color-mix(in srgb, var(--primary-color) 22%, transparent) !important;
+}
+
+/* ---------- 销售额周期按钮：激活态清晰可辨 ---------- */
+.sales-period-button.is-active {
+  color: #ffffff !important;
+  background: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 6px 16px color-mix(in srgb, var(--primary-color) 30%, transparent) !important;
+}
+
+/* ---------- 浮层：弹窗 / 下拉菜单 透明度与模糊逐级增强 ---------- */
+.modal-content {
+  background: var(--lg-glass-3) !important;
+  border-top-color: rgba(255, 255, 255, 1) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 32px 80px rgba(15, 23, 42, 0.22),
+    0 4px 16px rgba(15, 23, 42, 0.08) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(1.55);
+  backdrop-filter: blur(30px) saturate(1.55);
+}
+
+.dropdown-menu {
+  background: var(--lg-glass-3) !important;
+  border-top-color: rgba(255, 255, 255, 0.98) !important;
+  border-radius: 14px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 22px 56px rgba(15, 23, 42, 0.18),
+    0 4px 12px rgba(15, 23, 42, 0.06) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(1.55);
+  backdrop-filter: blur(30px) saturate(1.55);
+}
+
+.dropdown-menu .dropdown-item {
+  border-radius: 9px;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+/* ---------- 页面切换：轻弹入，不闪烁 ---------- */
+.content-section.active {
+  animation: lg-section-in 260ms var(--lg-ease-out) both;
+}
+
+@keyframes lg-section-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- 弹窗：从中心轻微放大展开（不透明度同步） ---------- */
+.modal.fade .modal-dialog {
+  transform: translateY(14px) scale(0.965) !important;
+  opacity: 0;
+  transition: transform var(--lg-dur-spring) var(--lg-spring), opacity 200ms ease !important;
+}
+
+.modal.fade.show .modal-dialog {
+  transform: translateY(0) scale(1) !important;
+  opacity: 1;
+}
+
+/* ---------- 下拉菜单：从左上触发点展开 ---------- */
+.dropdown-menu {
+  transform-origin: top left;
+}
+
+.dropdown-menu.show {
+  animation: lg-dropdown-in 200ms var(--lg-ease-out) both;
+}
+
+@keyframes lg-dropdown-in {
+  from { opacity: 0; transform: scale(0.965) translateY(-6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ---------- Toast：右下轻弹入 ---------- */
+.toast:not([class*="bg-"]) {
+  animation: lg-toast-in 280ms var(--lg-spring) both;
+}
+
+@keyframes lg-toast-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---------- 深色模式：镜像液态玻璃 ---------- */
+[data-theme="dark"] .sidebar {
+  background: linear-gradient(180deg, rgba(44, 44, 48, 0.82), rgba(26, 26, 30, 0.7)) !important;
+  border-color: rgba(235, 235, 245, 0.16) !important;
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    1px 0 0 rgba(255, 255, 255, 0.04),
+    16px 0 44px rgba(0, 0, 0, 0.28) !important;
+}
+
+[data-theme="dark"] .sidebar .nav-link:hover {
+  background: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 12px rgba(0, 0, 0, 0.18) !important;
+}
+
+[data-theme="dark"] .sidebar .nav-link.active {
+  background: color-mix(in srgb, var(--primary-color) 18%, rgba(44, 44, 48, 0.72)) !important;
+  border-color: color-mix(in srgb, var(--primary-color) 36%, rgba(235, 235, 245, 0.2)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 3px 0 var(--primary-color),
+    0 6px 18px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-theme="dark"] .content-header {
+  background: rgba(28, 28, 31, 0.5) !important;
+  border-bottom-color: rgba(235, 235, 245, 0.12) !important;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.22), 0 8px 24px rgba(0, 0, 0, 0.16) !important;
+}
+
+[data-theme="dark"] .content-section .card {
+  background: rgba(40, 40, 43, 0.8) !important;
+  border-top-color: rgba(255, 255, 255, 0.14) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.3) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 16px 40px rgba(0, 0, 0, 0.26),
+    0 2px 8px rgba(0, 0, 0, 0.14) !important;
+}
+
+[data-theme="dark"] .content-section .card:hover {
+  border-top-color: rgba(255, 255, 255, 0.2) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 20px 48px rgba(0, 0, 0, 0.32),
+    0 4px 12px rgba(0, 0, 0, 0.16) !important;
+}
+
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .dropdown-menu {
+  background: rgba(44, 44, 48, 0.86) !important;
+  border-top-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 32px 80px rgba(0, 0, 0, 0.4),
+    0 4px 16px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-theme="dark"] .btn:active {
+  transform: translateY(1px) scale(0.975) !important;
+}
+
+[data-theme="dark"] .sales-period-button.is-active {
+  background: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  color: #ffffff !important;
+}
+
+/* ---------- 低性能降级：用户偏好减少透明时关闭模糊 ---------- */
+@media (prefers-reduced-transparency: reduce) {
+  .sidebar,
+  .content-header,
+  .content-section .card,
+  .modal-content,
+  .dropdown-menu,
+  .toast:not([class*="bg-"]) {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  .sidebar { background: rgba(247, 250, 252, 0.98) !important; }
+  .content-section .card, .modal-content, .dropdown-menu, .toast:not([class*="bg-"]) {
+    background: rgba(255, 255, 255, 0.97) !important;
+  }
+  [data-theme="dark"] .sidebar { background: rgba(28, 28, 30, 0.98) !important; }
+  [data-theme="dark"] .content-section .card,
+  [data-theme="dark"] .modal-content,
+  [data-theme="dark"] .dropdown-menu,
+  [data-theme="dark"] .toast:not([class*="bg-"]) {
+    background: rgba(38, 38, 41, 0.98) !important;
+  }
+}
+
+/* ---------- 低性能降级：不支持 backdrop-filter 时退回实底 ---------- */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .sidebar { background: #f3f6f8 !important; }
+  .content-section .card, .modal-content, .dropdown-menu, .toast:not([class*="bg-"]) {
+    background: #ffffff !important;
+  }
+  [data-theme="dark"] .sidebar { background: #1c1c1e !important; }
+  [data-theme="dark"] .content-section .card,
+  [data-theme="dark"] .modal-content,
+  [data-theme="dark"] .dropdown-menu,
+  [data-theme="dark"] .toast:not([class*="bg-"]) {
+    background: #262629 !important;
+  }
+}
+
+/* ---------- 无障碍：关闭动态效果后保留功能反馈，移除位移与动画 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .content-section.active,
+  .dropdown-menu.show,
+  .modal.fade .modal-dialog,
+  .toast:not([class*="bg-"]) {
+    animation: none !important;
+    transform: none !important;
+  }
+}
