@@ -75,32 +75,8 @@ REQUIRED_SESSION_COOKIE_FIELDS = (
 # 不再需要猴子补丁，所有功能已集成到 XianyuSliderStealth 类中
 
 
-# ============ Docker环境兼容工具 ============
-class _DummyChildWatcher:
-    """Docker环境下的虚拟子进程监视器"""
-    def __enter__(self): return self
-    def __exit__(self, *args): pass
-    def is_active(self): return True
-    def add_child_handler(self, *args, **kwargs): pass
-    def remove_child_handler(self, *args, **kwargs): pass
-    def attach_loop(self, *args, **kwargs): pass
-    def close(self): pass
-    def __del__(self): pass
-
-
-class _DockerEventLoopPolicy(asyncio.DefaultEventLoopPolicy):
-    """Docker环境下的自定义事件循环策略"""
-    def get_child_watcher(self):
-        return _DummyChildWatcher()
-
-
-def _is_docker_env() -> bool:
-    """检测是否在Docker环境中运行"""
-    return bool(os.getenv('DOCKER_ENV') or os.path.exists('/.dockerenv'))
-
-
 async def _start_playwright_safe(cookie_id: str = "default"):
-    """安全启动Playwright，兼容Docker环境
+    """安全启动Playwright
     
     Args:
         cookie_id: 用于日志标识的账号ID
@@ -110,28 +86,15 @@ async def _start_playwright_safe(cookie_id: str = "default"):
     """
     from playwright.async_api import async_playwright
     
-    is_docker = _is_docker_env()
-    old_policy = None
-    
-    if is_docker:
-        logger.warning(f"【{cookie_id}】检测到Docker环境，应用asyncio修复")
-        old_policy = asyncio.get_event_loop_policy()
-        asyncio.set_event_loop_policy(_DockerEventLoopPolicy())
-    
     try:
         playwright = await asyncio.wait_for(
             async_playwright().start(),
             timeout=30.0
         )
-        if is_docker:
-            logger.warning(f"【{cookie_id}】Docker环境下Playwright启动成功")
         return playwright
     except asyncio.TimeoutError:
         logger.error(f"【{cookie_id}】Playwright启动超时")
         return None
-    finally:
-        if old_policy:
-            asyncio.set_event_loop_policy(old_policy)
 
 
 class ConnectionState(Enum):
@@ -1881,7 +1844,7 @@ class XianyuLive:
             logger.error(f"【{self.cookie_id}】清理实例缓存时出错: {self._safe_str(e)}")
     
     async def _cleanup_playwright_cache(self):
-        """清理Playwright浏览器临时文件和缓存（Docker环境专用）"""
+        """清理Playwright浏览器临时文件和缓存"""
         try:
             import shutil
             import glob
@@ -8212,7 +8175,7 @@ class XianyuLive:
 
                     # 记录滑块验证失败到日志文件
                     log_captcha_event(self.cookie_id, failure_message, False,
-                        f"engine={getattr(self, 'last_slider_captcha_engine', 'playwright')}, 环境: {'Docker' if os.getenv('DOCKER_ENV') else '本地'}")
+                        f"engine={getattr(self, 'last_slider_captcha_engine', 'playwright')}, 环境: '本地'")
 
                     # 发送通知（检查WebSocket连接状态）
                     # 只有在WebSocket未连接时才发送通知，已连接说明可能是暂时性问题
@@ -9502,22 +9465,7 @@ class XianyuLive:
                 '--no-pings'
             ]
 
-            # 在Docker环境中添加额外参数
-            if os.getenv('DOCKER_ENV'):
-                browser_args.extend([
-                    # '--single-process',  # 注释掉，避免多用户并发时的进程冲突和资源泄漏
-                    '--disable-background-networking',
-                    '--disable-client-side-phishing-detection',
-                    '--disable-hang-monitor',
-                    '--disable-popup-blocking',
-                    '--disable-prompt-on-repost',
-                    '--disable-web-resources',
-                    '--metrics-recording-only',
-                    '--safebrowsing-disable-auto-update',
-                    '--enable-automation',
-                    '--password-store=basic',
-                    '--use-mock-keychain'
-                ])
+            
 
             from browser_runtime import launch_options
             browser = await playwright.chromium.launch(**launch_options(browser_args, headless=True))
@@ -14284,22 +14232,7 @@ class XianyuLive:
                 '--no-pings'
             ]
 
-            # 在Docker环境中添加额外参数
-            if os.getenv('DOCKER_ENV'):
-                browser_args.extend([
-                    # '--single-process',  # 注释掉，避免多用户并发时的进程冲突和资源泄漏
-                    '--disable-background-networking',
-                    '--disable-client-side-phishing-detection',
-                    '--disable-hang-monitor',
-                    '--disable-popup-blocking',
-                    '--disable-prompt-on-repost',
-                    '--disable-web-resources',
-                    '--metrics-recording-only',
-                    '--safebrowsing-disable-auto-update',
-                    '--enable-automation',
-                    '--password-store=basic',
-                    '--use-mock-keychain'
-                ])
+            
 
             # 使用无头浏览器
             from browser_runtime import launch_options
@@ -14672,22 +14605,6 @@ class XianyuLive:
                 '--no-pings'
             ]
 
-            # 在Docker环境中添加额外参数
-            if os.getenv('DOCKER_ENV'):
-                browser_args.extend([
-                    '--disable-background-networking',
-                    '--disable-client-side-phishing-detection',
-                    '--disable-hang-monitor',
-                    '--disable-popup-blocking',
-                    '--disable-prompt-on-repost',
-                    '--disable-web-resources',
-                    '--metrics-recording-only',
-                    '--safebrowsing-disable-auto-update',
-                    '--enable-automation',
-                    '--password-store=basic',
-                    '--use-mock-keychain'
-                ])
-
             # 读取账号配置以决定浏览器模式（默认无头）
             account_info = db_manager.get_cookie_details(self.cookie_id) or {}
             show_browser = bool(account_info.get('show_browser', False))
@@ -14959,22 +14876,7 @@ class XianyuLive:
                 '--no-pings'
             ]
 
-            # 在Docker环境中添加额外参数
-            if os.getenv('DOCKER_ENV'):
-                browser_args.extend([
-                    # '--single-process',  # 注释掉，避免多用户并发时的进程冲突和资源泄漏
-                    '--disable-background-networking',
-                    '--disable-client-side-phishing-detection',
-                    '--disable-hang-monitor',
-                    '--disable-popup-blocking',
-                    '--disable-prompt-on-repost',
-                    '--disable-web-resources',
-                    '--metrics-recording-only',
-                    '--safebrowsing-disable-auto-update',
-                    '--enable-automation',
-                    '--password-store=basic',
-                    '--use-mock-keychain'
-                ])
+            
 
             # Cookie刷新模式：读取账号配置以决定浏览器模式（默认无头）
             account_info = db_manager.get_cookie_details(self.cookie_id) or {}

@@ -16,23 +16,12 @@ from threading import Lock
 from collections import defaultdict
 from utils.time_utils import parse_local_datetime_text_to_db_utc
 
-# 修复Docker环境中的asyncio事件循环策略问题
-if sys.platform.startswith('linux') or os.getenv('DOCKER_ENV'):
+# 修复非Windows环境中的asyncio事件循环策略问题
+if sys.platform.startswith('linux'):
     try:
-        # 在Linux/Docker环境中设置事件循环策略
         asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
     except Exception as e:
         logger.warning(f"设置事件循环策略失败: {e}")
-
-# 确保在Docker环境中使用正确的事件循环
-if os.getenv('DOCKER_ENV'):
-    try:
-        # 强制使用SelectorEventLoop（在Docker中更稳定）
-        if hasattr(asyncio, 'SelectorEventLoop'):
-            loop = asyncio.SelectorEventLoop()
-            asyncio.set_event_loop(loop)
-    except Exception as e:
-        logger.warning(f"设置SelectorEventLoop失败: {e}")
 
 
 def _normalize_cached_amount(amount: Any) -> Optional[float]:
@@ -126,7 +115,7 @@ class OrderDetailFetcher:
 
             self._playwright = await async_playwright().start()
 
-            # 启动浏览器（Docker环境优化）
+            # 启动浏览器（稳定性优化参数）
             browser_args = [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -149,41 +138,6 @@ class OrderDetailFetcher:
                 '--no-default-browser-check',
                 '--no-pings'
             ]
-
-            # 移除--single-process参数，使用多进程模式提高稳定性
-            # if os.getenv('DOCKER_ENV'):
-            #     browser_args.append('--single-process')  # 注释掉，避免崩溃
-
-            # 在Docker环境中添加额外参数
-            if os.getenv('DOCKER_ENV'):
-                browser_args.extend([
-                    '--disable-background-networking',
-                    '--disable-background-timer-throttling',
-                    '--disable-client-side-phishing-detection',
-                    '--disable-default-apps',
-                    '--disable-hang-monitor',
-                    '--disable-popup-blocking',
-                    '--disable-prompt-on-repost',
-                    '--disable-sync',
-                    '--disable-web-resources',
-                    '--metrics-recording-only',
-                    '--no-first-run',
-                    '--safebrowsing-disable-auto-update',
-                    '--enable-automation',
-                    '--password-store=basic',
-                    '--use-mock-keychain',
-                    # 添加内存优化和稳定性参数
-                    '--memory-pressure-off',
-                    '--max_old_space_size=512',
-                    '--disable-ipc-flooding-protection',
-                    '--disable-component-extensions-with-background-pages',
-                    '--disable-features=TranslateUI,BlinkGenPropertyTrees',
-                    '--disable-logging',
-                    '--disable-permissions-api',
-                    '--disable-notifications',
-                    '--no-pings',
-                    '--no-zygote'
-                ])
 
             logger.info(f"启动浏览器，参数: {browser_args}")
             self.browser = await self._playwright.chromium.launch(

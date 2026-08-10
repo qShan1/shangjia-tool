@@ -573,7 +573,6 @@ class SliderVerificationGuardsTest(unittest.TestCase):
         slider.slider_max_retries = 3
         slider.profile_id = "win_chrome_147_1600x900"
         slider.risk_trigger_scene = "token_refresh"
-        slider._should_prefer_docker_conservative_profile = lambda has_learning: False
         slider._use_headless_stable_profile = lambda: False
         slider._generate_physics_trajectory_with_params = (
             lambda distance, overshoot_ratio, steps, base_delay, acceleration_curve, y_jitter_max: [
@@ -947,7 +946,7 @@ class SliderVerificationGuardsTest(unittest.TestCase):
             ],
         )
 
-    def test_try_cleanup_stale_chromium_singleton_lock_allows_dead_docker_container_rollover_lock(self):
+    def test_try_cleanup_stale_chromium_singleton_lock_allows_dead_container_rollover_lock(self):
         slider = XianyuSliderStealth.__new__(XianyuSliderStealth)
         slider.pure_user_id = "singleton_cleanup_container_rollover_test"
         slider._get_current_hostname = lambda: "a94804069a5e"

@@ -21726,7 +21726,7 @@ async function showUpdateInfo(newVersion) {
         installSection = updateInfo.installMethods.map(method => {
             let content = '';
             
-            // 如果有步骤说明（如Docker安装）
+            // 如果有步骤说明
             if (method.steps && method.steps.length > 0) {
                 content = `
                     <div style="background: #2d3748; color: #e2e8f0; padding: 12px 14px; border-radius: 6px; font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; line-height: 1.6;">

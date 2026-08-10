@@ -988,16 +988,12 @@ class XianyuSliderStealth:
         self.project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         self.playwright_browser_name = os.environ.get("XY_SLIDER_PLAYWRIGHT_BROWSER", "chromium").strip() or "chromium"
         existing_playwright_cache_dir = os.environ.get("PLAYWRIGHT_BROWSERS_PATH", "").strip()
-        is_docker_env = os.environ.get("DOCKER_ENV", "").strip().lower() in {"1", "true", "yes", "on"}
-        self.is_docker_env = is_docker_env
         if existing_playwright_cache_dir and existing_playwright_cache_dir != "0":
             self.playwright_browser_cache_dir = existing_playwright_cache_dir
-        elif is_docker_env and os.path.isdir("/ms-playwright"):
-            self.playwright_browser_cache_dir = "/ms-playwright"
         else:
             self.playwright_browser_cache_dir = os.path.join(self.project_root, ".playwright-browsers")
 
-        default_download_proxy = "" if is_docker_env else "http://127.0.0.1:1081"
+        default_download_proxy = "http://127.0.0.1:1081"
         self.playwright_download_proxy = (
             os.environ.get("XY_SLIDER_DOWNLOAD_PROXY", "").strip() or
             os.environ.get("XY_DOWNLOAD_PROXY", "").strip() or
@@ -1924,23 +1920,6 @@ class XianyuSliderStealth:
             self.headless
             and str(self.profile_id or "").startswith("win_chrome_147_1600x900")
         )
-
-    def _should_prefer_docker_conservative_profile(self, has_learning: bool) -> bool:
-        if has_learning:
-            return False
-        if not (self.headless and self.is_docker_env and self.automation_backend == "playwright"):
-            return False
-        if not self._use_headless_stable_profile():
-            return False
-        local_browser_info = getattr(self, "local_browser_info", None) or {}
-        return bool(
-            str(local_browser_info.get("source") or "") == "project_playwright_cache"
-            or bool(local_browser_info.get("version"))
-            or bool(self.executable_path)
-        )
-
-    def _should_force_docker_cold_start_conservative(self, attempt: int, has_learning: bool) -> bool:
-        return attempt == 1 and self._should_prefer_docker_conservative_profile(has_learning)
 
     def _get_light_stealth_script(self, browser_features: Dict[str, Any]) -> str:
         locale = json.dumps(browser_features.get("locale") or "zh-CN", ensure_ascii=False)
@@ -7021,10 +7000,7 @@ class XianyuSliderStealth:
                             f"延迟{base_delay*1000:.1f}ms, 曲线^{acceleration_curve:.2f}"
                         )
                 else:
-                    if self._should_prefer_docker_conservative_profile(has_learning):
-                        rotation_strategies = ["conservative", "standard"]
-                    else:
-                        rotation_strategies = ["aggressive", "standard"]
+                    rotation_strategies = ["aggressive", "standard"]
                     rotation_idx = (attempt - slow_fallback_threshold) % len(rotation_strategies)
                     selected_strategy = rotation_strategies[rotation_idx]
                     profile_name = f"retry_rotation_{selected_strategy}"
@@ -7041,21 +7017,6 @@ class XianyuSliderStealth:
                         f"超调{(overshoot_ratio-1)*100:.1f}%, 步数{steps}, "
                         f"延迟{base_delay*1000:.1f}ms, 曲线^{acceleration_curve:.2f}"
                     )
-            elif attempt == 2 and self._should_prefer_docker_conservative_profile(has_learning):
-                selected_strategy = "conservative"
-                profile_name = "docker_retry_conservative"
-
-                overshoot_ratio = random.uniform(1.015, 1.045)
-                steps = random.randint(32, 42)
-                base_delay = random.uniform(0.011, 0.019)
-                acceleration_curve = random.uniform(1.95, 2.30)
-                y_jitter_max = random.uniform(0.9, 1.8)
-
-                logger.info(
-                    f"【{self.pure_user_id}】🧱 Docker第2次继续保守策略: "
-                    f"超调{(overshoot_ratio-1)*100:.1f}%, 步数{steps}, "
-                    f"延迟{base_delay*1000:.1f}ms, 曲线^{acceleration_curve:.2f}"
-                )
             elif attempt == 2 and has_learning:
                 selected_strategy = "learned_with_jitter"
                 profile_name = "retry_stabilized"
@@ -7103,20 +7064,6 @@ class XianyuSliderStealth:
                     logger.info(
                         f"【{self.pure_user_id}】🧱 近期失败压力过高，改用原仓库风格无超调三阶段策略: "
                         f"步数{steps}, 延迟{base_delay*1000:.1f}ms"
-                    )
-                elif self._should_force_docker_cold_start_conservative(attempt, has_learning):
-                    conservative = ML_STRATEGY_CONFIG["strategies"]["conservative"]
-                    overshoot_ratio = random.uniform(*conservative["overshoot_ratio"])
-                    steps = random.randint(*conservative["steps"])
-                    base_delay = random.uniform(*conservative["base_delay"])
-                    acceleration_curve = random.uniform(*conservative["acceleration_curve"])
-                    y_jitter_max = random.uniform(*conservative["y_jitter_max"])
-                    selected_strategy = "conservative"
-                    profile_name = "docker_cold_start_conservative"
-                    logger.info(
-                        f"【{self.pure_user_id}】🧱 Docker冷启动优先保守策略: "
-                        f"超调{(overshoot_ratio-1)*100:.1f}%, 步数{steps}, "
-                        f"延迟{base_delay*1000:.1f}ms, 曲线^{acceleration_curve:.2f}"
                     )
                 elif not has_learning and random.random() < exploration_rate:
                     use_exploration = True
@@ -10815,7 +10762,7 @@ class XianyuSliderStealth:
         except Exception:
             return ""
 
-    def _looks_like_docker_container_hostname(self, hostname: str) -> bool:
+    def _looks_like_container_hostname(self, hostname: str) -> bool:
         normalized = str(hostname or "").strip().lower()
         return bool(re.fullmatch(r"[0-9a-f]{12}", normalized))
 
@@ -10888,20 +10835,20 @@ class XianyuSliderStealth:
             return False
 
         same_host = lock_host == current_host
-        same_docker_host_rollover = (
+        same_container_host_rollover = (
             not same_host and
-            self._looks_like_docker_container_hostname(lock_host) and
-            self._looks_like_docker_container_hostname(current_host)
+            self._looks_like_container_hostname(lock_host) and
+            self._looks_like_container_hostname(current_host)
         )
-        if not same_host and not same_docker_host_rollover:
+        if not same_host and not same_container_host_rollover:
             logger.warning(
                 f"【{self.pure_user_id}】SingletonLock 指向其他宿主机，拒绝自动清理: "
                 f"lock_host={lock_host}, current_host={current_host}, pid={lock_pid}"
             )
             return False
-        if same_docker_host_rollover:
+        if same_container_host_rollover:
             logger.warning(
-                f"【{self.pure_user_id}】检测到 Docker 容器 hostname 漂移导致的 stale SingletonLock，"
+                f"【{self.pure_user_id}】检测到 容器 hostname 漂移导致的 stale SingletonLock，"
                 f"允许按失效锁清理: lock_host={lock_host}, current_host={current_host}, pid={lock_pid}"
             )
 

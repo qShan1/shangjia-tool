@@ -424,18 +424,13 @@ def main():
     # pywebview 是可选依赖；没有时仍保持一键启动体验。
     try:
         import webview
-        # 窗口/任务栏图标：优先取打包后的 _internal/static，其次源码 static
-        window_icon = None
-        for icon_path in (ROOT / "_internal" / "static" / "ShangjiaTool.ico", ROOT / "static" / "ShangjiaTool.ico"):
-            if icon_path.exists():
-                window_icon = str(icon_path)
-                break
+        # 窗口/任务栏图标跟随 EXE 图标（由 PyInstaller spec 的 static/ShangjiaTool.ico 指定），
+        # pywebview 的 create_window 不支持 icon 参数，不要传入。
         window = webview.create_window(
             APP_NAME,
             f"http://127.0.0.1:{PORT}/admin",
             width=1440,
             height=900,
-            icon=window_icon,
         )
         window.events.closing += allow_window_close
         window.events.minimized += lambda: minimize_to_tray(window)

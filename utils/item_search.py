@@ -13,23 +13,12 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 from loguru import logger
 
-# 修复Docker环境中的asyncio事件循环策略问题
-if sys.platform.startswith('linux') or os.getenv('DOCKER_ENV'):
+# 修复非Windows环境中的asyncio事件循环策略问题
+if sys.platform.startswith('linux'):
     try:
-        # 在Linux/Docker环境中设置事件循环策略
         asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
     except Exception as e:
         logger.warning(f"设置事件循环策略失败: {e}")
-
-# 确保在Docker环境中使用正确的事件循环
-if os.getenv('DOCKER_ENV'):
-    try:
-        # 强制使用SelectorEventLoop（在Docker中更稳定）
-        if hasattr(asyncio, 'SelectorEventLoop'):
-            loop = asyncio.SelectorEventLoop()
-            asyncio.set_event_loop(loop)
-    except Exception as e:
-        logger.warning(f"设置SelectorEventLoop失败: {e}")
 
 try:
     from playwright.async_api import async_playwright
@@ -84,7 +73,7 @@ class XianyuSearcher:
                 # 尝试多种方式获取IP
                 local_ip = "localhost"
                 
-                # 方法1：从环境变量获取（Docker/配置文件）
+                # 方法1：从环境变量获取（SERVER_HOST / PUBLIC_IP）
                 local_ip = os.getenv('SERVER_HOST') or os.getenv('PUBLIC_IP')
                 
                 if not local_ip:
@@ -95,9 +84,9 @@ class XianyuSearcher:
                         local_ip = s.getsockname()[0]
                         s.close()
                         
-                        # 检查是否是Docker内网IP（172.x.x.x 或 10.x.x.x）
+                        # 检查是否是内网IP（172.x.x.x 或 10.x.x.x）
                         if local_ip.startswith('172.') or local_ip.startswith('10.'):
-                            logger.warning(f"⚠️ 检测到Docker内网IP: {local_ip}")
+                            logger.warning(f"⚠️ 检测到内网IP: {local_ip}")
                             local_ip = None  # 重置，使用localhost
                     except:
                         pass
@@ -105,7 +94,7 @@ class XianyuSearcher:
                 if not local_ip:
                     local_ip = "localhost"
                     logger.warning("⚠️ 无法获取外网IP，使用 localhost")
-                    logger.warning("💡 如果在Docker中，请设置环境变量 SERVER_HOST 为公网IP")
+                    logger.warning("💡 请设置环境变量 SERVER_HOST 为公网IP")
                 
                 control_url = f"http://{local_ip}:8000/api/captcha/control/{session_id}"
                 
@@ -710,14 +699,6 @@ class XianyuSearcher:
                 '--accept-lang=zh-CN,zh,en-US,en'
             ]
 
-            # 只在确实是Docker环境时添加额外参数
-            if os.getenv('DOCKER_ENV') == 'true':
-                browser_args.extend([
-                    '--disable-gpu',
-                    # 移除--single-process参数，使用多进程模式提高稳定性
-                    # '--single-process'  # 注释掉，避免崩溃
-                ])
-
             logger.info("正在启动浏览器（中文模式，持久化缓存）...")
             
             # 使用 launch_persistent_context 实现跨会话的缓存持久化
@@ -923,9 +904,9 @@ class XianyuSearcher:
 
             # 检查是否是浏览器安装问题
             if "Executable doesn't exist" in error_msg or "playwright install" in error_msg:
-                error_msg = "浏览器未安装。请在Docker容器中运行: playwright install chromium"
+                error_msg = "浏览器未安装。请先运行: playwright install chromium"
             elif "BrowserType.launch" in error_msg:
-                error_msg = "浏览器启动失败。请确保Docker容器有足够的权限和资源"
+                error_msg = "浏览器启动失败。请检查系统资源与浏览器安装"
 
             # 如果 Playwright 失败，返回错误信息
             return {
@@ -1449,9 +1430,9 @@ class XianyuSearcher:
 
             # 检查是否是浏览器相关问题
             if "Executable doesn't exist" in error_msg or "playwright install" in error_msg:
-                error_msg = "浏览器未安装。请在Docker容器中运行: playwright install chromium"
+                error_msg = "浏览器未安装。请先运行: playwright install chromium"
             elif "BrowserType.launch" in error_msg:
-                error_msg = "浏览器启动失败。请确保Docker容器有足够的权限和资源"
+                error_msg = "浏览器启动失败。请检查系统资源与浏览器安装"
             elif "Target page, context or browser has been closed" in error_msg:
                 error_msg = "浏览器页面被意外关闭。这可能是由于网站反爬虫检测或系统资源限制导致的"
             elif "Page.goto" in error_msg and "closed" in error_msg:
