@@ -32,8 +32,6 @@ body:
     attributes:
       label: 部署方式
       options:
-        - Docker Compose
-        - Docker
         - 源码运行
         - 其他
     validations:

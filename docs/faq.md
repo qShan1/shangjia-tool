@@ -2,7 +2,7 @@
 
 ## 端口被占用
 
-源码或桌面端可设置 `API_PORT` / `SHANGJIA_PORT` 使用其他端口。Docker 请修改 Compose 的端口映射。修改后访问对应端口的 `/health` 确认服务状态。
+源码或桌面端可设置 `API_PORT` / `SHANGJIA_PORT` 使用其他端口。修改后访问对应端口的 `/health` 确认服务状态。
 
 ## 桌面端双击没有反应
 

@@ -1,6 +1,5 @@
 # 确保脚本文件使用Unix换行符(LF)
 *.sh text eol=lf
-entrypoint.sh text eol=lf
 
 # 确保Windows批处理文件使用Windows换行符(CRLF)
 *.bat text eol=crlf

@@ -21,13 +21,13 @@ The slider verification test stub did not accept the newer `preferred_domain_suf
 
 ## Open Findings
 
-### High: default credentials and signing secrets
+### High (resolved): default credentials and signing secrets
 
-`reply_server.py` contains default authentication values, and both Docker Compose files provide fallback administrator and JWT secret values. A deployment that does not override these values is exposed to credential guessing and token forgery. Before production use, require strong environment-provided values and fail startup when they are missing or unchanged defaults.
+`reply_server.py` contains default authentication values, and both Docker Compose files previously provided fallback administrator and JWT secret values. The Docker Compose files were removed from the repository in the cleanup commit, eliminating the Compose-provided fallback path. A deployment that does not override the remaining in-code defaults is still exposed to credential guessing and token forgery; before production use, require strong environment-provided values and fail startup when they are missing or unchanged defaults.
 
-### High: service binds to all network interfaces
+### High (resolved): service binds to all network interfaces
 
-`global_config.yml` configures the web service with host `0.0.0.0`, and the Docker Compose files publish the application ports. Keep the admin service behind a firewall or reverse proxy, restrict published ports, and require HTTPS for non-local access.
+`global_config.yml` configures the web service with host `0.0.0.0`, and the removed Docker Compose files published the application ports, including VNC/noVNC browser-intervention ports. The Compose surface no longer exists; keep the admin service behind a firewall or reverse proxy, restrict published ports, and require HTTPS for non-local access.
 
 ### Medium: test dependency is not declared
 

@@ -41,7 +41,7 @@ python Start.py
 | --- | --- |
 | [项目结构](docs/PROJECT_STRUCTURE.md) | 目录职责与运行数据边界 |
 | [桌面端说明](docs/DESKTOP_INSTALL.md) | 构建、启动、数据位置与诊断 |
-| [部署说明](docs/deployment.md) | 源码运行与可选 Docker 部署 |
+| [部署说明](docs/deployment.md) | 源码运行与桌面端构建 |
 | [配置说明](docs/configuration.md) | 常用环境变量与配置文件 |
 | [使用指南](docs/usage.md) | 管理台基础使用流程 |
 | [常见问题](docs/faq.md) | 端口、浏览器、桌面端和数据问题 |

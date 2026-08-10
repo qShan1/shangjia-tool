@@ -131,10 +131,6 @@ class AutoUpdater:
         'venv/',
         'global_config.yml',  # 用户配置文件不更新
         'update_files.json',
-        'Dockerfile',
-        'Dockerfile-cn',
-        'docker-compose.yml',
-        'docker-compose-cn.yml',
     }
     
     def __init__(self, 

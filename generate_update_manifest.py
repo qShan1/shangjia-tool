@@ -69,10 +69,6 @@ EXCLUDED_DIR_NAMES = {
 
 # 即使文件类型匹配也不纳入热更新的文件
 EXCLUDED_FILE_NAMES = {
-    'Dockerfile',
-    'Dockerfile-cn',
-    'docker-compose.yml',
-    'docker-compose-cn.yml',
     'global_config.yml',
     'update_files.json',
 }

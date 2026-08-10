@@ -1548,7 +1548,7 @@ Cookie数量: {cookie_count}
                 # 首次创建admin用户：优先用环境变量 ADMIN_PASSWORD，否则随机生成
                 import secrets as _secrets
                 import string as _string
-                # 优先从环境变量读取（兼容 docker-compose 的 ADMIN_PASSWORD）
+                # 优先从环境变量读取 ADMIN_PASSWORD
                 admin_password = os.environ.get("ADMIN_PASSWORD", "").strip()
                 if not admin_password:
                     # 随机生成16位密码

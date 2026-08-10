@@ -1299,7 +1299,7 @@ if not os.path.exists(uploads_dir):
 # 健康检查端点
 @app.get('/health')
 async def health_check():
-    """健康检查端点，用于Docker健康检查和负载均衡器"""
+    """健康检查端点，用于负载均衡器检测"""
     try:
         # 检查Cookie管理器状态
         manager_status = "ok" if cookie_manager.manager is not None else "error"
