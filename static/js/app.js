@@ -6652,14 +6652,6 @@ async function activateCommentTemplate(accountId, templateId) {
     toggleLoading(false);
 }
 
-// HTML转义函数
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 // 跳转到自动回复页面并选择指定账号
 function goToAutoReply(accountId) {
     // 切换到自动回复页面
@@ -13090,14 +13082,6 @@ function formatDateTime(dateString) {
     return date ? date.toLocaleString('zh-CN') : '未知';
 }
 
-// HTML转义函数
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 // ================================
 // 【商品回复管理菜单】相关功能
 // ================================
@@ -13635,21 +13619,6 @@ function displayLogs() {
     container.scrollTop = container.scrollHeight;
 }
 
-// 格式化日志时间戳
-function formatLogTimestamp(timestamp) {
-    if (!timestamp) return '';
-    const date = new Date(timestamp);
-    return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    fractionalSecondDigits: 3
-    });
-}
-
 // 更新日志统计信息
 function updateLogStats() {
     const logCountElement = document.getElementById('logCount');
@@ -13839,53 +13808,6 @@ async function showLogStats() {
 }
 
 // ==================== 导入导出功能 ====================
-
-// 导出关键词
-async function exportKeywords() {
-    if (!currentCookieId) {
-    showToast('请先选择账号', 'warning');
-    return;
-    }
-
-    try {
-    const response = await fetch(`${apiBase}/keywords-export/${currentCookieId}`, {
-        headers: {
-        'Authorization': `Bearer ${authToken}`
-        }
-    });
-
-    if (response.ok) {
-        // 创建下载链接
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-
-        // 根据当前账号是否有数据来设置文件名和提示
-        const currentKeywords = keywordsData[currentCookieId] || [];
-        const hasData = currentKeywords.length > 0;
-
-        if (hasData) {
-        a.download = `keywords_${currentCookieId}_${new Date().getTime()}.xlsx`;
-        showToast('关键词导出成功！', 'success');
-        } else {
-        a.download = `keywords_template_${currentCookieId}_${new Date().getTime()}.xlsx`;
-        showToast('导入模板导出成功！模板中包含示例数据供参考', 'success');
-        }
-
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-    } else {
-        const error = await response.json();
-        showToast(`导出失败: ${error.detail}`, 'error');
-    }
-    } catch (error) {
-    console.error('导出关键词失败:', error);
-    showToast('导出关键词失败', 'error');
-    }
-}
 
 // 显示导入模态框
 function showImportModal() {
@@ -15079,11 +15001,6 @@ function showQRCodeLogin(mode = 'standard') {
 
     const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
     modal.show();
-}
-
-// 刷新二维码（兼容旧函数名）
-async function refreshQRCode() {
-    await generateQRCode();
 }
 
 // 生成二维码
@@ -20789,7 +20706,7 @@ function createItemCard(item) {
     col.className = 'col-md-6 col-lg-4 col-xl-3 mb-4';
 
     // 修复字段映射：使用main_image而不是image_url
-    const imageUrl = item.main_image || item.image_url || 'https://via.placeholder.com/200x200?text=图片加载失败';
+    const imageUrl = item.main_image || item.image_url || '/static/assets/image-placeholder.svg';
     const wantCount = item.want_count || 0;
 
     console.log('处理后的数据:', {
@@ -20804,7 +20721,7 @@ function createItemCard(item) {
     col.innerHTML = `
         <div class="card item-card h-100">
             <img src="${escapeHtml(imageUrl)}" class="item-image" alt="${escapeHtml(item.title)}"
-                 onerror="this.src='https://via.placeholder.com/200x200?text=图片加载失败'"
+                 onerror="this.src='/static/assets/image-placeholder.svg'"
                  style="width: 100%; height: 200px; object-fit: cover; border-radius: 10px;">
             <div class="card-body d-flex flex-column">
                 <h6 class="card-title" title="${escapeHtml(item.title)}">

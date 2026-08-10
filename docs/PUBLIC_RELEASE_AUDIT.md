@@ -33,6 +33,16 @@ The slider verification test stub did not accept the newer `preferred_domain_suf
 
 The environment has no `pytest` module, so `pytest` was not runnable. The repository tests are runnable with the standard-library `unittest` runner; add the preferred test runner to development requirements if pytest is intended to be supported.
 
+### Low: three-layer frontend styling debt
+
+The admin frontend keeps styles in three coexisting layers, which can drift out of sync:
+
+1. Module CSS files: `static/css/app.css` is the single entry that `@import`s 12 module files (`variables`, `layout`, `dashboard`, `logs`, `keywords`, `accounts`, `items`, `notifications`, `components`, `about`, `admin`, `glass-theme`), each with a `?v=` cache-bust query handled by `scripts/bump_version.ps1`.
+2. Inline `<style>` blocks in `static/index.html` (2 blocks), `static/login.html` and `static/register.html` (1 each).
+3. Runtime style manipulation in `static/js/app.js` (about 272 `.style.*` / `cssText` call sites, plus dynamic `<style>` injection).
+
+A given rule can exist in more than one layer (e.g. a layout rule overridden by an inline block or by JS), so visual changes require editing several files. The version bump script only rewrites `?v=` in layer 1. Consolidating layers 2 and 3 into module files is deferred; keep new styles in `static/css/` and minimize inline/JS styling.
+
 ### Low: generated and legacy artifacts in the source snapshot
 
 The working directory contained large logs, runtime profiles, backups, caches, and local browser state. They are excluded by `.gitignore` for the public repository, but can still be removed locally in a separate cleanup operation after confirming the service is stopped.

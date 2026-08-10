@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="#f1f3f5"/>
+  <rect x="1" y="1" width="198" height="198" fill="none" stroke="#dee2e6" stroke-width="2"/>
+  <circle cx="100" cy="82" r="26" fill="#ced4da"/>
+  <path d="M38 168 Q60 120 100 128 Q140 136 162 168 Z" fill="#ced4da"/>
+  <text x="100" y="100" text-anchor="middle" fill="#868e96" font-size="15" font-family="Microsoft YaHei, PingFang SC, sans-serif">图片加载失败</text>
+</svg>
