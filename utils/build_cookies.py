@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 import requests
+from utils.taobao_keys import get_h5_app_key
 
 UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36')
@@ -72,7 +73,7 @@ def build_initial_session(*, with_tfstk: bool = True, proxies=None) -> requests.
         s.post(
             f'https://h5api.m.goofish.com/h5/{api}/1.0/',
             params={
-                'jsv': '2.7.2', 'appKey': '34839810',
+                'jsv': '2.7.2', 'appKey': get_h5_app_key(),
                 't': str(int(time.time() * 1000)),
                 'sign': '', 'v': '1.0',
                 'type': 'originaljson', 'dataType': 'json', 'timeout': '20000',

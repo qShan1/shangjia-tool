@@ -1638,7 +1638,7 @@ async def get_welcome_status():
         return {"success": True, "show_welcome": True}
 
 @app.post('/api/system/welcome-dismiss')
-async def dismiss_welcome():
+async def dismiss_welcome(current_user: Dict[str, Any] = Depends(get_current_user)):
     """关闭欢迎弹窗（下次不再显示）"""
     from db_manager import db_manager
     try:
@@ -1648,7 +1648,7 @@ async def dismiss_welcome():
         return {"success": False}
 
 @app.post('/api/system/welcome-restore')
-async def restore_welcome():
+async def restore_welcome(current_user: Dict[str, Any] = Depends(get_current_user)):
     """重新启用欢迎弹窗（从设置中触发）"""
     from db_manager import db_manager
     try:

@@ -11,6 +11,7 @@ import blackboxprotobuf
 from loguru import logger
 
 import execjs
+from utils.taobao_keys import get_h5_app_key
 
 def get_js_path():
     """获取JavaScript文件的路径"""
@@ -28,7 +29,13 @@ try:
     current_runtime = execjs.get()
     logger.info(f"当前JavaScript运行时: {current_runtime.name}")
 
-    xianyu_js = execjs.compile(open(get_js_path(), 'r', encoding='utf-8').read())
+    # generate_sign 的 appKey 与 Python 侧统一（支持 TAOBAO_H5_APP_KEY 覆盖）
+    _js_source = open(get_js_path(), 'r', encoding='utf-8').read()
+    _js_source = _js_source.replace(
+        'const h = 34839810',
+        f'const h = {int(get_h5_app_key())}',
+    )
+    xianyu_js = execjs.compile(_js_source)
     logger.info("JavaScript文件加载成功")
 except Exception as e:
     error_msg = str(e)
@@ -115,7 +122,7 @@ def generate_device_id(user_id: str) -> str:
 
 def generate_sign(t: str, token: str, data: str) -> str:
     """生成签名"""
-    app_key = "34839810"
+    app_key = get_h5_app_key()
     msg = f"{token}&{t}&{app_key}&{data}"
     
     # 使用MD5生成签名

@@ -19,6 +19,7 @@ import hashlib
 from urllib.parse import urlparse
 
 from utils.image_utils import image_manager
+from utils.taobao_keys import get_h5_app_key
 
 
 def generate_headers():
@@ -384,7 +385,7 @@ class QRLoginManager:
         data = {"bizScene": "home"}
         data_str = json.dumps(data, separators=(',', ':'))
         t = str(int(time.time() * 1000))
-        app_key = "34839810"
+        app_key = get_h5_app_key()
 
         # 先发一次 GET 请求，获取 cookie 中的 m_h5_tk
         async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True, proxy=self.proxy) as client:

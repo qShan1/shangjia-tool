@@ -31,6 +31,7 @@ from playwright.async_api import async_playwright
 import asyncio
 from typing import Optional, Tuple, List, Dict, Any, Callable
 from loguru import logger
+from utils.taobao_keys import get_h5_app_key, get_idle_app_key
 from collections import defaultdict
 
 _PLAYWRIGHT_BROWSER_INSTALL_LOCK = threading.Lock()
@@ -137,7 +138,7 @@ def generate_cookie_verification_device_id(user_id: str) -> str:
 
 
 def build_cookie_verification_sign(ts: str, token: str, data: str) -> str:
-    return hashlib.md5(f"{token}&{ts}&34839810&{data}".encode("utf-8")).hexdigest()
+    return hashlib.md5(f"{token}&{ts}&{get_h5_app_key()}&{data}".encode("utf-8")).hexdigest()
 
 
 def probe_cookie_verification_from_cookie(
@@ -194,13 +195,13 @@ def probe_cookie_verification_from_cookie(
     device_id = generate_cookie_verification_device_id(user_id)
     ts = str(int(time.time()) * 1000)
     data_val = (
-        '{"appKey":"444e9908a51d1cb236a27862abc769c9",'
+        '{"appKey":"' + get_idle_app_key() + '",'
         f'"deviceId":"{device_id}"'
         "}"
     )
     params = {
         "jsv": "2.7.2",
-        "appKey": "34839810",
+        "appKey": get_h5_app_key(),
         "t": ts,
         "sign": build_cookie_verification_sign(ts, token, data_val),
         "v": "1.0",
@@ -4032,7 +4033,7 @@ class XianyuSliderStealth:
 
         common_params = {
             'jsv': '2.7.2',
-            'appKey': '34839810',
+            'appKey': get_h5_app_key(),
             'v': '1.0',
             'type': 'originaljson',
             'accountSite': 'xianyu',
@@ -4046,7 +4047,7 @@ class XianyuSliderStealth:
         token_ts = str(int(time.time() * 1000))
         token_data = json.dumps(
             {
-                "appKey": "444e9908a51d1cb236a27862abc769c9",
+                "appKey": get_idle_app_key(),
                 "deviceId": generate_cookie_verification_device_id(user_id),
             },
             separators=(',', ':'),
@@ -11530,7 +11531,7 @@ class XianyuSliderStealth:
                             try:
                                 verify_page = context.new_page()
                                 verify_resp = verify_page.goto(
-                                    "https://h5api.m.goofish.com/h5/mtop.taobao.idlemessage.pc.login.token/1.0/?jsv=2.7.2&appKey=34839810&type=originaljson&dataType=json&v=1.0&api=mtop.taobao.idlemessage.pc.login.token&sessionOption=AutoLoginOnly",
+                                    f"https://h5api.m.goofish.com/h5/mtop.taobao.idlemessage.pc.login.token/1.0/?jsv=2.7.2&appKey={get_h5_app_key()}&type=originaljson&dataType=json&v=1.0&api=mtop.taobao.idlemessage.pc.login.token&sessionOption=AutoLoginOnly",
                                     wait_until="domcontentloaded",
                                     timeout=10000
                                 )

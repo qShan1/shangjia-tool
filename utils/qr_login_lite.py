@@ -49,6 +49,8 @@ _PASSPORT_HEADERS = {
     "priority": "u=1, i",
 }
 
+from utils.taobao_keys import get_h5_app_key
+
 _STATUS_DESC = {
     "NEW": "等待扫码",
     "SCANNED": "已扫码，待手机确认",
@@ -303,7 +305,7 @@ def qrcode_login_lite(
         "https://h5api.m.goofish.com/h5/mtop.idle.web.user.page.nav/1.0/",
         params={
             "jsv": "2.7.2",
-            "appKey": "34839810",
+            "appKey": get_h5_app_key(),
             "t": str(int(time.time() * 1000)),
             "sign": "",
             "v": "1.0",

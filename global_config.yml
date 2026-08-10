@@ -5,6 +5,7 @@ API_ENDPOINTS:
   token: https://h5api.m.goofish.com/h5/mtop.taobao.idlemessage.pc.login.token/1.0/
 APP_CONFIG:
   api_version: '1.0'
+  # 环境变量 TAOBAO_APP_KEY 可覆盖此值（见 shangjia_tool/config.py）
   app_key: 444e9908a51d1cb236a27862abc769c9
   app_version: '1.0'
   platform: web

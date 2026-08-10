@@ -6,6 +6,7 @@ from typing import Any
 
 from loguru import logger
 
+from utils.taobao_keys import get_h5_app_key
 from utils.xianyu_utils import generate_sign, trans_cookies
 
 
@@ -36,7 +37,7 @@ class ItemPolishModule:
     def _build_polish_request(self, api_name: str, item_id: Any) -> tuple[dict[str, str], dict[str, str]]:
         params = {
             'jsv': '2.7.2',
-            'appKey': '34839810',
+            'appKey': get_h5_app_key(),
             't': str(int(time.time()) * 1000),
             'sign': '',
             'v': '1.0',

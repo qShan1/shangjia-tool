@@ -13,6 +13,7 @@ from enum import Enum
 from urllib.parse import parse_qs, urlparse
 from loguru import logger
 import websockets
+from utils.taobao_keys import get_h5_app_key, get_idle_app_key
 from utils.xianyu_utils import (
     decrypt, generate_mid, generate_uuid, trans_cookies,
     generate_device_id, generate_sign
@@ -7290,7 +7291,7 @@ class XianyuLive:
 
             params = {
                 'jsv': '2.7.2',
-                'appKey': '34839810',
+                'appKey': get_h5_app_key(),
                 't': str(int(time.time() * 1000)),
                 'sign': '',
                 'v': '1.0',
@@ -7419,7 +7420,7 @@ class XianyuLive:
 
             params = {
                 'jsv': '2.7.2',
-                'appKey': '34839810',
+                'appKey': get_h5_app_key(),
                 't': timestamp,
                 'sign': '',
                 'v': '1.0',
@@ -7437,7 +7438,7 @@ class XianyuLive:
                 'spm_pre': 'a21ybx.home.sidebar.1.4c053da6vYwnmf',
                 'log_id': '4c053da6vYwnmf'
             }
-            data_val = '{"appKey":"444e9908a51d1cb236a27862abc769c9","deviceId":"' + self.device_id + '"}'
+            data_val = '{"appKey":"' + get_idle_app_key() + '","deviceId":"' + self.device_id + '"}'
             data = {
                 'data': data_val,
             }
@@ -9814,7 +9815,7 @@ class XianyuLive:
 
         params = {
             'jsv': '2.7.2',
-            'appKey': '34839810',
+            'appKey': get_h5_app_key(),
             't': str(int(time.time()) * 1000),
             'sign': '',
             'v': '1.0',
@@ -15701,7 +15702,7 @@ class XianyuLive:
 
         params = {
             'jsv': '2.7.2',
-            'appKey': '34839810',
+            'appKey': get_h5_app_key(),
             't': timestamp,
             'sign': generate_sign(timestamp, token, data_val),
             'v': version,
@@ -18043,7 +18044,7 @@ class XianyuLive:
 
         params = {
             'jsv': '2.7.2',
-            'appKey': '34839810',
+            'appKey': get_h5_app_key(),
             't': str(int(time.time()) * 1000),
             'sign': '',
             'v': '1.0',

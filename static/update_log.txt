@@ -1,3 +1,7 @@
+🎉1.发布 v2.3.0-beta：淘宝/闲鱼 H5 客户端 appKey 集中外置（utils/taobao_keys.py，支持 TAOBAO_APP_KEY / TAOBAO_H5_APP_KEY 环境变量覆盖），清除 15 个文件中的硬编码副本且默认值不变；
+🔒2.路由鉴权审计：新增 scripts/audit_routes.py 全量审计 274 条路由（241 已鉴权 / 20 公开白名单 / 2 独立 APIKey / 11 滑块控制子系统，0 未保护），并为 2 个全局设置写入接口补充登录鉴权；
+📝3.发布审计文档补充前端三层样式覆盖的维护债务说明。
+
 🎉1.发布 v2.2.3：前端资源本地化：Chart.js 图表库下线 CDN 改为随包内置（离线可用），图片占位图不再依赖外部图床；
 🔧2.清理前端重复代码：移除 escapeHtml / formatLogTimestamp / exportKeywords / refreshQRCode 的 5 段重复实现，统一保留生效定义；
 🧪3.新增前端冒烟测试（登录页、仪表盘图表渲染、用户管理、账号管理、未登录跳转）；

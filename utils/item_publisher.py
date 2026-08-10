@@ -9,13 +9,14 @@ import aiohttp
 from PIL import Image
 from loguru import logger
 
+from utils.taobao_keys import get_h5_app_key
 from utils.xianyu_utils import generate_sign, trans_cookies
 
 
 class ItemPublisher:
-    """闲鱼商品发布服务。"""
+    """发布商品模块"""
 
-    APP_KEY = "34839810"
+    APP_KEY = get_h5_app_key()
     BASE_REFERER = "https://www.goofish.com/"
     BASE_ORIGIN = "https://www.goofish.com"
     USER_AGENT = (

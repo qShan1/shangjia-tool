@@ -114,6 +114,10 @@ API_ENDPOINTS = config.get('API_ENDPOINTS', {})
 DEFAULT_HEADERS = config.get('DEFAULT_HEADERS', {})
 WEBSOCKET_HEADERS = config.get('WEBSOCKET_HEADERS', {})
 APP_CONFIG = config.get('APP_CONFIG', {})
+# app_key 支持环境变量覆盖（TAOBAO_APP_KEY），优先级高于 global_config.yml
+_env_app_key = os.environ.get("TAOBAO_APP_KEY", "").strip()
+if _env_app_key:
+    APP_CONFIG["app_key"] = _env_app_key
 AUTO_REPLY = config.get('AUTO_REPLY', {
     'enabled': True,
     'default_message': '亲爱的"{send_user_name}" 老板你好！所有宝贝都可以拍，秒发货的哈~不满意的话可以直接申请退款哈~',

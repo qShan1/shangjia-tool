@@ -16,9 +16,10 @@ from typing import Any, Dict, Tuple
 
 import aiohttp
 from loguru import logger
+from utils.taobao_keys import get_h5_app_key
 
 
-APP_KEY = "34839810"
+APP_KEY = get_h5_app_key()
 RED_FLOWER_API_URL = "https://h5api.m.goofish.com/h5/mtop.taobao.idlemessage.red.flower/1.0/"
 RED_FLOWER_API_NAME = "mtop.taobao.idlemessage.red.flower"
 

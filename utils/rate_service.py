@@ -16,9 +16,10 @@ from typing import Any, Dict, Tuple
 
 import aiohttp
 from loguru import logger
+from utils.taobao_keys import get_h5_app_key
 
 
-APP_KEY = "34839810"
+APP_KEY = get_h5_app_key()
 RATE_API_URL = "https://h5api.m.goofish.com/h5/mtop.taobao.idle.rate.create/4.0/"
 RATE_API_NAME = "mtop.taobao.idle.rate.create"
 MERCHANT_RATE_LIST_API_URL = "https://h5api.m.goofish.com/h5/mtop.taobao.idle.merchant.rate.list/1.0/"

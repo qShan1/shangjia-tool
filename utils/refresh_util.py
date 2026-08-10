@@ -14,6 +14,7 @@ import asyncio
 
 import time
 import random
+from utils.taobao_keys import get_h5_app_key, get_idle_app_key
 from loguru import logger
 from DrissionPage import Chromium, ChromiumOptions
 
@@ -1844,7 +1845,7 @@ class XianyuApis:
             
         params = {
             'jsv': '2.7.2',
-            'appKey': '34839810',
+            'appKey': get_h5_app_key(),
             't': str(int(time.time()) * 1000),
             'sign': '',
             'v': '1.0',
@@ -1856,7 +1857,7 @@ class XianyuApis:
             'sessionOption': 'AutoLoginOnly',
             'spm_cnt': 'a21ybx.im.0.0',
         }
-        data_val = '{"appKey":"444e9908a51d1cb236a27862abc769c9","deviceId":"' + device_id + '"}'
+        data_val = '{"appKey":"' + get_idle_app_key() + '","deviceId":"' + device_id + '"}'
         data = {
             'data': data_val,
         }
@@ -1913,7 +1914,7 @@ class XianyuApis:
             
         params = {
             'jsv': '2.7.2',
-            'appKey': '34839810',
+            'appKey': get_h5_app_key(),
             't': str(int(time.time()) * 1000),
             'sign': '',
             'v': '1.0',
@@ -2055,7 +2056,7 @@ def generate_device_id(user_id: str) -> str:
 
 def generate_sign(t: str, token: str, data: str) -> str:
     """生成签名"""
-    app_key = "34839810"
+    app_key = get_h5_app_key()
     msg = f"{token}&{t}&{app_key}&{data}"
     
     # 使用MD5生成签名
