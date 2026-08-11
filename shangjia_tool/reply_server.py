@@ -1271,6 +1271,26 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+# GZip 压缩静态资源与 JSON 响应（app.js ~1MB，压缩后大幅减小传输体积）。
+# 注意：不压缩 text/event-stream（SSE），避免实时订单/聊天流被中间件缓冲破坏。
+from starlette.middleware.gzip import GZipMiddleware
+
+class SafeGZipMiddleware(GZipMiddleware):
+    gzip_compress_types = [
+        "text/plain",
+        "text/html",
+        "text/css",
+        "text/xml",
+        "application/json",
+        "application/javascript",
+        "text/javascript",
+        "application/xml",
+        "image/svg+xml",
+        "application/x-javascript",
+    ]
+
+app.add_middleware(SafeGZipMiddleware, minimum_size=500)
+
 # 注册刮刮乐远程控制路由
 if CAPTCHA_ROUTER_AVAILABLE:
     app.include_router(captcha_router)
@@ -12963,6 +12983,83 @@ async def upload_database_backup(admin_user: Dict[str, Any] = Depends(require_ad
             os.remove(temp_file_path)
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get('/admin/uploads')
+def list_upload_files(admin_user: Dict[str, Any] = Depends(require_admin)):
+    """列出服务器上的上传文件（管理员专用）"""
+    import os
+    from datetime import datetime
+
+    try:
+        log_with_user('info', "查询上传文件列表", admin_user)
+
+        upload_dir = os.path.abspath("static/uploads/images")
+        if not os.path.exists(upload_dir):
+            logger.warning("上传目录不存在")
+            return {"success": True, "files": [], "total": 0}
+
+        files_info = []
+        for filename in os.listdir(upload_dir):
+            file_path = os.path.join(upload_dir, filename)
+            if not os.path.isfile(file_path):
+                continue
+            try:
+                stat_info = os.stat(file_path)
+                files_info.append({
+                    "name": filename,
+                    "size": stat_info.st_size,
+                    "size_mb": round(stat_info.st_size / (1024 * 1024), 2),
+                    "modified_at": datetime.fromtimestamp(stat_info.st_mtime).isoformat(),
+                    "modified_ts": stat_info.st_mtime,
+                    "url": f"/static/uploads/images/{filename}"
+                })
+            except OSError as e:
+                logger.warning(f"读取上传文件信息失败 {file_path}: {e}")
+
+        files_info.sort(key=lambda item: item.get("modified_ts", 0), reverse=True)
+
+        logger.info(f"返回上传文件列表，共 {len(files_info)} 个文件")
+        return {"success": True, "files": files_info, "total": len(files_info)}
+
+    except Exception as e:
+        logger.error(f"获取上传文件列表失败: {str(e)}")
+        log_with_user('error', f"获取上传文件列表失败: {str(e)}", admin_user)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete('/admin/uploads/{filename}')
+def delete_upload_file(filename: str, admin_user: Dict[str, Any] = Depends(require_admin)):
+    """删除指定的上传文件（管理员专用）"""
+    import os
+
+    try:
+        if not filename:
+            raise HTTPException(status_code=400, detail="缺少文件名参数")
+
+        safe_name = os.path.basename(filename)
+        upload_dir = os.path.abspath("static/uploads/images")
+        target_path = os.path.abspath(os.path.join(upload_dir, safe_name))
+
+        # 防止目录遍历
+        if not target_path.startswith(upload_dir):
+            log_with_user('warning', f"尝试删除非法文件: {filename}", admin_user)
+            raise HTTPException(status_code=400, detail="非法的文件路径")
+
+        if not os.path.exists(target_path):
+            log_with_user('warning', f"上传文件不存在: {filename}", admin_user)
+            raise HTTPException(status_code=404, detail="文件不存在")
+
+        os.remove(target_path)
+        log_with_user('info', f"删除上传文件: {safe_name}", admin_user)
+
+        return {"success": True, "message": f"文件 {safe_name} 已删除"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_with_user('error', f"删除上传文件失败: {str(e)}", admin_user)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get('/admin/backup/list')
 def list_backup_files(admin_user: Dict[str, Any] = Depends(require_admin)):
     """列出服务器上的备份文件（管理员专用）"""
@@ -13002,6 +13099,92 @@ def list_backup_files(admin_user: Dict[str, Any] = Depends(require_admin)):
 
     except Exception as e:
         log_with_user('error', f"查询备份文件列表失败: {str(e)}", admin_user)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get('/admin/backup/download-file')
+def download_backup_file(file: str, admin_user: Dict[str, Any] = Depends(require_admin)):
+    """下载指定的服务器端备份文件（管理员专用）"""
+    import os
+    from fastapi.responses import StreamingResponse
+
+    try:
+        if not file:
+            raise HTTPException(status_code=400, detail="缺少文件参数")
+
+        safe_name = os.path.basename(file)
+        backup_dir = os.path.abspath("data")
+        target_path = os.path.abspath(os.path.join(backup_dir, safe_name))
+
+        # 防止目录遍历
+        if not target_path.startswith(backup_dir):
+            log_with_user('warning', f"尝试访问非法的备份文件: {file}", admin_user)
+            raise HTTPException(status_code=400, detail="非法的备份文件路径")
+
+        if not os.path.exists(target_path):
+            log_with_user('warning', f"备份文件不存在: {file}", admin_user)
+            raise HTTPException(status_code=404, detail="备份文件不存在")
+
+        log_with_user('info', f"下载备份文件: {safe_name}", admin_user)
+
+        def iter_file(path: str):
+            file_handle = open(path, 'rb')
+            try:
+                while True:
+                    chunk = file_handle.read(8192)
+                    if not chunk:
+                        break
+                    yield chunk
+            finally:
+                file_handle.close()
+
+        headers = {
+            "Content-Disposition": f'attachment; filename="{safe_name}"'
+        }
+        return StreamingResponse(
+            iter_file(target_path),
+            media_type='application/octet-stream',
+            headers=headers
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_with_user('error', f"下载备份文件失败: {str(e)}", admin_user)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete('/admin/backup/{filename}')
+def delete_backup_file(filename: str, admin_user: Dict[str, Any] = Depends(require_admin)):
+    """删除指定的服务器端备份文件（管理员专用）"""
+    import os
+
+    try:
+        if not filename:
+            raise HTTPException(status_code=400, detail="缺少文件名参数")
+
+        safe_name = os.path.basename(filename)
+        backup_dir = os.path.abspath("data")
+        target_path = os.path.abspath(os.path.join(backup_dir, safe_name))
+
+        # 防止目录遍历
+        if not target_path.startswith(backup_dir):
+            log_with_user('warning', f"尝试删除非法的备份文件: {filename}", admin_user)
+            raise HTTPException(status_code=400, detail="非法的备份文件路径")
+
+        if not os.path.exists(target_path):
+            log_with_user('warning', f"备份文件不存在: {filename}", admin_user)
+            raise HTTPException(status_code=404, detail="备份文件不存在")
+
+        os.remove(target_path)
+        log_with_user('info', f"删除备份文件: {safe_name}", admin_user)
+
+        return {"success": True, "message": f"备份文件 {safe_name} 已删除"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_with_user('error', f"删除备份文件失败: {str(e)}", admin_user)
         raise HTTPException(status_code=500, detail=str(e))
 
 

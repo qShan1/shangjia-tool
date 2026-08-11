@@ -272,8 +272,28 @@ def _port_owner_pid():
     return None
 
 
+def clean_stale_services():
+    """清除上一次会话残留的服务进程。
+
+    旧版退出不干净会让 ShangjiaService.exe 长期存活并独占 8090 端口；再次启动时启动器
+    检测到端口已通就不起新服务，而旧实例所属 PyInstaller onefile 的临时解压目录(_MEI)
+    被系统清理后，其 index.html 静态资源会消失，界面报 'No front-end found'。单实例
+    应用同一时间只应有一个服务，启动前统一清扫是安全的。
+    """
+    try:
+        subprocess.run(
+            ["taskkill", "/IM", "ShangjiaService.exe", "/T", "/F"],
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            capture_output=True,
+            timeout=15,
+        )
+    except Exception:
+        pass
+    time.sleep(0.5)
+
+
 def stop_service():
-    """Stop the service and guarantee the HTTP port is actually released."""
+    """Stop the service and guarantee no ShangjiaService.exe remains or port is held."""
     global _SERVICE_PROCESS
     process = _SERVICE_PROCESS
     _SERVICE_PROCESS = None
@@ -302,14 +322,23 @@ def stop_service():
         except Exception:
             pass
 
-    # Confirm the endpoint is actually down before returning.
-    deadline = time.time() + 20
+    # PyInstaller onefile 的父引导进程可能先于 Python 子进程退出，导致上面登记的
+    # pid 失效，残余服务仍挂在后台。这里统一清理本工具的全部服务进程（单实例应用，
+    # 同一时间只应存在一个 ShangjiaService.exe，退出时清扫是安全的）。
+    try:
+        subprocess.run(
+            ["taskkill", "/IM", "ShangjiaService.exe", "/T", "/F"],
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            capture_output=True,
+            timeout=15,
+        )
+    except Exception:
+        pass
+
+    # 无论端口是否健康，都尝试杀掉占用端口的进程，避免卡死的孤儿进程残留。
+    deadline = time.time() + 10
     while time.time() < deadline and healthy():
         time.sleep(0.5)
-    if not healthy():
-        return
-
-    # Port still busy after our own process is gone: force-stop whatever holds it.
     owner = _port_owner_pid()
     if owner is not None:
         try:
@@ -321,8 +350,8 @@ def stop_service():
             )
         except Exception:
             pass
-    with desktop_log_path().open("a", encoding="utf-8") as output:
-        output.write(f"Warning: port {PORT} still occupied after stop (pid={owner})\n")
+        with desktop_log_path().open("a", encoding="utf-8") as output:
+            output.write(f"Service stopped; force-killed leftover port owner (pid={owner})\n")
 
 
 def request_exit(window=None):
@@ -331,7 +360,9 @@ def request_exit(window=None):
     _EXIT_REQUESTED = True
     if _TRAY_ICON is not None:
         try:
-            _TRAY_ICON.stop()
+            # pystray 不允许在图标自身的菜单回调线程里直接 stop()（会阻塞），
+            # 放到独立线程执行，避免“退出”流程卡死导致服务残留。
+            threading.Thread(target=_TRAY_ICON.stop, name="shangjia-tray-stop", daemon=True).start()
         except Exception:
             pass
     if window is not None:
@@ -339,6 +370,9 @@ def request_exit(window=None):
             window.destroy()
         except Exception:
             pass
+    # 直接结束后台服务，不再依赖 webview.start() 返回后的 finally，
+    # 确保点“退出”立即清掉服务进程并释放端口。
+    stop_service()
 
 
 def _start_tray(window):
@@ -443,6 +477,10 @@ def main():
             time.sleep(0.75)
         show_info("上架工具已在启动中，请稍候再试")
         return
+    # 兜底：无论主流程走哪条路径退出（含异常），都确保后台服务被清理。
+    atexit.register(stop_service)
+    # 清掉上次会话残留的服务进程，避免其占用端口/静态资源导致二次启动报错。
+    clean_stale_services()
     migrate_runtime_data()
     env = os.environ.copy()
     env["APP_DATA_DIR"] = str(DATA_ROOT)
@@ -500,7 +538,12 @@ def main():
         # 最小化按钮 → 普通任务栏最小化（不进入托盘）。仅标题栏 X 进入托盘后台。
         global _WINDOW
         _WINDOW = window
-        webview.start()
+        # private_mode=False + storage_path：把 localStorage 持久化到磁盘，
+        # 使“记住我/自动登录”的 token 与界面偏好（主题、折叠状态等）跨重启保留。
+        webview.start(
+            private_mode=False,
+            storage_path=str(DATA_ROOT / "webview"),
+        )
     except ImportError:
         webbrowser.open(f"http://127.0.0.1:{PORT}/admin")
     finally:

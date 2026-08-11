@@ -1681,6 +1681,82 @@ html.has-custom-background body {
   background: var(--custom-background-image) center / cover no-repeat fixed !important;
 }
 
+/* ---------- 主内容区透明：让底层背景（光场/自定义背景图）透过玻璃折射 ----------
+   此前 .main-content 使用不透明 --ui-canvas/--bg-color，导致：
+     1) 液态玻璃主题看不到背景光场（拟态失效）
+     2) 设置-界面背景颜色/自定义背景图被遮盖，修改“无效”
+   这里强制透明，玻璃模糊由 .sidebar/.content-header/.card 等表面提供。 */
+.main-content,
+[data-theme="dark"] .main-content {
+  background: transparent !important;
+}
+
+/* ---------- 左侧栏：展开收起 / 激活态 / 图标动效 ---------- */
+.sidebar,
+.main-content {
+  will-change: width, margin-left;
+}
+
+.sidebar .nav-link {
+  position: relative;
+  overflow: hidden;
+  transition: background-color var(--lg-dur) ease, border-color var(--lg-dur) ease,
+              color var(--lg-dur) ease, box-shadow var(--lg-dur) ease,
+              transform var(--lg-dur-spring) var(--lg-spring) !important;
+}
+
+.sidebar .nav-link i {
+  transition: transform var(--lg-dur-spring) var(--lg-spring), color 200ms ease;
+  will-change: transform;
+}
+
+.sidebar .nav-link:hover {
+  transform: translateX(2px);
+}
+
+.sidebar .nav-link:hover i,
+.sidebar .nav-link.active i {
+  transform: translateX(1px) scale(1.1);
+  color: var(--primary-color);
+}
+
+.sidebar .nav-link.active {
+  animation: lg-nav-settle var(--lg-dur-spring) var(--lg-spring) both;
+}
+
+/* 激活态左侧强调条：轻弹入场 */
+.sidebar .nav-link.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--primary-color);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--primary-color) 55%, transparent);
+  animation: lg-nav-indicator 260ms var(--lg-ease-out) both;
+}
+
+@keyframes lg-nav-indicator {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+@keyframes lg-nav-settle {
+  from { transform: scale(0.975); }
+  to   { transform: scale(1); }
+}
+
+/* 折叠按钮箭头：折叠时旋转 180° 指向右侧 */
+.sidebar .sidebar-collapse-btn i {
+  transition: transform var(--lg-dur-spring) var(--lg-spring);
+}
+
+.sidebar.collapsed .sidebar-collapse-btn i {
+  transform: rotate(180deg);
+}
+
 /* ---------- 侧边栏：更透的玻璃，顶部边缘高光模拟厚度 ---------- */
 .sidebar {
   background: linear-gradient(180deg, rgba(252, 253, 254, 0.68), rgba(238, 243, 246, 0.52)) !important;

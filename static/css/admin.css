@@ -239,3 +239,37 @@
 .stats-card-warning {
     background: linear-gradient(135deg, var(--warning-color) 0%, #d97706 100%);
 }
+
+/* 上传文件管理样式 */
+.upload-file-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.upload-file-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.upload-file-thumb {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background-color: rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.upload-file-thumb img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: cover;
+}
+
+/* 备份导出矩阵按钮 */
+#tableExportMatrix .btn {
+    margin-bottom: 0.35rem;
+}

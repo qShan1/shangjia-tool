@@ -21,6 +21,8 @@ let aboutRuntimeRetryTimer = null;
 let lastDashboardRuntimeRetryAt = 0;
 let lastAboutRuntimeRetryAt = 0;
 const DASHBOARD_ANNOUNCEMENT_DISMISS_PREFIX = 'dashboard_announcement_dismissed_';
+// 公告关闭后隐藏时长(毫秒)：24小时后自动重新显示，避免“关了再也看不到”
+const DASHBOARD_ANNOUNCEMENT_DISMISS_TTL_MS = 24 * 60 * 60 * 1000;
 let dashboardAnnouncementState = {
     current: null,
     history: []
@@ -660,13 +662,25 @@ function isDashboardAnnouncementDismissed(announcement) {
     if (!announcementId) {
         return false;
     }
-    return localStorage.getItem(getDashboardAnnouncementDismissKey(announcementId)) === 'true';
+    const stored = localStorage.getItem(getDashboardAnnouncementDismissKey(announcementId));
+    if (!stored) {
+        return false;
+    }
+    // 兼容旧值('true')：视为已隐藏；新值记录关闭时间，超过24小时自动重新显示
+    if (stored === 'true') {
+        return true;
+    }
+    let dismissedAt = Number(stored);
+    if (!Number.isFinite(dismissedAt) || dismissedAt <= 0) {
+        return false;
+    }
+    return (Date.now() - dismissedAt) < DASHBOARD_ANNOUNCEMENT_DISMISS_TTL_MS;
 }
 
 function dismissDashboardAnnouncement(announcement) {
     const announcementId = String(announcement?.id || '').trim();
     if (announcementId) {
-        localStorage.setItem(getDashboardAnnouncementDismissKey(announcementId), 'true');
+        localStorage.setItem(getDashboardAnnouncementDismissKey(announcementId), String(Date.now()));
     }
     renderDashboardAnnouncement();
 }
@@ -19392,6 +19406,17 @@ async function loadDataManagement() {
     if (tableSelect) {
         tableSelect.value = '';
     }
+
+    // 渲染备份导出矩阵
+    renderTableExportMatrix();
+
+    // 重置上传文件管理区域
+    if (document.getElementById('uploadFileGrid')) {
+        document.getElementById('uploadFileGrid').style.display = 'none';
+        document.getElementById('uploadFileGrid').innerHTML = '';
+        document.getElementById('uploadFileEmpty')?.classList.remove('d-none');
+        document.getElementById('uploadFileLoading')?.classList.add('d-none');
+    }
 }
 
 // 显示未选择表格状态
@@ -20307,6 +20332,439 @@ async function downloadLogFile(fileName, buttonEl) {
             buttonEl.disabled = false;
             buttonEl.innerHTML = originalHtml || '<i class="bi bi-download me-1"></i>下载';
         }
+    }
+}
+
+// ================================
+// 备份导出矩阵 & 上传文件管理
+// ================================
+
+// 备份导出矩阵的表格清单（与后端 allowed_tables 保持一致）
+const backupExportTables = [
+    ['users', '用户表'],
+    ['cookies', 'Cookie账号表'],
+    ['cookie_status', 'Cookie状态表'],
+    ['keywords', '关键字表'],
+    ['default_replies', '默认回复表'],
+    ['default_reply_records', '默认回复记录表'],
+    ['ai_reply_settings', 'AI回复设置表'],
+    ['ai_conversations', 'AI对话历史表'],
+    ['ai_item_cache', 'AI商品信息缓存表'],
+    ['item_info', '商品信息表'],
+    ['message_notifications', '消息通知表'],
+    ['cards', '卡券表'],
+    ['delivery_rules', '发货规则表'],
+    ['notification_channels', '通知渠道表'],
+    ['user_settings', '用户设置表'],
+    ['system_settings', '系统设置表'],
+    ['email_verifications', '邮箱验证表'],
+    ['captcha_codes', '验证码表'],
+    ['orders', '订单表'],
+    ['item_replay', '指定商品回复表'],
+    ['risk_control_logs', '风控日志表']
+];
+
+// 渲染备份导出矩阵
+function renderTableExportMatrix() {
+    const container = document.getElementById('tableExportMatrix');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    backupExportTables.forEach(([tableName, tableDesc]) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-sm btn-outline-primary';
+        button.innerHTML = `<i class="bi bi-file-earmark-excel me-1"></i>${tableDesc}`;
+        button.title = `导出 ${tableName} 表数据为 Excel`;
+        button.onclick = () => exportTableExcel(tableName, tableDesc, button);
+        container.appendChild(button);
+    });
+}
+
+// 导出指定数据表为 Excel
+async function exportTableExcel(tableName, tableDesc, buttonEl) {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+        showToast('请先登录后再导出数据', 'warning');
+        return;
+    }
+
+    let originalHtml = '';
+    if (buttonEl) {
+        originalHtml = buttonEl.innerHTML;
+        buttonEl.disabled = true;
+        buttonEl.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>导出中...';
+    }
+
+    try {
+        const response = await fetch(`${apiBase}/admin/data/${tableName}/export`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            const message = await response.text();
+            showToast(`导出失败: ${message || response.status}`, 'danger');
+            return;
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `${tableName}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        window.URL.revokeObjectURL(url);
+
+        showToast(`已导出${tableDesc}数据`, 'success');
+    } catch (error) {
+        console.error('导出表数据失败:', error);
+        showToast('导出表数据失败，请稍后重试', 'danger');
+    } finally {
+        if (buttonEl) {
+            buttonEl.disabled = false;
+            buttonEl.innerHTML = originalHtml || '<i class="bi bi-file-earmark-excel me-1"></i>导出';
+        }
+    }
+}
+
+// 下载数据库完整备份
+async function downloadDatabaseBackup() {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+        showToast('请先登录后再下载备份', 'warning');
+        return;
+    }
+
+    showToast('正在生成数据库备份...', 'info');
+
+    try {
+        const response = await fetch(`${apiBase}/admin/backup/download`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            const message = await response.text();
+            showToast(`备份下载失败: ${message || response.status}`, 'danger');
+            return;
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `xianyu_backup_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '_')}.db`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        window.URL.revokeObjectURL(url);
+
+        showToast('数据库备份下载成功', 'success');
+    } catch (error) {
+        console.error('下载数据库备份失败:', error);
+        showToast('下载数据库备份失败，请稍后重试', 'danger');
+    }
+}
+
+// 加载服务器端备份列表
+async function loadServerBackupList() {
+    const area = document.getElementById('serverBackupArea');
+    const loading = document.getElementById('serverBackupLoading');
+    const empty = document.getElementById('serverBackupEmpty');
+    const table = document.getElementById('serverBackupTable');
+    const tableBody = document.getElementById('serverBackupTableBody');
+
+    if (!area || !loading || !empty || !table || !tableBody) return;
+
+    area.style.display = 'block';
+    loading.classList.remove('d-none');
+    empty.classList.add('d-none');
+    table.style.display = 'none';
+    tableBody.innerHTML = '';
+
+    const token = localStorage.getItem('auth_token');
+
+    try {
+        const response = await fetch(`${apiBase}/admin/backup/list`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        loading.classList.add('d-none');
+
+        if (!response.ok) {
+            const message = await response.text();
+            showToast(`加载备份列表失败: ${message || response.status}`, 'danger');
+            empty.classList.remove('d-none');
+            empty.textContent = '加载备份列表失败';
+            return;
+        }
+
+        const data = await response.json();
+        const backups = data.backups || [];
+
+        if (backups.length === 0) {
+            empty.classList.remove('d-none');
+            empty.textContent = '暂无备份文件';
+            return;
+        }
+
+        backups.forEach(backup => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="text-break">${escapeHtml(backup.filename || '-')}</td>
+                <td>${typeof backup.size_mb === 'number' ? backup.size_mb.toFixed(2) + ' MB' : '-'}</td>
+                <td>${backup.created_time || '-'}</td>
+            `;
+
+            const actionTd = document.createElement('td');
+            actionTd.className = 'text-nowrap';
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.type = 'button';
+            downloadBtn.className = 'btn btn-sm btn-outline-primary me-1';
+            downloadBtn.innerHTML = '<i class="bi bi-download"></i> 下载';
+            downloadBtn.onclick = () => downloadServerBackup(backup.filename);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'btn btn-sm btn-outline-danger';
+            deleteBtn.innerHTML = '<i class="bi bi-trash"></i> 删除';
+            deleteBtn.onclick = () => deleteServerBackup(backup.filename, deleteBtn);
+
+            actionTd.appendChild(downloadBtn);
+            actionTd.appendChild(deleteBtn);
+            tr.appendChild(actionTd);
+            tableBody.appendChild(tr);
+        });
+
+        table.style.display = 'table';
+    } catch (error) {
+        console.error('加载备份列表失败:', error);
+        loading.classList.add('d-none');
+        empty.classList.remove('d-none');
+        empty.textContent = '加载备份列表失败';
+    }
+}
+
+async function downloadServerBackup(filename) {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+
+    try {
+        const response = await fetch(`${apiBase}/admin/backup/download-file?file=${encodeURIComponent(filename)}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            showToast(`下载失败: ${response.status}`, 'danger');
+            return;
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        window.URL.revokeObjectURL(url);
+
+        showToast('备份文件下载成功', 'success');
+    } catch (error) {
+        console.error('下载备份文件失败:', error);
+        showToast('下载备份文件失败，请稍后重试', 'danger');
+    }
+}
+
+async function deleteServerBackup(filename, buttonEl) {
+    if (!filename) return;
+
+    if (!confirm(`确定要删除服务器端备份「${filename}」吗？此操作不可恢复。`)) return;
+
+    const token = localStorage.getItem('auth_token');
+
+    try {
+        const response = await fetch(`${apiBase}/admin/backup/${encodeURIComponent(filename)}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            const message = await response.text();
+            showToast(`删除失败: ${message || response.status}`, 'danger');
+            return;
+        }
+
+        showToast('备份文件已删除', 'success');
+        loadServerBackupList();
+    } catch (error) {
+        console.error('删除备份文件失败:', error);
+        showToast('删除备份文件失败，请稍后重试', 'danger');
+    }
+}
+
+// 加载上传文件列表
+async function loadUploadFiles() {
+    const loading = document.getElementById('uploadFileLoading');
+    const empty = document.getElementById('uploadFileEmpty');
+    const grid = document.getElementById('uploadFileGrid');
+
+    if (!loading || !empty || !grid) return;
+
+    loading.classList.remove('d-none');
+    empty.classList.add('d-none');
+    grid.style.display = 'none';
+    grid.innerHTML = '';
+
+    const token = localStorage.getItem('auth_token');
+
+    try {
+        const response = await fetch(`${apiBase}/admin/uploads`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        loading.classList.add('d-none');
+
+        if (!response.ok) {
+            const message = await response.text();
+            showToast(`加载上传文件失败: ${message || response.status}`, 'danger');
+            empty.classList.remove('d-none');
+            empty.textContent = '加载上传文件失败';
+            return;
+        }
+
+        const data = await response.json();
+        const files = data.files || [];
+
+        if (files.length === 0) {
+            empty.classList.remove('d-none');
+            return;
+        }
+
+        files.forEach(file => {
+            const col = document.createElement('div');
+            col.className = 'col-6 col-sm-4 col-md-3 col-xl-2';
+
+            const card = document.createElement('div');
+            card.className = 'card h-100 upload-file-card';
+
+            const imgWrap = document.createElement('div');
+            imgWrap.className = 'upload-file-thumb';
+            imgWrap.innerHTML = `<img src="${file.url}" alt="${escapeHtml(file.name)}" loading="lazy">`;
+
+            const body = document.createElement('div');
+            body.className = 'card-body p-2';
+
+            const nameEl = document.createElement('div');
+            nameEl.className = 'text-truncate small';
+            nameEl.title = file.name;
+            nameEl.textContent = file.name;
+
+            const metaEl = document.createElement('div');
+            metaEl.className = 'small text-muted';
+            metaEl.textContent = formatFileSize(file.size);
+
+            const actionEl = document.createElement('div');
+            actionEl.className = 'd-flex gap-1 mt-1';
+
+            const previewBtn = document.createElement('button');
+            previewBtn.type = 'button';
+            previewBtn.className = 'btn btn-sm btn-outline-primary flex-fill';
+            previewBtn.innerHTML = '<i class="bi bi-eye"></i>';
+            previewBtn.title = '预览';
+            previewBtn.onclick = () => window.open(file.url, '_blank');
+
+            const copyBtn = document.createElement('button');
+            copyBtn.type = 'button';
+            copyBtn.className = 'btn btn-sm btn-outline-secondary flex-fill';
+            copyBtn.innerHTML = '<i class="bi bi-link-45deg"></i>';
+            copyBtn.title = '复制链接';
+            copyBtn.onclick = () => copyUploadUrl(file.url);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'btn btn-sm btn-outline-danger flex-fill';
+            deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+            deleteBtn.title = '删除';
+            deleteBtn.onclick = () => deleteUploadFile(file.name, deleteBtn);
+
+            actionEl.appendChild(previewBtn);
+            actionEl.appendChild(copyBtn);
+            actionEl.appendChild(deleteBtn);
+
+            body.appendChild(nameEl);
+            body.appendChild(metaEl);
+            body.appendChild(actionEl);
+
+            card.appendChild(imgWrap);
+            card.appendChild(body);
+            col.appendChild(card);
+            grid.appendChild(col);
+        });
+
+        grid.style.display = 'flex';
+    } catch (error) {
+        console.error('加载上传文件失败:', error);
+        loading.classList.add('d-none');
+        empty.classList.remove('d-none');
+        empty.textContent = '加载上传文件失败';
+    }
+}
+
+function copyUploadUrl(url) {
+    const fullUrl = `${window.location.origin}${url}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(fullUrl).then(() => {
+            showToast('链接已复制', 'success');
+        }).catch(() => {
+            showToast('复制链接失败，请手动复制', 'warning');
+        });
+    } else {
+        showToast(`链接: ${fullUrl}`, 'info');
+    }
+}
+
+async function deleteUploadFile(fileName, buttonEl) {
+    if (!fileName) return;
+
+    if (!confirm(`确定要删除文件「${fileName}」吗？此操作不可恢复。`)) return;
+
+    const token = localStorage.getItem('auth_token');
+
+    try {
+        const response = await fetch(`${apiBase}/admin/uploads/${encodeURIComponent(fileName)}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            const message = await response.text();
+            showToast(`删除失败: ${message || response.status}`, 'danger');
+            return;
+        }
+
+        showToast('文件已删除', 'success');
+        loadUploadFiles();
+    } catch (error) {
+        console.error('删除上传文件失败:', error);
+        showToast('删除上传文件失败，请稍后重试', 'danger');
     }
 }
 

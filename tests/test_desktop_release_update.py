@@ -102,6 +102,7 @@ def test_stop_service_terminates_only_launcher_child():
 
     class Process:
         def __init__(self):
+            self.pid = 4242
             self.terminated = False
             self.waits = []
 
@@ -116,11 +117,15 @@ def test_stop_service_terminates_only_launcher_child():
 
     process = Process()
     launcher._SERVICE_PROCESS = process
-    launcher.stop_service()
+    with patch.object(launcher, "healthy", return_value=False), \
+         patch.object(launcher, "_port_owner_pid", return_value=None), \
+         patch.object(launcher.subprocess, "run") as run:
+        launcher.stop_service()
 
     assert process.terminated
     assert process.waits == [8]
     assert launcher._SERVICE_PROCESS is None
+    assert run.called
 
 
 def test_title_bar_close_allows_real_exit():
