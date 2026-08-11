@@ -115,7 +115,9 @@ class AISiteAuditService:
             "database_counts": self._database_snapshot(),
             "frontend": {
                 "index_bytes": (static_dir / "index.html").stat().st_size if (static_dir / "index.html").exists() else 0,
-                "app_js_bytes": (static_dir / "js" / "app.js").stat().st_size if (static_dir / "js" / "app.js").exists() else 0,
+                "app_js_bytes": sum(
+                    p.stat().st_size for p in (static_dir / "js").glob("app*.js")
+                ) if (static_dir / "js").exists() else 0,
             },
             "logs": self._log_snapshot(),
         }

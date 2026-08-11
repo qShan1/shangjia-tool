@@ -1581,22 +1581,25 @@ async def admin_page():
                 logger.warning(f"获取文件 {file_path} 修改时间失败: {e}")
         return default
     
-    app_js_path = os.path.join(static_dir, 'js', 'app.js')
+    app_js_dir = os.path.join(static_dir, 'js')
     app_css_path = os.path.join(static_dir, 'css', 'app.css')
     
-    js_version = get_file_version(app_js_path, '2.2.0')
+    js_version = get_file_version(os.path.join(app_js_dir, 'app.core.js'), '2.4.0')
     css_version = get_file_version(app_css_path, '1.0.0')
     
     try:
         with open(index_path, 'r', encoding='utf-8') as f:
             html_content = f.read()
             
-            # 替换 app.js 的版本号参数
-            js_pattern = r'/static/js/app\.js\?v=[^"\'\s>]+'
-            js_new_url = f'/static/js/app.js?v={js_version}'
-            if re.search(js_pattern, html_content):
-                html_content = re.sub(js_pattern, js_new_url, html_content)
-                logger.debug(f"已替换 app.js 版本号: {js_version}")
+            # 为所有 /static/js/app*.js 引用添加或更新版本号参数（按各自文件 mtime）
+            js_pattern = r'/static/js/app[\w.-]*\.js(?:\?v=[^"\'\s>]+)?'
+            def _replace_app_js_version(match):
+                file_url = match.group(0)
+                clean_url = file_url.split('?')[0]
+                fname = os.path.basename(clean_url)
+                ver = get_file_version(os.path.join(app_js_dir, fname), js_version)
+                return f'{clean_url}?v={ver}'
+            html_content = re.sub(js_pattern, _replace_app_js_version, html_content)
             
             # 为 app.css 添加或更新版本号参数
             css_pattern = r'/static/css/app\.css(\?v=[^"\'\s>]+)?'
