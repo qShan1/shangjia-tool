@@ -33,8 +33,11 @@
 - [x] 库存相关问题核对
 - [x] 修复前端冒烟测试空库失败
 - [x] UI 玻璃感/设置去重/销售额面板/滚轮/通知/公告 本轮修复
-- [ ] app.js（995KB 单文件）拆分：约 25 个功能分区，建议渐进式拆成多个全局 `<script>`（保持全局函数命名空间），避免一次大拆引入风险
+- [x] app.js（995KB）拆分为 11 个功能模块：app.core / dashboard / auto-reply / filter-blacklist / accounts / notify / delivery-theme / items / logs / orders / misc（`103e95f`）
+  - index.html 依次加载 11 个 `<script>`（core 最先）；服务端 `reply_server.py` 改为按各文件 mtime 动态打版本号；`ai_site_audit_service.py` 改为统计 `app*.js` 总大小
+  - 拆分依据：全局函数命名空间 + DOMContentLoaded 回调在 DOM 就绪后执行，运行时解析跨文件依赖；22 个菜单页 playwright 巡检零 JS 错误，全量测试 64 passed
 - [ ] WebView2 多进程 298MB：宿主代码不在本仓库（打包 exe 内），代码侧仅能通过减少 DOM/避免泄漏间接优化；如需 WebView2 级参数需在打包宿主传 `AdditionalBrowserArguments`
+- [ ] 新功能开发（待用户确认方向，见下）
 - [ ] 打包新 dist（用户指示本次不打包）
 
 ## 注意事项 / 教训
