@@ -666,9 +666,11 @@ function isDashboardAnnouncementDismissed(announcement) {
     if (!stored) {
         return false;
     }
-    // 兼容旧值('true')：视为已隐藏；新值记录关闭时间，超过24小时自动重新显示
+    // 兼容旧值('true')：旧版本为永久关闭标记，无时间信息。
+    // 迁移为"24小时前"（TTL 已过期），使公告重新可见，之后统一走 24h 限时逻辑。
     if (stored === 'true') {
-        return true;
+        localStorage.setItem(getDashboardAnnouncementDismissKey(announcementId), String(Date.now() - DASHBOARD_ANNOUNCEMENT_DISMISS_TTL_MS));
+        return false;
     }
     let dismissedAt = Number(stored);
     if (!Number.isFinite(dismissedAt) || dismissedAt <= 0) {
@@ -1947,6 +1949,23 @@ function toLocalDateString(date) {
     return `${y}-${m}-${d}`;
 }
 
+// hex 颜色转 rgba（chart.js 渐变/描边用，跟随液态玻璃预设主色）
+function hexToRgba(hex, alpha) {
+    let color = String(hex || '').trim();
+    if (!/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(color)) return `rgba(10, 124, 102, ${alpha})`;
+    if (color.length === 4) color = '#' + color[1] + color[1] + color[2] + color[2] + color[3] + color[3];
+    const num = parseInt(color.slice(1), 16);
+    const r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// 读取当前主题主色（--primary-color 或预设色）
+function getThemePrimaryColor() {
+    const rootStyle = getComputedStyle(document.documentElement);
+    const cssVar = rootStyle.getPropertyValue('--primary-color').trim();
+    return /^#[0-9a-fA-F]{6}$/.test(cssVar) ? cssVar : '#0a7c66';
+}
+
 // 加载销售额图表数据
 async function loadSalesChart(period) {
     showChartLoading();
@@ -2136,11 +2155,15 @@ function renderSalesChart(salesData, period) {
     const labels = salesData.map(item => item.date);
     const data = salesData.map(item => item.amount);
 
-    // 创建渐变填充
+    // 创建渐变填充（跟随液态玻璃预设主色）
+    const primary = getThemePrimaryColor();
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const axisTextColor = isDark ? 'rgba(235, 240, 245, 0.82)' : 'rgba(30, 41, 59, 0.78)';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.06)';
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, 'rgba(0, 123, 255, 0.3)');
-    gradient.addColorStop(0.5, 'rgba(0, 123, 255, 0.15)');
-    gradient.addColorStop(1, 'rgba(0, 123, 255, 0.02)');
+    gradient.addColorStop(0, hexToRgba(primary, 0.30));
+    gradient.addColorStop(0.5, hexToRgba(primary, 0.15));
+    gradient.addColorStop(1, hexToRgba(primary, 0.02));
 
     // 通过 Chart.js 注册表查找已存在的实例，避免变量作用域被遮蔽导致重建失败
     const existing = typeof Chart !== 'undefined' ? Chart.getChart(canvas) : null;
@@ -2149,9 +2172,29 @@ function renderSalesChart(salesData, period) {
         existing.data.labels = labels;
         existing.data.datasets[0].data = data;
         existing.data.datasets[0].backgroundColor = gradient;
+        existing.data.datasets[0].borderColor = primary;
+        existing.data.datasets[0].pointBackgroundColor = primary;
+        existing.data.datasets[0].pointHoverBackgroundColor = adjustBrightness(primary, -20);
 
         // 更新标题
         existing.options.plugins.title.text = getChartTitle(period);
+
+        // 同步轴文字/网格颜色（跟随深浅主题）
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const axisTextColor = isDark ? 'rgba(235, 240, 245, 0.82)' : 'rgba(30, 41, 59, 0.78)';
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.06)';
+        if (existing.options.plugins && existing.options.plugins.title) existing.options.plugins.title.color = axisTextColor;
+        if (existing.options.scales) {
+            if (existing.options.scales.x) {
+                existing.options.scales.x.ticks.color = axisTextColor;
+                if (existing.options.scales.x.title) existing.options.scales.x.title.color = axisTextColor;
+            }
+            if (existing.options.scales.y) {
+                existing.options.scales.y.ticks.color = axisTextColor;
+                existing.options.scales.y.grid.color = gridColor;
+                if (existing.options.scales.y.title) existing.options.scales.y.title.color = axisTextColor;
+            }
+        }
 
         // 平滑过渡更新
         existing.update('active');
@@ -2167,18 +2210,18 @@ function renderSalesChart(salesData, period) {
             datasets: [{
                 label: '销售额',
                 data: data,
-                borderColor: '#007bff',
+                borderColor: primary,
                 backgroundColor: gradient,
                 borderWidth: 3,
                 tension: 0.4,
                 cubicInterpolationMode: 'monotone',
                 fill: true,
-                pointBackgroundColor: '#007bff',
+                pointBackgroundColor: primary,
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2,
                 pointRadius: 5,
                 pointHoverRadius: 7,
-                pointHoverBackgroundColor: '#0056b3',
+                pointHoverBackgroundColor: adjustBrightness(primary, -20),
                 pointHoverBorderColor: '#fff',
                 pointHoverBorderWidth: 3
             }]
@@ -2220,7 +2263,7 @@ function renderSalesChart(salesData, period) {
                     backgroundColor: 'rgba(0, 0, 0, 0.8)',
                     titleColor: '#fff',
                     bodyColor: '#fff',
-                    borderColor: '#007bff',
+                    borderColor: primary,
                     borderWidth: 1,
                     padding: 12,
                     displayColors: true,
@@ -2233,6 +2276,7 @@ function renderSalesChart(salesData, period) {
                 title: {
                     display: true,
                     text: getChartTitle(period),
+                    color: axisTextColor,
                     font: {
                         size: 16,
                         weight: '600'
@@ -2248,6 +2292,7 @@ function renderSalesChart(salesData, period) {
                     title: {
                         display: true,
                         text: '日期',
+                        color: axisTextColor,
                         font: {
                             size: 12,
                             weight: '500'
@@ -2257,6 +2302,7 @@ function renderSalesChart(salesData, period) {
                         display: false
                     },
                     ticks: {
+                        color: axisTextColor,
                         font: {
                             size: 11
                         }
@@ -2267,6 +2313,7 @@ function renderSalesChart(salesData, period) {
                     title: {
                         display: true,
                         text: '销售额 (￥)',
+                        color: axisTextColor,
                         font: {
                             size: 12,
                             weight: '500'
@@ -2274,13 +2321,14 @@ function renderSalesChart(salesData, period) {
                     },
                     beginAtZero: true,
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.05)',
+                        color: gridColor,
                         drawBorder: false
                     },
                     ticks: {
                         callback: function(value) {
                             return '￥' + value;
                         },
+                        color: axisTextColor,
                         font: {
                             size: 11
                         }
@@ -25930,16 +25978,6 @@ async function initializeDesktopExperienceControls() {
                     </div>
                     <div class="col-lg-3"><small class="text-muted" id="desktopReleaseStatus">正在读取更新偏好...</small></div>
                 </div>
-                <hr>
-                <div class="row g-3 align-items-center">
-                    <div class="col-lg-5"><strong class="d-block mb-1">液态玻璃预设</strong><small class="text-muted">选择材质和主色，不影响业务数据。</small></div>
-                    <div class="col-lg-7 d-flex flex-wrap gap-2" id="liquidPresetGroup">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" data-liquid-preset="jade">玉石</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" data-liquid-preset="ocean">海蓝</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" data-liquid-preset="graphite">石墨</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" data-liquid-preset="rose">玫瑰</button>
-                    </div>
-                </div>
             </div>
         </section>
     `);
@@ -25968,11 +26006,6 @@ async function initializeDesktopExperienceControls() {
     });
     const activePreset = localStorage.getItem('liquid_glass_preset') || 'jade';
     applyLiquidPreset(activePreset, false);
-    host.querySelectorAll('[data-liquid-preset]').forEach(button => {
-        button.addEventListener('click', () => {
-            applyLiquidPreset(button.dataset.liquidPreset);
-        });
-    });
 }
 
 if (document.readyState === 'loading') {
@@ -26102,7 +26135,8 @@ function initUiMotion() {
         nestedObserver.observe(document.body, { childList: true, subtree: true });
     }
 
-    // 横向滚动容器：鼠标悬停时滚轮左右滑动（替代 shift+滚轮），仅当容器确实可横向滚动
+    // 横向滚动容器：仅当用户明确横向滚动意图（deltaX 主导或 Shift+滚轮）时
+    // 才左右滑动，普通纵向滚轮一律放行给页面，避免悬停表格时翻页被劫持。
     const handleHorizontalWheel = (e) => {
         const container = e.target && e.target.closest
             ? e.target.closest('.account-actions-toolbar, .table-responsive, [data-wheel-scroll-horizontal]')
@@ -26110,15 +26144,31 @@ function initUiMotion() {
         if (!container) return;
         const canScrollX = container.scrollWidth > container.clientWidth + 1;
         if (!canScrollX) return;
-        // 允许 shift+滚轮 的原生横向行为，避免重复处理
-        if (e.shiftKey) return;
-        const factor = e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? container.clientHeight : 1);
+        // 横向意图：deltaX 主导，或 Shift+滚轮的原生横向行为（不重复处理）
         if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
             container.scrollLeft += e.deltaX;
-        } else {
-            container.scrollLeft += e.deltaY * factor;
+            e.preventDefault();
+            return;
         }
-        e.preventDefault();
+        // 纵向滚轮：仅当容器自身可纵向滚动时滚动内部，否则完全放行页面滚动
+        const canScrollY = container.scrollHeight > container.clientHeight + 1;
+        if (canScrollY) {
+            container.scrollTop += e.deltaY;
+            e.preventDefault();
+            return;
+        }
+        // 页面已到滚动边界且容器可横向滚动：兜底转横向（保留旧行为但更克制）
+        if (e.deltaY !== 0 && Math.abs(e.deltaY) > 0 && Math.abs(e.deltaY) <= 120) {
+            const page = document.scrollingElement || document.documentElement;
+            const atTop = page.scrollTop <= 0;
+            const atBottom = page.scrollTop + page.clientHeight >= page.scrollHeight - 1;
+            const wouldScrollUp = e.deltaY < 0;
+            const wouldScrollDown = e.deltaY > 0;
+            if ((wouldScrollDown && atBottom) || (wouldScrollUp && atTop)) {
+                container.scrollLeft += e.deltaY;
+                e.preventDefault();
+            }
+        }
     };
     document.addEventListener('wheel', handleHorizontalWheel, { passive: false });
 
@@ -26133,7 +26183,10 @@ function initUiMotion() {
             records.forEach((r) => {
                 r.addedNodes.forEach((node) => {
                     if (node.nodeType === 1 && node.classList && node.classList.contains('toast')) {
-                        magicIn(node, 'puffIn', 0.4);
+                        // 自然弹入：右下角系统通知式上滑淡入，替代机械的缩放 puffIn
+                        node.classList.remove('magictime', 'swashIn', 'puffIn', 'fadeIn', 'slideDown', 'tinDownIn', 'fadeInLeft');
+                        void node.offsetWidth;
+                        node.classList.add('sg-toast-in');
                     }
                 });
             });

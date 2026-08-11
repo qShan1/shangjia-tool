@@ -611,6 +611,22 @@ html:has(body.modal-open) {
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
 }
 
+/* Toast 自然弹入（右下角通知）：自底部上滑 + 淡入，贴近系统通知而非缩放弹跳 */
+.toast.sg-toast-in {
+  animation: sg-toast-in 0.38s cubic-bezier(0.21, 0.9, 0.3, 1) both;
+}
+
+@keyframes sg-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .custom-background-preview {
   display: flex;
   align-items: center;
@@ -1660,18 +1676,54 @@ body.sidebar-collapsed .main-content {
 /* ---------- 背景：为玻璃提供可折射的柔和光场（滚动时轻微视差） ---------- */
 body {
   background:
-    radial-gradient(1100px 720px at 88% -12%, rgba(10, 124, 102, 0.13), transparent 62%),
-    radial-gradient(980px 680px at -8% 28%, rgba(59, 130, 246, 0.09), transparent 58%),
-    radial-gradient(900px 820px at 55% 118%, rgba(168, 85, 247, 0.07), transparent 60%),
+    radial-gradient(1100px 720px at 88% -12%, rgba(10, 124, 102, 0.16), transparent 62%),
+    radial-gradient(980px 680px at -8% 28%, rgba(59, 130, 246, 0.12), transparent 58%),
+    radial-gradient(900px 820px at 55% 118%, rgba(168, 85, 247, 0.09), transparent 60%),
+    radial-gradient(640px 460px at 30% 70%, rgba(255, 255, 255, 0.40), transparent 70%),
+    radial-gradient(520px 380px at 78% 45%, rgba(255, 255, 255, 0.28), transparent 70%),
+    var(--bg-color);
+  background-attachment: fixed;
+}
+
+:root[data-liquid-preset="ocean"] body {
+  background:
+    radial-gradient(1100px 720px at 88% -12%, rgba(22, 119, 184, 0.18), transparent 62%),
+    radial-gradient(980px 680px at -8% 28%, rgba(96, 165, 250, 0.14), transparent 58%),
+    radial-gradient(900px 820px at 55% 118%, rgba(14, 165, 233, 0.10), transparent 60%),
+    radial-gradient(640px 460px at 30% 70%, rgba(255, 255, 255, 0.40), transparent 70%),
+    radial-gradient(520px 380px at 78% 45%, rgba(255, 255, 255, 0.28), transparent 70%),
+    var(--bg-color);
+  background-attachment: fixed;
+}
+
+:root[data-liquid-preset="graphite"] body {
+  background:
+    radial-gradient(1100px 720px at 88% -12%, rgba(100, 116, 139, 0.18), transparent 62%),
+    radial-gradient(980px 680px at -8% 28%, rgba(148, 163, 184, 0.14), transparent 58%),
+    radial-gradient(900px 820px at 55% 118%, rgba(71, 85, 105, 0.10), transparent 60%),
+    radial-gradient(640px 460px at 30% 70%, rgba(255, 255, 255, 0.40), transparent 70%),
+    radial-gradient(520px 380px at 78% 45%, rgba(255, 255, 255, 0.28), transparent 70%),
+    var(--bg-color);
+  background-attachment: fixed;
+}
+
+:root[data-liquid-preset="rose"] body {
+  background:
+    radial-gradient(1100px 720px at 88% -12%, rgba(225, 29, 72, 0.16), transparent 62%),
+    radial-gradient(980px 680px at -8% 28%, rgba(244, 114, 182, 0.13), transparent 58%),
+    radial-gradient(900px 820px at 55% 118%, rgba(251, 113, 133, 0.09), transparent 60%),
+    radial-gradient(640px 460px at 30% 70%, rgba(255, 255, 255, 0.40), transparent 70%),
+    radial-gradient(520px 380px at 78% 45%, rgba(255, 255, 255, 0.28), transparent 70%),
     var(--bg-color);
   background-attachment: fixed;
 }
 
 [data-theme="dark"] body {
   background:
-    radial-gradient(1100px 720px at 88% -12%, rgba(16, 185, 129, 0.10), transparent 62%),
-    radial-gradient(980px 680px at -8% 28%, rgba(59, 130, 246, 0.07), transparent 58%),
-    radial-gradient(900px 820px at 55% 118%, rgba(168, 85, 247, 0.05), transparent 60%),
+    radial-gradient(1100px 720px at 88% -12%, rgba(16, 185, 129, 0.12), transparent 62%),
+    radial-gradient(980px 680px at -8% 28%, rgba(59, 130, 246, 0.09), transparent 58%),
+    radial-gradient(900px 820px at 55% 118%, rgba(168, 85, 247, 0.07), transparent 60%),
+    radial-gradient(640px 460px at 30% 70%, rgba(255, 255, 255, 0.05), transparent 70%),
     var(--bg-color);
   background-attachment: fixed;
 }
@@ -1801,27 +1853,49 @@ html.has-custom-background body {
   backdrop-filter: blur(34px) saturate(1.6);
 }
 
-/* ---------- 内容卡片：半透明折射玻璃 + 顶部亮缘 ---------- */
+/* ---------- 内容卡片：液态玻璃材质（渐变折射 + 顶部亮缘 + 内阴影） ---------- */
 .content-section .card {
-  background: var(--lg-glass-1) !important;
-  border-top-color: rgba(255, 255, 255, 0.96) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.42) 62%, rgba(255, 255, 255, 0.50)) !important;
+  border-top-color: rgba(255, 255, 255, 0.98) !important;
   border-bottom-color: rgba(15, 23, 42, 0.06) !important;
+  border-left-color: rgba(255, 255, 255, 0.55) !important;
+  border-right-color: rgba(255, 255, 255, 0.55) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    0 14px 34px rgba(25, 39, 52, 0.10),
-    0 2px 8px rgba(25, 39, 52, 0.04) !important;
-  -webkit-backdrop-filter: blur(26px) saturate(1.5);
-  backdrop-filter: blur(26px) saturate(1.5);
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.05),
+    inset 1px 0 0 rgba(255, 255, 255, 0.40),
+    inset -1px 0 0 rgba(255, 255, 255, 0.40),
+    0 20px 44px rgba(25, 39, 52, 0.12),
+    0 3px 10px rgba(25, 39, 52, 0.05) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(1.6);
+  backdrop-filter: blur(30px) saturate(1.6);
   transition: transform var(--lg-dur-spring) var(--lg-spring), box-shadow var(--lg-dur) ease,
               border-color var(--lg-dur) ease !important;
+}
+
+/* 顶部内高光：玻璃厚度可见的边缘反光 */
+.content-section .card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18px;
+  right: 18px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .content-section .card:hover {
   border-top-color: rgba(255, 255, 255, 1) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 18px 42px rgba(25, 39, 52, 0.13),
-    0 3px 10px rgba(25, 39, 52, 0.05) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.05),
+    inset 1px 0 0 rgba(255, 255, 255, 0.45),
+    inset -1px 0 0 rgba(255, 255, 255, 0.45),
+    0 24px 54px rgba(25, 39, 52, 0.15),
+    0 4px 12px rgba(25, 39, 52, 0.06) !important;
 }
 
 /* ---------- 控件圆角：适中（11px），避免过于圆润玩具化 ---------- */
@@ -2027,7 +2101,9 @@ html.has-custom-background body {
   color: #ffffff !important;
 }
 
-/* ---------- 低性能降级：用户偏好减少透明时关闭模糊 ---------- */
+/* ---------- 低性能降级：用户偏好减少透明时保留玻璃材质但关闭模糊 ----------
+   注意：headless Chromium 默认 prefers-reduced-transparency: reduce，
+   因此此分支也是自动化验证可见玻璃层的关键路径。 */
 @media (prefers-reduced-transparency: reduce) {
   .sidebar,
   .content-header,
@@ -2038,16 +2114,29 @@ html.has-custom-background body {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
   }
-  .sidebar { background: rgba(247, 250, 252, 0.98) !important; }
-  .content-section .card, .modal-content, .dropdown-menu, .toast:not([class*="bg-"]) {
-    background: rgba(255, 255, 255, 0.97) !important;
+  .sidebar {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.72)) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.6) !important;
   }
-  [data-theme="dark"] .sidebar { background: rgba(28, 28, 30, 0.98) !important; }
+  .content-section .card, .modal-content, .dropdown-menu, .toast:not([class*="bg-"]) {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.48) 62%, rgba(255, 255, 255, 0.56)) !important;
+    border-top-color: rgba(255, 255, 255, 0.95) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 0 rgba(15, 23, 42, 0.05),
+      0 20px 44px rgba(25, 39, 52, 0.12) !important;
+  }
+  [data-theme="dark"] .sidebar {
+    background: linear-gradient(180deg, rgba(30, 30, 33, 0.92), rgba(30, 30, 33, 0.80)) !important;
+  }
   [data-theme="dark"] .content-section .card,
   [data-theme="dark"] .modal-content,
   [data-theme="dark"] .dropdown-menu,
   [data-theme="dark"] .toast:not([class*="bg-"]) {
-    background: rgba(38, 38, 41, 0.98) !important;
+    background:
+      linear-gradient(180deg, rgba(40, 40, 43, 0.88), rgba(40, 40, 43, 0.72)) !important;
+    border-top-color: rgba(255, 255, 255, 0.10) !important;
   }
 }
 
