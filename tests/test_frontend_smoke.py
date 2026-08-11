@@ -74,12 +74,19 @@ def server_base_url() -> str:
 
     # 预置数据库：关闭登录验证码与开放注册，避免浏览器流程被验证码挡住
     seed_code = (
-        "import os, sys; "
+        "import os, sys, datetime; "
         f"os.environ['DB_PATH'] = r'{db_path}'; "
         f"sys.path.insert(0, r'{REPO_ROOT / 'shangjia_tool'}'); "
         "from db_manager import db_manager; "
         "db_manager.set_system_setting('login_captcha_enabled', 'false'); "
         "db_manager.set_system_setting('registration_enabled', 'false');"
+        # 造一条已付款订单，让 /api/sales 返回非空，仪表盘销售额图表演染出实例
+        # 注意：订单时间按 UTC 写入（parse_db_timestamp 将无时区字符串按 UTC 解析）
+        "db_manager.save_cookie('smoke_cookie_1', 'test_value'); "
+        "db_manager.save_item_basic_info('smoke_cookie_1', 'smoke_item_1', item_title='冒烟测试商品', item_price='9.90'); "
+        "now_utc = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S'); "
+        "db_manager.insert_or_update_order('smoke_order_1', item_id='smoke_item_1', amount='9.90', "
+        "order_status='completed', cookie_id='smoke_cookie_1', platform_paid_at=now_utc);"
     )
     subprocess.run(
         [PYTHON, "-c", seed_code],
