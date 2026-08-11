@@ -292,7 +292,31 @@ class DBManager:
                 password_hash TEXT NOT NULL,
                 is_active BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_admin BOOLEAN DEFAULT FALSE,
+                vip_level TEXT DEFAULT 'free',
+                vip_expires_at TIMESTAMP,
+                remark TEXT DEFAULT '',
+                last_login_at TIMESTAMP,
+                last_login_ip TEXT DEFAULT ''
+            )
+            ''')
+
+            # 创建卡密（激活码）表：软件售卖授权体系
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS activation_codes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT UNIQUE NOT NULL,
+                plan TEXT NOT NULL DEFAULT 'standard',
+                duration_days INTEGER NOT NULL DEFAULT 30,
+                status TEXT NOT NULL DEFAULT 'unused',
+                used_by INTEGER,
+                used_at TIMESTAMP,
+                expires_at TIMESTAMP,
+                created_by TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                remark TEXT DEFAULT '',
+                FOREIGN KEY (used_by) REFERENCES users(id) ON DELETE SET NULL
             )
             ''')
 
@@ -1056,6 +1080,55 @@ Cookie数量: {cookie_count}
 
             # 检查并更新CHECK约束（重建表以支持image类型）
             self._update_cards_table_constraints(cursor)
+
+            # ---- 卡密商业化：users 表授权字段迁移 ----
+            cursor.execute("PRAGMA table_info(users)")
+            user_columns = [column[1] for column in cursor.fetchall()]
+
+            if 'is_admin' not in user_columns:
+                self._execute_sql(cursor, "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE")
+                self._execute_sql(cursor, "UPDATE users SET is_admin = 1 WHERE username = 'admin'")
+                logger.info("数据库迁移完成：users 表添加 is_admin 列")
+
+            if 'vip_level' not in user_columns:
+                self._execute_sql(cursor, "ALTER TABLE users ADD COLUMN vip_level TEXT DEFAULT 'free'")
+                logger.info("数据库迁移完成：users 表添加 vip_level 列")
+
+            if 'vip_expires_at' not in user_columns:
+                self._execute_sql(cursor, "ALTER TABLE users ADD COLUMN vip_expires_at TIMESTAMP")
+                logger.info("数据库迁移完成：users 表添加 vip_expires_at 列")
+
+            if 'remark' not in user_columns:
+                self._execute_sql(cursor, "ALTER TABLE users ADD COLUMN remark TEXT DEFAULT ''")
+                logger.info("数据库迁移完成：users 表添加 remark 列")
+
+            if 'last_login_at' not in user_columns:
+                self._execute_sql(cursor, "ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP")
+                logger.info("数据库迁移完成：users 表添加 last_login_at 列")
+
+            if 'last_login_ip' not in user_columns:
+                self._execute_sql(cursor, "ALTER TABLE users ADD COLUMN last_login_ip TEXT DEFAULT ''")
+                logger.info("数据库迁移完成：users 表添加 last_login_ip 列")
+
+            # ---- 卡密商业化：activation_codes 表（幂等建表）----
+            self._execute_sql(cursor, '''
+            CREATE TABLE IF NOT EXISTS activation_codes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT UNIQUE NOT NULL,
+                plan TEXT NOT NULL DEFAULT 'standard',
+                duration_days INTEGER NOT NULL DEFAULT 30,
+                status TEXT NOT NULL DEFAULT 'unused',
+                used_by INTEGER,
+                used_at TIMESTAMP,
+                expires_at TIMESTAMP,
+                created_by TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                remark TEXT DEFAULT '',
+                FOREIGN KEY (used_by) REFERENCES users(id) ON DELETE SET NULL
+            )
+            ''')
+            logger.info("数据库迁移完成：创建 activation_codes 卡密表")
+
 
             # 检查cookies表是否存在remark列
             cursor.execute("PRAGMA table_info(cookies)")
@@ -7092,19 +7165,23 @@ Cookie数量: {cookie_count}
                 cursor.execute("PRAGMA table_info(users)")
                 columns = [col[1] for col in cursor.fetchall()]
                 has_is_admin = 'is_admin' in columns
+                has_vip = 'vip_level' in columns and 'vip_expires_at' in columns
+                has_extra = 'remark' in columns and 'last_login_at' in columns and 'last_login_ip' in columns
 
+                base_cols = 'id, username, email, created_at, updated_at'
+                extra_cols = ''
                 if has_is_admin:
-                    cursor.execute('''
-                    SELECT id, username, email, created_at, updated_at, is_admin
-                    FROM users
-                    ORDER BY created_at DESC
-                    ''')
-                else:
-                    cursor.execute('''
-                    SELECT id, username, email, created_at, updated_at
-                    FROM users
-                    ORDER BY created_at DESC
-                    ''')
+                    extra_cols += ', is_admin'
+                if has_vip:
+                    extra_cols += ', vip_level, vip_expires_at'
+                if has_extra:
+                    extra_cols += ', remark, last_login_at, last_login_ip'
+
+                cursor.execute(f'''
+                SELECT {base_cols}{extra_cols}
+                FROM users
+                ORDER BY created_at DESC
+                ''')
 
                 users = []
                 for row in cursor.fetchall():
@@ -7115,11 +7192,21 @@ Cookie数量: {cookie_count}
                         'created_at': row[3],
                         'updated_at': row[4],
                     }
-                    # 设置is_admin: 如果有该列则使用，否则admin用户名默认为管理员
+                    idx = 5
                     if has_is_admin:
-                        user_data['is_admin'] = bool(row[5]) if row[5] is not None else (row[1] == 'admin')
+                        user_data['is_admin'] = bool(row[idx]) if row[idx] is not None else (row[1] == 'admin')
+                        idx += 1
                     else:
                         user_data['is_admin'] = (row[1] == 'admin')
+                    if has_vip:
+                        user_data['vip_level'] = row[idx] or 'free'
+                        user_data['vip_expires_at'] = row[idx + 1]
+                        idx += 2
+                    if has_extra:
+                        user_data['remark'] = row[idx] or ''
+                        user_data['last_login_at'] = row[idx + 1]
+                        user_data['last_login_ip'] = row[idx + 2]
+                        idx += 3
                     users.append(user_data)
 
                 return users
@@ -7168,6 +7255,236 @@ Cookie数量: {cookie_count}
             except Exception as e:
                 logger.error(f"获取用户信息失败: {e}")
                 return None
+
+    # ==================== 卡密商业化：授权（激活码）相关 ====================
+
+    def get_activation_codes(self, status_filter: str = None, search: str = None, limit: int = 200):
+        """查询卡密列表，可按状态筛选、按卡号/使用者搜索"""
+        with self.lock:
+            try:
+                cursor = self.conn.cursor()
+                sql = "SELECT * FROM activation_codes WHERE 1=1"
+                params = []
+                if status_filter in ('unused', 'used', 'disabled'):
+                    sql += " AND status = ?"
+                    params.append(status_filter)
+                if search:
+                    sql += " AND (code LIKE ? OR used_by IN (SELECT id FROM users WHERE username LIKE ?))"
+                    params.extend([f"%{search}%", f"%{search}%"])
+                sql += " ORDER BY id DESC LIMIT ?"
+                params.append(int(limit))
+                cursor.execute(sql, params)
+                rows = cursor.fetchall()
+                cols = [d[0] for d in cursor.description]
+                codes = []
+                for row in rows:
+                    item = dict(zip(cols, row))
+                    if item.get('used_by') is not None:
+                        cursor.execute("SELECT username FROM users WHERE id = ?", (item['used_by'],))
+                        u = cursor.fetchone()
+                        item['used_by_name'] = u[0] if u else str(item['used_by'])
+                    else:
+                        item['used_by_name'] = None
+                    codes.append(item)
+                return codes
+            except Exception as e:
+                logger.error(f"获取卡密列表失败: {e}")
+                return []
+
+    def get_activation_code_by_code(self, code: str):
+        """按卡号查询卡密"""
+        with self.lock:
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute("SELECT * FROM activation_codes WHERE code = ?", (code,))
+                row = cursor.fetchone()
+                if not row:
+                    return None
+                cols = [d[0] for d in cursor.description]
+                return dict(zip(cols, row))
+            except Exception as e:
+                logger.error(f"查询卡密失败: {e}")
+                return None
+
+    def create_activation_codes(self, codes, plan: str, duration_days: int, created_by: str = None, remark: str = '') -> int:
+        """批量插入卡密，返回成功插入数量（跳过重复卡号）"""
+        with self.lock:
+            inserted = 0
+            try:
+                cursor = self.conn.cursor()
+                for code in codes:
+                    try:
+                        cursor.execute('''
+                        INSERT INTO activation_codes (code, plan, duration_days, status, created_by, remark)
+                        VALUES (?, ?, ?, 'unused', ?, ?)
+                        ''', (code, plan, int(duration_days), created_by, remark))
+                        inserted += 1
+                    except Exception:
+                        continue
+                self.conn.commit()
+                return inserted
+            except Exception as e:
+                logger.error(f"批量插入卡密失败: {e}")
+                return inserted
+
+    def set_activation_code_status(self, code_id: int, status: str) -> bool:
+        """设置卡密状态（disabled / unused / used）"""
+        with self.lock:
+            try:
+                cursor = self.conn.cursor()
+                if status == 'disabled':
+                    cursor.execute("UPDATE activation_codes SET status = 'disabled' WHERE id = ? AND status != 'used'", (code_id,))
+                elif status == 'unused':
+                    cursor.execute("UPDATE activation_codes SET status = 'unused' WHERE id = ? AND status = 'disabled'", (code_id,))
+                else:
+                    return False
+                self.conn.commit()
+                return cursor.rowcount > 0
+            except Exception as e:
+                logger.error(f"更新卡密状态失败: {e}")
+                return False
+
+    def delete_activation_code(self, code_id: int) -> bool:
+        """删除卡密"""
+        with self.lock:
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute("DELETE FROM activation_codes WHERE id = ?", (code_id,))
+                self.conn.commit()
+                return cursor.rowcount > 0
+            except Exception as e:
+                logger.error(f"删除卡密失败: {e}")
+                return False
+
+    def get_activation_codes_stats(self):
+        """卡密统计"""
+        with self.lock:
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute("SELECT status, COUNT(*) FROM activation_codes GROUP BY status")
+                rows = cursor.fetchall()
+                stats = {'total': 0, 'unused': 0, 'used': 0, 'disabled': 0}
+                for status, count in rows:
+                    stats['total'] += count
+                    if status in stats:
+                        stats[status] = count
+                cursor.execute("SELECT COUNT(*) FROM activation_codes WHERE used_at >= datetime('now','-24 hours')")
+                stats['used_24h'] = cursor.fetchone()[0]
+                return stats
+            except Exception as e:
+                logger.error(f"获取卡密统计失败: {e}")
+                return {'total': 0, 'unused': 0, 'used': 0, 'disabled': 0, 'used_24h': 0}
+
+    def get_user_license(self, user_id: int):
+        """获取用户授权信息"""
+        with self.lock:
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute("PRAGMA table_info(users)")
+                columns = [col[1] for col in cursor.fetchall()]
+                if 'vip_level' not in columns or 'vip_expires_at' not in columns:
+                    return {'vip_level': 'free', 'vip_expires_at': None, 'is_valid': False}
+                cursor.execute("SELECT vip_level, vip_expires_at FROM users WHERE id = ?", (user_id,))
+                row = cursor.fetchone()
+                if not row:
+                    return {'vip_level': 'free', 'vip_expires_at': None, 'is_valid': False}
+                level, expires_at = row
+                level = level or 'free'
+                if level == 'free':
+                    return {'vip_level': 'free', 'vip_expires_at': None, 'is_valid': False}
+                if expires_at is None:
+                    return {'vip_level': level, 'vip_expires_at': None, 'is_valid': True}
+                is_valid = str(expires_at) > self._now_sql()
+                return {'vip_level': level, 'vip_expires_at': expires_at, 'is_valid': is_valid}
+            except Exception as e:
+                logger.error(f"获取用户授权失败: {e}")
+                return {'vip_level': 'free', 'vip_expires_at': None, 'is_valid': False}
+
+    def set_user_license(self, user_id: int, level: str, expires_at) -> bool:
+        """设置用户授权（level='free' 时清空授权；expires_at 为 None 表示永久有效）"""
+        with self.lock:
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute("UPDATE users SET vip_level = ?, vip_expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (level, expires_at, user_id))
+                self.conn.commit()
+                return cursor.rowcount > 0
+            except Exception as e:
+                logger.error(f"设置用户授权失败: {e}")
+                return False
+
+    def redeem_activation_code(self, code: str, user_id: int):
+        """兑换卡密：校验 -> 续期 -> 标记已用。成功返回 (True, 到期时间)；失败返回 (False, 原因)"""
+        with self.lock:
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute("SELECT * FROM activation_codes WHERE code = ?", (code,))
+                row = cursor.fetchone()
+                if not row:
+                    return False, '卡密不存在'
+                cols = [d[0] for d in cursor.description]
+                info = dict(zip(cols, row))
+                if info['status'] != 'unused':
+                    return False, '卡密已被使用或禁用'
+                cursor.execute("SELECT vip_expires_at FROM users WHERE id = ?", (user_id,))
+                urow = cursor.fetchone()
+                base = self._now_sql()
+                if urow and urow[0] and str(urow[0]) > base:
+                    base = str(urow[0])
+                new_expires = self._add_days_sql(base, int(info['duration_days']))
+                cursor.execute("UPDATE users SET vip_level = ?, vip_expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                               (info['plan'], new_expires, user_id))
+                cursor.execute("UPDATE activation_codes SET status = 'used', used_by = ?, used_at = CURRENT_TIMESTAMP, expires_at = ? WHERE id = ?",
+                               (user_id, new_expires, info['id']))
+                self.conn.commit()
+                return True, new_expires
+            except Exception as e:
+                logger.error(f"兑换卡密失败: {e}")
+                return False, '兑换失败，请稍后重试'
+
+    def update_user_last_login(self, user_id: int, ip: str = '') -> bool:
+        """记录用户最近登录时间与 IP"""
+        with self.lock:
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute("UPDATE users SET last_login_at = CURRENT_TIMESTAMP, last_login_ip = ? WHERE id = ?", (ip or '', user_id))
+                self.conn.commit()
+                return True
+            except Exception as e:
+                logger.error(f"更新用户登录信息失败: {e}")
+                return False
+
+    def update_user_remark(self, user_id: int, remark: str) -> bool:
+        """更新用户备注"""
+        with self.lock:
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute("UPDATE users SET remark = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (remark, user_id))
+                self.conn.commit()
+                return cursor.rowcount > 0
+            except Exception as e:
+                logger.error(f"更新用户备注失败: {e}")
+                return False
+
+    def _now_sql(self) -> str:
+        """获取数据库当前时间字符串（与 SQLite CURRENT_TIMESTAMP 同格式 UTC）"""
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT strftime('%Y-%m-%d %H:%M:%S', 'now')")
+            row = cursor.fetchone()
+            return row[0] if row else None
+        except Exception:
+            import datetime
+            return datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+
+    def _add_days_sql(self, base_time: str, days: int) -> str:
+        """在 SQLite 时间字符串上增加天数"""
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT datetime(?, ?)", (base_time, f'+{int(days)} days'))
+            row = cursor.fetchone()
+            return row[0] if row else base_time
+        except Exception:
+            return base_time
 
     def update_user_admin_status(self, user_id: int, is_admin: bool) -> bool:
         """更新用户管理员状态"""

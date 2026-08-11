@@ -7,7 +7,6 @@ async function loadItemPublish() {
     handlePublishDeliveryChoiceChange();
     await Promise.all([
         loadItemPublishAccounts(),
-        loadItemPublishMaterials(),
         loadItemPublishLogs()
     ]);
 }
@@ -714,6 +713,70 @@ async function precheckItemPublishForm() {
     }
 }
 
+// AI 优化商品文案：去违禁词/绝对化表述，转换为可发布文案（仅优化建议，不限制发布）
+async function optimizeItemCopyWithAI() {
+    const values = getItemPublishFormValues();
+    const resultContainer = document.getElementById('itemPublishComplianceResult');
+    const button = document.getElementById('itemPublishAiOptimizeBtn');
+    if (!values.accountId) {
+        showToast('请先选择发布账号（用于读取 AI 配置）', 'warning');
+        return;
+    }
+    if (!values.title && !values.description) {
+        showToast('请先填写商品标题或描述', 'warning');
+        return;
+    }
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>AI 优化中...';
+    }
+    if (resultContainer) resultContainer.innerHTML = '<div class="alert alert-secondary mb-0"><i class="bi bi-stars me-1"></i>AI 正在优化文案，请稍候...</div>';
+    try {
+        const response = await requestItemPublishJson('/api/item-copy/optimize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                account_id: values.accountId,
+                title: values.title,
+                description: values.description,
+                category: values.category,
+            }),
+        });
+        const data = response.data || {};
+        if (!data.title && !data.description) {
+            throw new Error('AI 未返回有效结果');
+        }
+        // 回填表单（用户可继续编辑）
+        const titleInput = document.getElementById('publishTitle');
+        const descInput = document.getElementById('publishDescription');
+        const catInput = document.getElementById('publishCategory');
+        if (titleInput) titleInput.value = data.title || '';
+        if (descInput) descInput.value = data.description || '';
+        if (catInput && data.category) catInput.value = data.category;
+        if (resultContainer) {
+            resultContainer.innerHTML = `
+                <div class="alert alert-success mb-0">
+                    <strong><i class="bi bi-check-circle me-1"></i>AI 优化完成，已回填到表单，请复核后再发布</strong>
+                    <div class="small mt-2">
+                        <div>标题：${escapeHtml(data.title || '—')}</div>
+                        <div class="mt-1">描述：${escapeHtml(String(data.description || '').slice(0, 200))}${data.description && data.description.length > 200 ? '…' : ''}</div>
+                        ${data.category ? `<div class="mt-1">类目：${escapeHtml(data.category)}</div>` : ''}
+                    </div>
+                </div>`;
+        }
+        showToast('AI 优化完成，请复核', 'success');
+    } catch (error) {
+        const msg = error.message || 'AI 优化失败';
+        showToast(msg, 'danger');
+        if (resultContainer) resultContainer.innerHTML = `<div class="alert alert-danger mb-0">AI 优化失败：${escapeHtml(msg)}</div>`;
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<i class="bi bi-stars me-1"></i>AI 优化文案';
+        }
+    }
+}
+
 async function submitItemPublishForm() {
     if (itemPublishSubmitting) {
         return;
@@ -732,8 +795,15 @@ async function submitItemPublishForm() {
     try {
         const compliance = await precheckItemPublishForm();
         if (!compliance.can_publish) {
-            showToast('发布前合规检查未通过，请先修改商品文案', 'warning');
-            return;
+            // 不限制发布：合规检查仅作提示，风险文案由用户自行决定是否继续
+            const confirmed = await uiConfirm({
+                message: '检查到可能存在违规风险词，发布有被平台下架/处罚的风险。是否仍要发布？',
+                danger: true,
+                title: '风险提示',
+            });
+            if (!confirmed) {
+                return;
+            }
         }
     } catch (error) {
         showToast(error.message || '发布前检查失败', 'danger');

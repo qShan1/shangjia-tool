@@ -682,5 +682,80 @@ class AIReplyEngine:
     
 
 
+    def _chat_once(self, settings: dict, system_prompt: str, user_prompt: str,
+                   max_tokens: int = 600, temperature: float = 0.6) -> Optional[str]:
+        """一次性 AI 调用（不写会话、不去抖），供文案优化等独立任务复用"""
+        try:
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+            api_type = self._resolve_api_type(settings)
+            if api_type == 'dashscope':
+                if self._is_dashscope_app_api(settings):
+                    reply = self._call_dashscope_api(settings, messages, max_tokens=max_tokens, temperature=temperature)
+                else:
+                    reply = self._call_openai_chat_api(settings, messages, max_tokens=max_tokens, temperature=temperature)
+            elif api_type == 'gemini':
+                reply = self._call_gemini_api(settings, messages, max_tokens=max_tokens, temperature=temperature)
+            elif api_type == 'openai_responses':
+                reply = self._call_openai_responses_api(settings, messages, max_tokens=max_tokens, temperature=temperature)
+            elif api_type == 'anthropic':
+                reply = self._call_anthropic_api(settings, messages, max_tokens=max_tokens, temperature=temperature)
+            elif api_type == 'azure_openai':
+                reply = self._call_azure_openai_api(settings, messages, max_tokens=max_tokens, temperature=temperature)
+            else:
+                reply = self._call_openai_chat_api(settings, messages, max_tokens=max_tokens, temperature=temperature)
+            return _repair_mojibake(reply)
+        except Exception as e:
+            logger.error(f"AI 一次性调用失败: {e}")
+            return None
+
+    def optimize_item_copy(self, cookie_id: str, title: str, description: str, category: str = '') -> Optional[Dict]:
+        """AI 优化商品文案：去除违禁词/绝对化表述，转换为可发布的电商文案。
+        仅做优化建议，不限制发布。返回 {'title','description','category'}；失败返回 None。"""
+        settings = db_manager.get_ai_reply_settings(cookie_id)
+        if not settings or not settings.get('api_key') or not settings.get('ai_enabled'):
+            return None
+
+        system_prompt = (
+            "你是一位资深的电商平台商品文案优化专家。你的任务是：把用户提供的商品文案优化成"
+            "合规、自然、有吸引力且可以直接发布的版本。\n"
+            "要求：\n"
+            "1. 替换或删除违规/高风险词：如 破解、盗版、激活码、外挂、代充、刷单、加我微信、"
+            "二维码、外链网址、绝对化用语（100%、绝对、保证、永久有效、稳赚）等。\n"
+            "2. 保留商品核心信息、卖点和价格逻辑，不虚构不夸大。\n"
+            "3. 标题保持简洁（不超过 30 字），描述分段清晰、自然口语化。\n"
+            "4. 如果提供了类目，给出更规范的类目名；没有则保持原类目。\n"
+            "只输出一个 JSON 对象，不要输出任何其他内容，格式：\n"
+            '{"title": "优化后的标题", "description": "优化后的描述", "category": "优化后的类目"}'
+        )
+        user_prompt = (
+            f"## 原商品标题\n{title or '（空）'}\n\n"
+            f"## 原商品描述\n{description or '（空）'}\n\n"
+            f"## 原类目\n{category or '（空）'}\n\n"
+            "请按系统要求输出优化后的 JSON。"
+        )
+
+        reply = self._chat_once(settings, system_prompt, user_prompt, max_tokens=700, temperature=0.5)
+        if not reply:
+            return None
+        try:
+            start = reply.find('{')
+            end = reply.rfind('}')
+            if start == -1 or end == -1 or end <= start:
+                return None
+            data = json.loads(reply[start:end + 1])
+            result = {
+                'title': str(data.get('title') or '').strip() or title,
+                'description': str(data.get('description') or '').strip() or description,
+                'category': str(data.get('category') or '').strip() or category,
+            }
+            return result
+        except Exception as e:
+            logger.error(f"解析 AI 文案优化结果失败: {e}")
+            return None
+
+
 # 全局AI回复引擎实例
 ai_reply_engine = AIReplyEngine()

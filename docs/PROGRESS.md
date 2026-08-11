@@ -37,7 +37,12 @@
   - index.html 依次加载 11 个 `<script>`（core 最先）；服务端 `reply_server.py` 改为按各文件 mtime 动态打版本号；`ai_site_audit_service.py` 改为统计 `app*.js` 总大小
   - 拆分依据：全局函数命名空间 + DOMContentLoaded 回调在 DOM 就绪后执行，运行时解析跨文件依赖；22 个菜单页 playwright 巡检零 JS 错误，全量测试 64 passed
 - [ ] WebView2 多进程 298MB：宿主代码不在本仓库（打包 exe 内），代码侧仅能通过减少 DOM/避免泄漏间接优化；如需 WebView2 级参数需在打包宿主传 `AdditionalBrowserArguments`
-- [ ] 新功能开发（待用户确认方向，见下）
+- [x] 第一轮 卡密商业化系统（软件售卖激活/在线管理，功能不受授权限制）：
+  - DB：`users` 加 `is_admin/vip_level/vip_expires_at/remark/last_login_at/last_login_ip`；新增 `activation_codes` 表
+  - 后端：`/admin/activation-codes*`（生成/列表/统计/禁用/删除/导出）、`/api/license`（我的授权）、`/api/license/redeem`（兑换）、`/api/presence/heartbeat`（心跳）、`/admin/online-users`（在线列表）、`/admin/kick`（踢下线）；登录记录 last_login
+  - 前端：新增 `app.license.js`；侧边栏"我的授权"（兑换+状态）与管理员"在线用户/卡密管理"；心跳 60s；在线用户 15s 自动刷新
+- [x] 第二轮 AI 文案优化：`ai_reply_engine.optimize_item_copy`（一次调用不落库）+ `POST /api/item-copy/optimize`；发布页新增"AI 优化文案"按钮回填；`submitItemPublishForm` 合规检查不再硬阻断（改为风险确认）；移除"素材库/保存素材/新建素材"入口
+- [x] 第三轮 UI 动效：卡片 hover 上浮、表格行级联入场（1-12 行错开）、模态内容级联、下拉 pop、图表容器淡入、侧边栏折叠文字淡出、admin 菜单淡入、tab 指示条、空状态淡入、卡密统计数字滚动；reduced-motion 自动降级
 - [ ] 打包新 dist（用户指示本次不打包）
 
 ## 注意事项 / 教训

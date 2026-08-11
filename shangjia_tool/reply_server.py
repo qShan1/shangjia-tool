@@ -1892,6 +1892,13 @@ async def login(login_request: LoginRequest, request: Request):
                 else:
                     logger.info(f"【{user['username']}#{user['id']}】登录成功 (IP: {client_ip})")
 
+                # 记录最近登录时间与 IP（卡密商业化管理端展示用）
+                try:
+                    from db_manager import db_manager as _dm
+                    _dm.update_user_last_login(user['id'], client_ip)
+                except Exception:
+                    pass
+
                 return LoginResponse(
                     success=True,
                     token=token,
@@ -2057,6 +2064,282 @@ async def logout(credentials: Optional[HTTPAuthorizationCredentials] = Depends(s
     if credentials:
         _drop_remembered_token(credentials.credentials)
     return {"message": "已登出"}
+
+
+# ======================================================================
+# 卡密商业化：授权 / 兑换 / 管理端在线用户
+# ======================================================================
+# 在线用户心跳状态（进程内）：{user_id: {'username', 'ip', 'page', 'last_seen'}}
+PRESENCE_STATE: Dict[int, Dict[str, Any]] = {}
+PRESENCE_ONLINE_WINDOW_SECONDS = 180
+
+
+def _client_ip(request: Request) -> str:
+    return request.headers.get('X-Forwarded-For', '').split(',')[0].strip() or \
+        (request.client.host if request.client else 'unknown')
+
+
+def _generate_activation_code(prefix: str = '') -> str:
+    """生成形如 [PREFIX-]XXXX-XXXX-XXXX-XXXX 的卡密（去除易混淆字符）"""
+    import secrets as _secrets
+    alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+    groups = []
+    for _ in range(4):
+        groups.append(''.join(_secrets.choice(alphabet) for _ in range(4)))
+    raw = '-'.join(groups)
+    if prefix:
+        clean_prefix = re.sub(r'[^A-Za-z0-9_-]', '', prefix).upper().strip('-')[:12]
+        if clean_prefix:
+            return f"{clean_prefix}-{raw}"
+    return raw
+
+
+# 我的授权信息
+@app.get('/api/license')
+async def get_my_license(user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
+    if not user_info:
+        raise HTTPException(status_code=401, detail='未登录或登录已过期')
+    try:
+        from db_manager import db_manager
+        license_info = db_manager.get_user_license(user_info['user_id'])
+        return {'success': True, 'data': license_info, 'user': {
+            'user_id': user_info['user_id'],
+            'username': user_info['username'],
+            'is_admin': user_info.get('is_admin', False) or user_info['username'] == ADMIN_USERNAME,
+        }}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取授权信息失败: {mask_sensitive_text(e)}")
+        return {'success': False, 'data': {'vip_level': 'free', 'vip_expires_at': None, 'is_valid': False}}
+
+
+# 兑换卡密
+@app.post('/api/license/redeem')
+async def redeem_license(payload: Dict[str, Any], user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
+    if not user_info:
+        raise HTTPException(status_code=401, detail='未登录或登录已过期')
+    code = str((payload or {}).get('code') or '').strip().upper()
+    if not code:
+        raise HTTPException(status_code=400, detail='请输入卡密')
+    try:
+        from db_manager import db_manager
+        ok, result = db_manager.redeem_activation_code(code, user_info['user_id'])
+        if not ok:
+            raise HTTPException(status_code=400, detail=result)
+        logger.info(f"用户 {user_info['username']}#{user_info['user_id']} 兑换卡密成功，授权至 {result}")
+        return {'success': True, 'expires_at': result, 'message': '激活成功'}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"兑换卡密失败: {mask_sensitive_text(e)}")
+        raise HTTPException(status_code=500, detail=safe_client_error('激活失败，请稍后重试'))
+
+
+# 前端心跳上报（在线用户管理）
+@app.post('/api/presence/heartbeat')
+async def presence_heartbeat(payload: Dict[str, Any], request: Request, user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
+    if not user_info:
+        raise HTTPException(status_code=401, detail='未登录或登录已过期')
+    PRESENCE_STATE[user_info['user_id']] = {
+        'username': user_info['username'],
+        'ip': _client_ip(request),
+        'page': str((payload or {}).get('page') or ''),
+        'last_seen': time.time(),
+    }
+    return {'success': True}
+
+
+# AI 商品文案优化：去违禁词/绝对化表述，转换为可发布文案（仅优化建议，不限制发布）
+@app.post('/api/item-copy/optimize')
+async def optimize_item_copy(payload: Dict[str, Any], user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
+    if not user_info:
+        raise HTTPException(status_code=401, detail='未登录或登录已过期')
+    account_id = str((payload or {}).get('account_id') or '').strip()
+    title = str((payload or {}).get('title') or '').strip()
+    description = str((payload or {}).get('description') or '').strip()
+    category = str((payload or {}).get('category') or '').strip()
+    if not title and not description:
+        raise HTTPException(status_code=400, detail='请先填写商品标题或描述')
+    if not account_id:
+        raise HTTPException(status_code=400, detail='请先选择发布账号（用于读取 AI 配置）')
+    try:
+        from db_manager import db_manager
+        # 校验账号归属
+        user_cookies = db_manager.get_all_cookies(user_info['user_id'])
+        if account_id not in user_cookies:
+            raise HTTPException(status_code=403, detail='账号不存在或不属于当前用户')
+        result = ai_reply_engine.optimize_item_copy(account_id, title, description, category)
+        if result is None:
+            raise HTTPException(status_code=400, detail='AI 未配置或生成失败，请先在账号管理中配置 AI 回复')
+        return {'success': True, 'data': result, 'message': '文案优化完成'}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"AI 文案优化失败: {mask_sensitive_text(e)}")
+        raise HTTPException(status_code=500, detail=safe_client_error('文案优化失败，请稍后重试'))
+
+
+# 管理端：卡密列表
+@app.get('/admin/activation-codes')
+async def admin_get_activation_codes(
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 200,
+    user_info: Dict[str, Any] = Depends(verify_admin_token),
+):
+    try:
+        from db_manager import db_manager
+        codes = db_manager.get_activation_codes(status, search, limit)
+        return {'success': True, 'data': codes}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取卡密列表失败: {mask_sensitive_text(e)}")
+        raise HTTPException(status_code=500, detail=safe_client_error('获取卡密列表失败'))
+
+
+# 管理端：卡密统计
+@app.get('/admin/activation-codes/stats')
+async def admin_get_activation_codes_stats(user_info: Dict[str, Any] = Depends(verify_admin_token)):
+    try:
+        from db_manager import db_manager
+        stats = db_manager.get_activation_codes_stats()
+        stats['online_now'] = len([u for u in PRESENCE_STATE.values() if time.time() - u.get('last_seen', 0) < PRESENCE_ONLINE_WINDOW_SECONDS])
+        return {'success': True, 'data': stats}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取卡密统计失败: {mask_sensitive_text(e)}")
+        raise HTTPException(status_code=500, detail=safe_client_error('获取卡密统计失败'))
+
+
+# 管理端：批量生成卡密
+@app.post('/admin/activation-codes/generate')
+async def admin_generate_activation_codes(payload: Dict[str, Any], user_info: Dict[str, Any] = Depends(verify_admin_token)):
+    try:
+        count = int((payload or {}).get('count') or 1)
+        count = max(1, min(count, 500))
+        plan = str((payload or {}).get('plan') or 'standard').strip() or 'standard'
+        duration_days = int((payload or {}).get('duration_days') or 30)
+        duration_days = max(1, min(duration_days, 3650))
+        prefix = str((payload or {}).get('prefix') or '').strip()
+        remark = str((payload or {}).get('remark') or '').strip()
+
+        from db_manager import db_manager
+        generated = []
+        existing = set()
+        for code in db_manager.get_activation_codes(limit=5000):
+            existing.add(code['code'])
+        attempts = 0
+        while len(generated) < count and attempts < count * 20:
+            attempts += 1
+            code = _generate_activation_code(prefix)
+            if code in existing:
+                continue
+            generated.append(code)
+            existing.add(code)
+        inserted = db_manager.create_activation_codes(generated, plan, duration_days, user_info['username'], remark)
+        logger.info(f"管理员 {user_info['username']} 生成卡密 {inserted} 张（计划 {plan} / {duration_days} 天）")
+        return {'success': True, 'data': {'count': inserted, 'codes': generated}}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"生成卡密失败: {mask_sensitive_text(e)}")
+        raise HTTPException(status_code=500, detail=safe_client_error('生成卡密失败'))
+
+
+# 管理端：修改卡密状态（禁用/启用）
+@app.put('/admin/activation-codes/{code_id}/status')
+async def admin_set_activation_code_status(code_id: int, payload: Dict[str, Any], user_info: Dict[str, Any] = Depends(verify_admin_token)):
+    status = str((payload or {}).get('status') or '').strip()
+    if status not in ('disabled', 'unused'):
+        raise HTTPException(status_code=400, detail='无效的状态值')
+    try:
+        from db_manager import db_manager
+        ok = db_manager.set_activation_code_status(code_id, status)
+        if not ok:
+            raise HTTPException(status_code=400, detail='操作失败：卡密不存在或已使用')
+        return {'success': True, 'message': '已更新'}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"更新卡密状态失败: {mask_sensitive_text(e)}")
+        raise HTTPException(status_code=500, detail=safe_client_error('更新卡密状态失败'))
+
+
+# 管理端：删除卡密
+@app.delete('/admin/activation-codes/{code_id}')
+async def admin_delete_activation_code(code_id: int, user_info: Dict[str, Any] = Depends(verify_admin_token)):
+    try:
+        from db_manager import db_manager
+        ok = db_manager.delete_activation_code(code_id)
+        if not ok:
+            raise HTTPException(status_code=404, detail='卡密不存在')
+        return {'success': True, 'message': '已删除'}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"删除卡密失败: {mask_sensitive_text(e)}")
+        raise HTTPException(status_code=500, detail=safe_client_error('删除卡密失败'))
+
+
+# 管理端：导出卡密（文本）
+@app.get('/admin/activation-codes/export')
+async def admin_export_activation_codes(status: Optional[str] = None, user_info: Dict[str, Any] = Depends(verify_admin_token)):
+    try:
+        from db_manager import db_manager
+        codes = db_manager.get_activation_codes(status, None, 5000)
+        lines = [c['code'] for c in codes]
+        content = '\n'.join(lines)
+        return Response(content=content, media_type='text/plain', headers={
+            'Content-Disposition': 'attachment; filename="activation_codes.txt"'
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"导出卡密失败: {mask_sensitive_text(e)}")
+        raise HTTPException(status_code=500, detail=safe_client_error('导出卡密失败'))
+
+
+# 管理端：在线用户列表
+@app.get('/admin/online-users')
+async def admin_get_online_users(user_info: Dict[str, Any] = Depends(verify_admin_token)):
+    now = time.time()
+    online = []
+    for user_id, state in PRESENCE_STATE.items():
+        if now - state.get('last_seen', 0) < PRESENCE_ONLINE_WINDOW_SECONDS:
+            entry = dict(state)
+            entry['user_id'] = user_id
+            entry['online_seconds'] = int(now - state.get('last_seen', now))
+            try:
+                from db_manager import db_manager
+                lic = db_manager.get_user_license(user_id)
+                entry['vip_level'] = lic.get('vip_level', 'free')
+                entry['is_valid'] = lic.get('is_valid', False)
+            except Exception:
+                entry['vip_level'] = 'free'
+                entry['is_valid'] = False
+            online.append(entry)
+    online.sort(key=lambda x: x.get('last_seen', 0), reverse=True)
+    return {'success': True, 'data': online, 'online_count': len(online)}
+
+
+# 管理端：踢下线（按用户删除其全部会话）
+@app.post('/admin/kick')
+async def admin_kick_user(payload: Dict[str, Any], user_info: Dict[str, Any] = Depends(verify_admin_token)):
+    user_id = int((payload or {}).get('user_id') or 0)
+    if user_id <= 0:
+        raise HTTPException(status_code=400, detail='无效的用户ID')
+    if user_id == user_info['user_id']:
+        raise HTTPException(status_code=400, detail='不能踢自己下线')
+    kicked_tokens = [token for token, data in SESSION_TOKENS.items() if data.get('user_id') == user_id]
+    for token in kicked_tokens:
+        del SESSION_TOKENS[token]
+        _drop_remembered_token(token)
+    PRESENCE_STATE.pop(user_id, None)
+    logger.info(f"管理员 {user_info['username']} 踢下线用户 #{user_id}（{len(kicked_tokens)} 个会话）")
+    return {'success': True, 'kicked_sessions': len(kicked_tokens), 'message': f'已强制下线（{len(kicked_tokens)} 个会话）'}
 
 
 # 销售额数据查询接口

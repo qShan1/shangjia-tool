@@ -301,6 +301,16 @@ function showSection(sectionName) {
     case 'data-management':  // 【数据管理菜单】
         loadDataManagement();
         break;
+    case 'license':          // 【我的授权菜单】
+        loadMyLicense();
+        break;
+    case 'online-users':     // 【在线用户菜单（管理员）】
+        loadOnlineUsers();
+        break;
+    case 'activation-codes': // 【卡密管理菜单（管理员）】
+        loadActivationCodes();
+        loadActivationCodeStats();
+        break;
     }
 
     if (sectionName !== 'orders') {

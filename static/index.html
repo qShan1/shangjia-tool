@@ -343,11 +343,29 @@
           <span>系统设置</span>
         </a>
       </div>
+      <div class="nav-item" data-menu-id="license" id="licenseMenuNav">
+        <a href="javascript:void(0)" class="nav-link" onclick="showSection('license')">
+          <i class="bi bi-patch-check"></i>
+          <span>我的授权</span>
+        </a>
+      </div>
 
       <!-- 管理员专用菜单 -->
       <div id="adminMenuSection" style="display: none;">
         <div class="nav-divider mt-3 mb-2">
           <small class="text-white-50">管理员功能</small>
+        </div>
+        <div class="nav-item" data-menu-id="online-users">
+          <a href="javascript:void(0)" class="nav-link" onclick="showSection('online-users')">
+            <i class="bi bi-activity"></i>
+            <span>在线用户</span>
+          </a>
+        </div>
+        <div class="nav-item" data-menu-id="activation-codes">
+          <a href="javascript:void(0)" class="nav-link" onclick="showSection('activation-codes')">
+            <i class="bi bi-key"></i>
+            <span>卡密管理</span>
+          </a>
         </div>
         <div class="nav-item" data-menu-id="user-management">
           <a href="javascript:void(0)" class="nav-link" onclick="showSection('user-management')">
@@ -1090,20 +1108,17 @@
                   </div>
 
                   <div class="d-flex flex-wrap gap-2 mt-4">
+                    <button type="button" class="btn btn-outline-primary" id="itemPublishAiOptimizeBtn" onclick="optimizeItemCopyWithAI()">
+                      <i class="bi bi-stars me-1"></i>AI 优化文案
+                    </button>
                     <button type="button" class="btn btn-outline-warning" id="itemPublishPrecheckBtn" onclick="precheckItemPublishForm()">
                       <i class="bi bi-shield-check me-1"></i>发布前检查
                     </button>
                     <button type="submit" class="btn btn-primary" id="itemPublishSubmitBtn">
                       <i class="bi bi-cloud-upload me-1"></i>发布商品
                     </button>
-                    <button type="button" class="btn btn-outline-success" id="itemPublishSaveMaterialBtn" onclick="saveItemPublishMaterial()">
-                      <i class="bi bi-save me-1"></i>保存素材
-                    </button>
                     <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('itemPublishForm').reset(); clearItemPublishForm(false);">
                       <i class="bi bi-arrow-counterclockwise me-1"></i>重置表单
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary" onclick="startNewItemPublishMaterial()">
-                      <i class="bi bi-plus-circle me-1"></i>新建素材
                     </button>
                     <button type="button" class="btn btn-outline-dark" onclick="showSection('items')">
                       <i class="bi bi-box-seam me-1"></i>查看商品管理
@@ -1154,19 +1169,7 @@
               </div>
             </div>
 
-            <div class="card item-publish-material-card mt-4">
-              <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">素材库</h5>
-                <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadItemPublishMaterials()">
-                  <i class="bi bi-arrow-clockwise me-1"></i>刷新
-                </button>
-              </div>
-              <div class="card-body">
-                <div id="publishMaterialList" class="item-publish-side-list">
-                  <div class="item-publish-preview-empty">暂无素材</div>
-                </div>
-              </div>
-            </div>
+            <div class="card item-publish-material-card mt-4" style="display: none;"></div>
 
             <div class="card item-publish-log-card mt-4">
               <div class="card-header d-flex justify-content-between align-items-center">
@@ -4169,6 +4172,248 @@
       </div>
     </div>
 
+    <!-- 我的授权内容 -->
+    <div id="license-section" class="content-section">
+      <div class="content-header">
+        <div class="d-flex justify-content-between align-items-center w-100">
+          <div>
+            <h2 class="mb-0">
+              <i class="bi bi-patch-check me-2"></i>
+              我的授权
+            </h2>
+            <p class="text-muted mb-0">查看软件授权状态、兑换卡密</p>
+          </div>
+          <button type="button" class="btn btn-outline-secondary" onclick="refreshMyLicense()">
+            <i class="bi bi-arrow-clockwise me-1"></i>刷新
+          </button>
+        </div>
+      </div>
+      <div class="content-body">
+        <div class="row g-4">
+          <div class="col-lg-8">
+            <div class="card h-100">
+              <div class="card-header">
+                <i class="bi bi-shield-check me-2"></i>授权状态
+              </div>
+              <div class="card-body" id="myLicenseStatus">
+                <div class="d-flex align-items-center justify-content-center py-5">
+                  <div class="spinner-border text-primary" role="status"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <div class="card h-100">
+              <div class="card-header">
+                <i class="bi bi-key me-2"></i>兑换卡密
+              </div>
+              <div class="card-body">
+                <p class="text-muted small">输入购买到的卡密，激活或延长软件使用授权。</p>
+                <div class="input-group mb-3">
+                  <input type="text" class="form-control" id="redeemCodeInput" placeholder="例如：SJ-XXXX-XXXX-XXXX-XXXX"
+                         style="text-transform: uppercase;" autocomplete="off">
+                  <button type="button" class="btn btn-primary" id="redeemCodeBtn" onclick="redeemLicenseCode()">
+                    <i class="bi bi-check2-circle me-1"></i>激活
+                  </button>
+                </div>
+                <div id="redeemResult" class="small"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 在线用户内容（管理员） -->
+    <div id="online-users-section" class="content-section">
+      <div class="content-header">
+        <div class="d-flex justify-content-between align-items-center w-100">
+          <div>
+            <h2 class="mb-0">
+              <i class="bi bi-activity me-2"></i>
+              在线用户
+            </h2>
+            <p class="text-muted mb-0">实时查看当前在线用户并进行管理</p>
+          </div>
+          <div>
+            <span class="badge bg-success me-2" id="onlineUsersCount">0 在线</span>
+            <button type="button" class="btn btn-outline-secondary" onclick="refreshOnlineUsers()">
+              <i class="bi bi-arrow-clockwise me-1"></i>刷新
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="content-body">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-people me-2"></i>当前在线</span>
+            <label class="form-check form-switch m-0 small">
+              <input class="form-check-input" type="checkbox" id="onlineAutoRefreshToggle" checked onchange="toggleOnlineAutoRefresh()">
+              <span class="form-check-label">自动刷新（15秒）</span>
+            </label>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>用户</th>
+                    <th>当前页面</th>
+                    <th>IP</th>
+                    <th>授权</th>
+                    <th>活跃</th>
+                    <th class="text-end">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="onlineUsersList">
+                  <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                      <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                      加载中...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 卡密管理内容（管理员） -->
+    <div id="activation-codes-section" class="content-section">
+      <div class="content-header">
+        <h2 class="mb-0">
+          <i class="bi bi-key me-2"></i>
+          卡密管理
+        </h2>
+        <p class="text-muted mb-0">生成、管理与导出软件授权卡密</p>
+      </div>
+      <div class="content-body">
+        <!-- 统计 -->
+        <div class="row mb-4 g-3">
+          <div class="col-md-3">
+            <div class="card bg-primary text-white">
+              <div class="card-body text-center">
+                <h3 id="codeStatTotal">-</h3>
+                <p class="mb-0">卡密总数</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card bg-success text-white">
+              <div class="card-body text-center">
+                <h3 id="codeStatUnused">-</h3>
+                <p class="mb-0">未使用</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card bg-warning text-white">
+              <div class="card-body text-center">
+                <h3 id="codeStatUsed">-</h3>
+                <p class="mb-0">已使用</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+              <div class="card-body text-center">
+                <h3 id="codeStatOnline">-</h3>
+                <p class="mb-0">当前在线</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 生成表单 -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <i class="bi bi-plus-circle me-2"></i>生成卡密
+          </div>
+          <div class="card-body">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-2">
+                <label class="form-label">数量</label>
+                <input type="number" class="form-control" id="genCodeCount" value="10" min="1" max="500">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">套餐</label>
+                <select class="form-select" id="genCodePlan">
+                  <option value="standard">标准版</option>
+                  <option value="pro">专业版</option>
+                  <option value="lifetime">永久版</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">天数</label>
+                <input type="number" class="form-control" id="genCodeDays" value="30" min="1" max="3650">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">前缀</label>
+                <input type="text" class="form-control" id="genCodePrefix" value="SJ" maxlength="12" placeholder="可选">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">备注</label>
+                <input type="text" class="form-control" id="genCodeRemark" placeholder="可选">
+              </div>
+              <div class="col-md-2 d-flex gap-2">
+                <button type="button" class="btn btn-primary flex-fill" onclick="generateActivationCodes()">
+                  <i class="bi bi-magic me-1"></i>生成
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="exportActivationCodes()" title="导出未使用卡密">
+                  <i class="bi bi-download"></i>
+                </button>
+              </div>
+            </div>
+            <div id="genCodeResult" class="small mt-2"></div>
+          </div>
+        </div>
+
+        <!-- 列表 -->
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-list-columns me-2"></i>卡密列表</span>
+            <div class="d-flex align-items-center gap-2">
+              <select class="form-select form-select-sm w-auto" id="codeStatusFilter" onchange="loadActivationCodes()">
+                <option value="">全部状态</option>
+                <option value="unused">未使用</option>
+                <option value="used">已使用</option>
+                <option value="disabled">已禁用</option>
+              </select>
+              <input type="text" class="form-control form-control-sm w-auto" id="codeSearchInput" placeholder="搜索卡号/用户" onkeydown="if(event.key==='Enter')loadActivationCodes()">
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>卡号</th>
+                    <th>套餐</th>
+                    <th>时长</th>
+                    <th>状态</th>
+                    <th>使用者</th>
+                    <th>有效期至</th>
+                    <th>备注</th>
+                    <th class="text-end">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="activationCodesList">
+                  <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                      <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                      加载中...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 用户管理内容 -->
     <div id="user-management-section" class="content-section">
       <div class="content-header">
@@ -5538,6 +5783,7 @@
   <script src="/static/js/app.logs.js?v=2.4.0"></script>
   <script src="/static/js/app.orders.js?v=2.4.0"></script>
   <script src="/static/js/app.misc.js?v=2.4.0"></script>
+  <script src="/static/js/app.license.js?v=2.4.0"></script>
 
   <!-- 默认回复管理模态框 -->
   <div class="modal fade" id="defaultReplyModal" tabindex="-1" aria-labelledby="defaultReplyModalLabel" aria-hidden="true">
