@@ -458,6 +458,9 @@ class DBManager:
                 max_discount_percent INTEGER DEFAULT 10,
                 max_discount_amount INTEGER DEFAULT 100,
                 max_bargain_rounds INTEGER DEFAULT 3,
+                temperature REAL DEFAULT 0.7,
+                max_tokens INTEGER DEFAULT 150,
+                history_limit INTEGER DEFAULT 10,
                 custom_prompts TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -619,6 +622,15 @@ class DBManager:
                     logger.info(f"正在为 orders 表添加 {_col} 列...")
                     self._execute_sql(cursor, f"ALTER TABLE orders ADD COLUMN {_col} {_type}")
                     logger.info(f"orders 表 {_col} 列添加完成")
+
+            # AI 回复参数化：temperature / max_tokens / history_limit 迁移
+            for _col, _type, _default in (('temperature', 'REAL', '0.7'), ('max_tokens', 'INTEGER', '150'), ('history_limit', 'INTEGER', '10')):
+                try:
+                    self._execute_sql(cursor, f"SELECT {_col} FROM ai_reply_settings LIMIT 1")
+                except sqlite3.OperationalError:
+                    logger.info(f"正在为 ai_reply_settings 表添加 {_col} 列...")
+                    self._execute_sql(cursor, f"ALTER TABLE ai_reply_settings ADD COLUMN {_col} {_type} DEFAULT {_default}")
+                    logger.info(f"ai_reply_settings 表 {_col} 列添加完成")
 
             # 检查并添加 user_id 列（用于数据库迁移）
             try:
@@ -3361,8 +3373,9 @@ Cookie数量: {cookie_count}
                 INSERT OR REPLACE INTO ai_reply_settings
                 (cookie_id, ai_enabled, model_name, api_key, base_url, api_type,
                  max_discount_percent, max_discount_amount, max_bargain_rounds,
+                 temperature, max_tokens, history_limit,
                  custom_prompts, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ''', (
                     cookie_id,
                     settings.get('ai_enabled', False),
@@ -3373,6 +3386,9 @@ Cookie数量: {cookie_count}
                     settings.get('max_discount_percent', 10),
                     settings.get('max_discount_amount', 100),
                     settings.get('max_bargain_rounds', 3),
+                    float(settings.get('temperature', 0.7) or 0.7),
+                    int(settings.get('max_tokens', 150) or 150),
+                    int(settings.get('history_limit', 10) or 10),
                     settings.get('custom_prompts', '')
                 ))
                 self.conn.commit()
@@ -3391,7 +3407,7 @@ Cookie数量: {cookie_count}
                 cursor.execute('''
                 SELECT ai_enabled, model_name, api_key, base_url, api_type,
                        max_discount_percent, max_discount_amount, max_bargain_rounds,
-                       custom_prompts
+                       custom_prompts, temperature, max_tokens, history_limit
                 FROM ai_reply_settings WHERE cookie_id = ?
                 ''', (cookie_id,))
 
@@ -3406,7 +3422,10 @@ Cookie数量: {cookie_count}
                         'max_discount_percent': result[5],
                         'max_discount_amount': result[6],
                         'max_bargain_rounds': result[7],
-                        'custom_prompts': result[8]
+                        'custom_prompts': result[8],
+                        'temperature': float(result[9] if result[9] is not None else 0.7),
+                        'max_tokens': int(result[10] if result[10] is not None else 150),
+                        'history_limit': int(result[11] if result[11] is not None else 10),
                     }
                 else:
                     # 返回默认设置
@@ -3419,7 +3438,10 @@ Cookie数量: {cookie_count}
                         'max_discount_percent': 10,
                         'max_discount_amount': 100,
                         'max_bargain_rounds': 3,
-                        'custom_prompts': ''
+                        'custom_prompts': '',
+                        'temperature': 0.7,
+                        'max_tokens': 150,
+                        'history_limit': 10,
                     }
             except Exception as e:
                 logger.error(f"获取AI回复设置失败: {e}")
@@ -3432,7 +3454,10 @@ Cookie数量: {cookie_count}
                     'max_discount_percent': 10,
                     'max_discount_amount': 100,
                     'max_bargain_rounds': 3,
-                    'custom_prompts': ''
+                    'custom_prompts': '',
+                    'temperature': 0.7,
+                    'max_tokens': 150,
+                    'history_limit': 10,
                 }
 
     def get_all_ai_reply_settings(self) -> Dict[str, dict]:
@@ -3443,7 +3468,7 @@ Cookie数量: {cookie_count}
                 cursor.execute('''
                 SELECT cookie_id, ai_enabled, model_name, api_key, base_url, api_type,
                        max_discount_percent, max_discount_amount, max_bargain_rounds,
-                       custom_prompts
+                       custom_prompts, temperature, max_tokens, history_limit
                 FROM ai_reply_settings
                 ''')
 
@@ -3459,7 +3484,10 @@ Cookie数量: {cookie_count}
                         'max_discount_percent': row[6],
                         'max_discount_amount': row[7],
                         'max_bargain_rounds': row[8],
-                        'custom_prompts': row[9]
+                        'custom_prompts': row[9],
+                        'temperature': float(row[10] if row[10] is not None else 0.7),
+                        'max_tokens': int(row[11] if row[11] is not None else 150),
+                        'history_limit': int(row[12] if row[12] is not None else 10),
                     }
 
                 return result

@@ -1947,6 +1947,9 @@ async function configAIReply(accountId) {
     document.getElementById('maxDiscountPercent').value = settings.max_discount_percent;
     document.getElementById('maxDiscountAmount').value = settings.max_discount_amount;
     document.getElementById('maxBargainRounds').value = settings.max_bargain_rounds;
+    document.getElementById('aiTemperature').value = settings.temperature != null ? settings.temperature : 0.7;
+    document.getElementById('aiMaxTokens').value = settings.max_tokens != null ? settings.max_tokens : 150;
+    document.getElementById('aiHistoryLimit').value = settings.history_limit != null ? settings.history_limit : 10;
     // 解析自定义提示词 JSON，填入三个独立文本框
     let prompts = {};
     if (settings.custom_prompts) {
@@ -2015,17 +2018,20 @@ function toggleAIReplySettings() {
     const enabled = document.getElementById('aiReplyEnabled').checked;
     const settingsDiv = document.getElementById('aiReplySettings');
     const bargainSettings = document.getElementById('bargainSettings');
+    const aiParamSettings = document.getElementById('aiParamSettings');
     const promptSettings = document.getElementById('promptSettings');
     const testArea = document.getElementById('testArea');
 
     if (enabled) {
     settingsDiv.style.display = 'block';
     bargainSettings.style.display = 'block';
+    aiParamSettings.style.display = 'block';
     promptSettings.style.display = 'block';
     testArea.style.display = 'block';
     } else {
     settingsDiv.style.display = 'none';
     bargainSettings.style.display = 'none';
+    aiParamSettings.style.display = 'none';
     promptSettings.style.display = 'none';
     testArea.style.display = 'none';
     }
@@ -2075,6 +2081,9 @@ async function saveAIReplyConfig() {
         max_discount_percent: parseInt(document.getElementById('maxDiscountPercent').value),
         max_discount_amount: parseInt(document.getElementById('maxDiscountAmount').value),
         max_bargain_rounds: parseInt(document.getElementById('maxBargainRounds').value),
+        temperature: parseFloat(document.getElementById('aiTemperature').value || '0.7'),
+        max_tokens: parseInt(document.getElementById('aiMaxTokens').value || '150'),
+        history_limit: parseInt(document.getElementById('aiHistoryLimit').value || '10'),
         custom_prompts: customPromptsJson
     };
 

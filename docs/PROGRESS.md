@@ -48,6 +48,12 @@
   - 报表 API：`/api/reports/overview`（销售额/订单/完成率/退款率/退款金额/今日/发货/关键词）、`keyword-hits`（发货规则关键词排行）、`item-heat`（商品热度）、`orders-distribution`（订单状态分布）、`sales-breakdown?group=item|account|day`（销售构成）、`export`（CSV）
   - 前端：新增 `app.reports.js` + 侧边栏"数据中心"菜单；总览统计卡、订单分布环形图、销售构成条形图（可切换）、关键词/商品排行进度条、导出 CSV
   - 25 个菜单 playwright 巡检零错误；全量测试 64 passed
+- [x] 第五轮 AI 回复增强 + AI 自动写文案：
+  - `ai_reply_settings` 加列 `temperature/max_tokens/history_limit`（幂等迁移）；`save/get/get_all` 支持；Pydantic 模型 + 前端配置弹窗新增"生成参数"卡片（温度/回复长度/对话记忆）
+  - `generate_reply` 使用可配置温度/长度；对话历史按可配置条数 + token 估算截断；新增 `dry_run`（/ai-reply-test 不再污染 ai_conversations）
+  - API Key 掩码：GET 返回掩码，保存时掩码/空值自动保留原 key
+  - `optimize_item_copy` 支持 `mode=generate`（从零生成完整文案）；发布页新增"AI 写文案"按钮（输入卖点/关键词回填）
+  - 25 菜单巡检零错误；全量测试 64 passed
 - [ ] 打包新 dist（用户指示本次不打包）
 
 ## 注意事项 / 教训

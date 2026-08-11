@@ -1117,6 +1117,9 @@
                     <button type="button" class="btn btn-outline-primary" id="itemPublishAiOptimizeBtn" onclick="optimizeItemCopyWithAI()">
                       <i class="bi bi-stars me-1"></i>AI 优化文案
                     </button>
+                    <button type="button" class="btn btn-outline-primary" id="itemPublishAiGenerateBtn" onclick="generateItemCopyWithAI()">
+                      <i class="bi bi-magic me-1"></i>AI 写文案
+                    </button>
                     <button type="button" class="btn btn-outline-warning" id="itemPublishPrecheckBtn" onclick="precheckItemPublishForm()">
                       <i class="bi bi-shield-check me-1"></i>发布前检查
                     </button>
@@ -6239,6 +6242,36 @@
                     <input type="number" class="form-control" id="maxBargainRounds"
                            min="1" max="10" value="3">
                     <small class="form-text text-muted mt-2 d-block">超过轮数后自动保持底线回复</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 生成参数设置 -->
+            <div class="card mb-3 ai-section-card" id="aiParamSettings" style="display: none;">
+              <div class="card-header ai-section-header">
+                <div class="ai-section-title">
+                  <h6 class="mb-0"><i class="bi bi-sliders me-2"></i>生成参数</h6>
+                  <small class="ai-section-desc">控制 AI 回复的随机性、长度与上下文记忆</small>
+                </div>
+                <span class="ai-section-tag">策略层</span>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label for="aiTemperature" class="form-label">温度（随机性）</label>
+                    <input type="number" class="form-control" id="aiTemperature" min="0" max="2" step="0.1" value="0.7">
+                    <small class="form-text text-muted mt-2 d-block">0 保守严谨，0.7 平衡，1.2+ 更自由</small>
+                  </div>
+                  <div class="col-md-4">
+                    <label for="aiMaxTokens" class="form-label">回复长度（tokens）</label>
+                    <input type="number" class="form-control" id="aiMaxTokens" min="50" max="2000" step="10" value="150">
+                    <small class="form-text text-muted mt-2 d-block">单条回复最大生成长度</small>
+                  </div>
+                  <div class="col-md-4">
+                    <label for="aiHistoryLimit" class="form-label">对话记忆（条）</label>
+                    <input type="number" class="form-control" id="aiHistoryLimit" min="1" max="30" value="10">
+                    <small class="form-text text-muted mt-2 d-block">携带的最近对话历史条数（自动按 token 截断）</small>
                   </div>
                 </div>
               </div>

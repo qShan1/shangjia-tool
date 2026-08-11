@@ -713,6 +713,73 @@ async function precheckItemPublishForm() {
     }
 }
 
+// AI 从零生成商品文案（输入卖点/关键词），仅生成建议，不限制发布
+async function generateItemCopyWithAI() {
+    const values = getItemPublishFormValues();
+    const resultContainer = document.getElementById('itemPublishComplianceResult');
+    const button = document.getElementById('itemPublishAiGenerateBtn');
+    if (!values.accountId) {
+        showToast('请先选择发布账号（用于读取 AI 配置）', 'warning');
+        return;
+    }
+    let keywords = values.title || '';
+    if (!keywords) {
+        const input = window.prompt('请输入商品卖点或关键词（例如：正版网盘会员 自动发货 永久更新）');
+        if (!input || !input.trim()) return;
+        keywords = input.trim();
+    }
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>AI 撰写中...';
+    }
+    if (resultContainer) resultContainer.innerHTML = '<div class="alert alert-secondary mb-0"><i class="bi bi-magic me-1"></i>AI 正在撰写文案，请稍候...</div>';
+    try {
+        const response = await requestItemPublishJson('/api/item-copy/optimize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                account_id: values.accountId,
+                title: '',
+                description: '',
+                category: '',
+                mode: 'generate',
+                keywords,
+            }),
+        });
+        const data = response.data || {};
+        if (!data.title && !data.description) {
+            throw new Error('AI 未返回有效结果');
+        }
+        const titleInput = document.getElementById('publishTitle');
+        const descInput = document.getElementById('publishDescription');
+        const catInput = document.getElementById('publishCategory');
+        if (titleInput) titleInput.value = data.title || '';
+        if (descInput) descInput.value = data.description || '';
+        if (catInput && data.category) catInput.value = data.category;
+        if (resultContainer) {
+            resultContainer.innerHTML = `
+                <div class="alert alert-success mb-0">
+                    <strong><i class="bi bi-check-circle me-1"></i>AI 文案已生成并回填，请复核后再发布</strong>
+                    <div class="small mt-2">
+                        <div>标题：${escapeHtml(data.title || '—')}</div>
+                        <div class="mt-1">描述：${escapeHtml(String(data.description || '').slice(0, 200))}${data.description && data.description.length > 200 ? '…' : ''}</div>
+                        ${data.category ? `<div class="mt-1">类目：${escapeHtml(data.category)}</div>` : ''}
+                    </div>
+                </div>`;
+        }
+        showToast('AI 文案已生成，请复核', 'success');
+    } catch (error) {
+        const msg = error.message || 'AI 撰写失败';
+        showToast(msg, 'danger');
+        if (resultContainer) resultContainer.innerHTML = `<div class="alert alert-danger mb-0">AI 撰写失败：${escapeHtml(msg)}</div>`;
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<i class="bi bi-magic me-1"></i>AI 写文案';
+        }
+    }
+}
+
 // AI 优化商品文案：去违禁词/绝对化表述，转换为可发布文案（仅优化建议，不限制发布）
 async function optimizeItemCopyWithAI() {
     const values = getItemPublishFormValues();

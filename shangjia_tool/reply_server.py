@@ -2150,7 +2150,7 @@ async def presence_heartbeat(payload: Dict[str, Any], request: Request, user_inf
     return {'success': True}
 
 
-# AI 商品文案优化：去违禁词/绝对化表述，转换为可发布文案（仅优化建议，不限制发布）
+# AI 商品文案：优化违禁词（mode=optimize）或从零生成（mode=generate）。仅优化建议，不限制发布
 @app.post('/api/item-copy/optimize')
 async def optimize_item_copy(payload: Dict[str, Any], user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
     if not user_info:
@@ -2159,8 +2159,14 @@ async def optimize_item_copy(payload: Dict[str, Any], user_info: Optional[Dict[s
     title = str((payload or {}).get('title') or '').strip()
     description = str((payload or {}).get('description') or '').strip()
     category = str((payload or {}).get('category') or '').strip()
-    if not title and not description:
+    mode = str((payload or {}).get('mode') or 'optimize').strip().lower()
+    keywords = str((payload or {}).get('keywords') or '').strip()
+    if mode not in ('optimize', 'generate'):
+        raise HTTPException(status_code=400, detail='mode 仅支持 optimize/generate')
+    if mode == 'optimize' and not title and not description:
         raise HTTPException(status_code=400, detail='请先填写商品标题或描述')
+    if mode == 'generate' and not title and not keywords:
+        raise HTTPException(status_code=400, detail='请填写商品卖点或关键词')
     if not account_id:
         raise HTTPException(status_code=400, detail='请先选择发布账号（用于读取 AI 配置）')
     try:
@@ -2169,15 +2175,15 @@ async def optimize_item_copy(payload: Dict[str, Any], user_info: Optional[Dict[s
         user_cookies = db_manager.get_all_cookies(user_info['user_id'])
         if account_id not in user_cookies:
             raise HTTPException(status_code=403, detail='账号不存在或不属于当前用户')
-        result = ai_reply_engine.optimize_item_copy(account_id, title, description, category)
+        result = ai_reply_engine.optimize_item_copy(account_id, title, description, category, mode=mode, keywords=keywords)
         if result is None:
             raise HTTPException(status_code=400, detail='AI 未配置或生成失败，请先在账号管理中配置 AI 回复')
-        return {'success': True, 'data': result, 'message': '文案优化完成'}
+        return {'success': True, 'data': result, 'message': '文案处理完成'}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"AI 文案优化失败: {mask_sensitive_text(e)}")
-        raise HTTPException(status_code=500, detail=safe_client_error('文案优化失败，请稍后重试'))
+        logger.error(f"AI 文案处理失败: {mask_sensitive_text(e)}")
+        raise HTTPException(status_code=500, detail=safe_client_error('文案处理失败，请稍后重试'))
 
 
 # 管理端：卡密列表
@@ -12311,6 +12317,9 @@ class AIReplySettings(BaseModel):
     max_discount_percent: int = 10
     max_discount_amount: int = 100
     max_bargain_rounds: int = 3
+    temperature: float = 0.7
+    max_tokens: int = 150
+    history_limit: int = 10
     custom_prompts: str = ""
 
 
@@ -12361,6 +12370,12 @@ def get_ai_reply_settings(cookie_id: str, current_user: Dict[str, Any] = Depends
             raise HTTPException(status_code=403, detail="无权限访问该Cookie")
 
         settings = db_manager.get_ai_reply_settings(cookie_id)
+        # 掩码 API Key，避免前端回显明文（仅当长度足够时部分遮蔽）
+        api_key = settings.get('api_key') or ''
+        if api_key and len(api_key) > 8:
+            settings['api_key'] = api_key[:4] + '*' * (len(api_key) - 8) + api_key[-4:]
+        elif api_key:
+            settings['api_key'] = '*' * len(api_key)
         return settings
     except HTTPException:
         raise
@@ -12387,6 +12402,11 @@ def update_ai_reply_settings(cookie_id: str, settings: AIReplySettings, current_
 
         # 保存设置
         settings_dict = settings.dict()
+        # 掩码/空 api_key 表示未修改，保留原密钥
+        incoming_key = str(settings_dict.get('api_key') or '')
+        if not incoming_key or '*' in incoming_key:
+            existing = db_manager.get_ai_reply_settings(cookie_id)
+            settings_dict['api_key'] = (existing or {}).get('api_key') or ''
         success = db_manager.save_ai_reply_settings(cookie_id, settings_dict)
 
         if success:
@@ -12513,7 +12533,7 @@ def test_ai_reply(cookie_id: str, test_data: dict, current_user: Dict[str, Any] 
             'desc': test_data.get('item_desc', '这是一个测试商品')
         }
 
-        # 生成测试回复（跳过去抖等待）
+        # 生成测试回复（跳过去抖等待 + dry_run 不写会话）
         reply = ai_reply_engine.generate_reply(
             message=test_message,
             item_info=test_item_info,
@@ -12521,7 +12541,8 @@ def test_ai_reply(cookie_id: str, test_data: dict, current_user: Dict[str, Any] 
             cookie_id=cookie_id,
             user_id="test_user",
             item_id="test_item",
-            skip_wait=True
+            skip_wait=True,
+            dry_run=True
         )
 
         if reply:
