@@ -2600,6 +2600,347 @@ async def get_sales_summary(
         }
 
 
+# ======================================================================
+# 数据中心 / 报表 API（销售构成、关键词触发、商品热度、订单分布、退款统计）
+# ======================================================================
+
+def _build_user_orders_report_rows(user_id: int, start_date: str = None, end_date: str = None) -> list:
+    """拉取当前用户的订单明细行（排除自买），供各报表聚合复用。"""
+    from db_manager import db_manager
+    user_cookies = db_manager.get_all_cookies(user_id)
+    cookie_ids = list(user_cookies.keys())
+    if not cookie_ids:
+        return []
+    placeholders = ','.join(['?'] * len(cookie_ids))
+    query = (
+        f"SELECT o.item_id, o.amount, o.order_status, {ORDER_SALES_TIME_SQL} AS effective_sales_at, "
+        f"o.cookie_id, o.buyer_id, o.created_at "
+        f"FROM orders o JOIN cookies c ON c.id = o.cookie_id WHERE o.cookie_id IN ({placeholders}) "
+        "AND NOT (TRIM(COALESCE(o.buyer_nick, '')) <> '' AND TRIM(COALESCE(c.remark, '')) <> '' "
+        "AND TRIM(o.buyer_nick) = TRIM(c.remark))"
+    )
+    params = list(cookie_ids)
+    if start_date:
+        utc_start = local_date_to_utc_start(start_date)
+        if utc_start:
+            query += f" AND {ORDER_SALES_TIME_SQL} >= ?"
+            params.append(utc_start)
+    if end_date:
+        utc_end = local_date_to_utc_end_exclusive(end_date)
+        if utc_end:
+            query += f" AND {ORDER_SALES_TIME_SQL} < ?"
+            params.append(utc_end)
+    rows = db_manager.execute_query(query, params)
+    result = []
+    for row in rows:
+        result.append({
+            'item_id': row[0],
+            'amount': parse_order_amount_value(row[1]),
+            'order_status': normalize_order_status_value(row[2]),
+            'effective_sales_at': row[3],
+            'cookie_id': row[4],
+            'buyer_id': row[5],
+            'created_at': row[6],
+        })
+    return result
+
+
+def _report_date_window() -> tuple:
+    """返回 (start_date, end_date)：默认近 30 天。"""
+    now = get_local_now()
+    start = (now - timedelta(days=29)).strftime('%Y-%m-%d')
+    end = now.strftime('%Y-%m-%d')
+    return start, end
+
+
+def _is_refund_status(status: str) -> bool:
+    return status in ('refunding', 'refund_cancelled', 'cancelled')
+
+
+# 报表总览
+@app.get('/api/reports/overview')
+async def get_reports_overview(start_date: Optional[str] = None, end_date: Optional[str] = None,
+                               user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
+    if not user_info:
+        raise HTTPException(status_code=401, detail='未登录或登录已过期')
+    try:
+        sd, ed = _report_date_window()
+        start_date = start_date or sd
+        end_date = end_date or ed
+        rows = _build_user_orders_report_rows(user_info['user_id'], start_date, end_date)
+        total_sales = 0.0
+        order_count = 0
+        completed_count = 0
+        refund_count = 0
+        refund_amount = 0.0
+        today_local = get_local_now().strftime('%Y-%m-%d')
+        today_orders = 0
+        for r in rows:
+            if r['order_status'] in SALES_ELIGIBLE_ORDER_STATUSES and r['amount'] is not None:
+                total_sales += r['amount']
+                order_count += 1
+                if r['order_status'] == 'completed':
+                    completed_count += 1
+                local_day = utc_timestamp_to_local_date_string(r['effective_sales_at']) if r['effective_sales_at'] else None
+                if local_day == today_local:
+                    today_orders += 1
+            if _is_refund_status(r['order_status']):
+                refund_count += 1
+                if r['amount'] is not None:
+                    refund_amount += r['amount']
+        # 发货与关键词触发数
+        from db_manager import db_manager
+        deliver_ctx = db_manager.execute_query(
+            "SELECT COUNT(*), COUNT(DISTINCT rule_keyword) FROM delivery_logs WHERE user_id = ? AND rule_keyword IS NOT NULL AND rule_keyword != ''",
+            (user_info['user_id'],))
+        deliver_count = deliver_ctx[0][0] if deliver_ctx else 0
+        keyword_count = deliver_ctx[0][1] if deliver_ctx else 0
+        return {
+            'success': True,
+            'data': {
+                'start_date': start_date,
+                'end_date': end_date,
+                'total_sales': round(total_sales, 2),
+                'order_count': order_count,
+                'completed_count': completed_count,
+                'completion_rate': round((completed_count / order_count) * 100, 1) if order_count else 0.0,
+                'refund_count': refund_count,
+                'refund_rate': round((refund_count / (order_count + refund_count)) * 100, 1),
+                'refund_amount': round(refund_amount, 2),
+                'today_orders': today_orders,
+                'deliver_count': deliver_count,
+                'keyword_count': keyword_count,
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取报表总览失败: {mask_sensitive_text(e)}")
+        raise HTTPException(status_code=500, detail=safe_client_error('获取报表总览失败'))
+
+
+# 关键词触发排行（基于发货日志规则关键词）
+@app.get('/api/reports/keyword-hits')
+async def get_reports_keyword_hits(limit: int = 20,
+                                   user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
+    if not user_info:
+        raise HTTPException(status_code=401, detail='未登录或登录已过期')
+    try:
+        from db_manager import db_manager
+        limit = max(1, min(limit, 100))
+        rows = db_manager.execute_query('''
+            SELECT rule_keyword, COUNT(*) AS hits,
+                   COUNT(CASE WHEN status = 'success' THEN 1 END) AS success
+            FROM delivery_logs
+            WHERE user_id = ? AND rule_keyword IS NOT NULL AND rule_keyword != ''
+            GROUP BY rule_keyword
+            ORDER BY hits DESC
+            LIMIT ?
+        ''', (user_info['user_id'], limit))
+        data = [{'keyword': r[0], 'hits': r[1], 'success': r[2]} for r in rows]
+        return {'success': True, 'data': data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取关键词触发排行失败: {mask_sensitive_text(e)}")
+        raise HTTPException(status_code=500, detail=safe_client_error('获取关键词触发排行失败'))
+
+
+# 商品热度排行
+@app.get('/api/reports/item-heat')
+async def get_reports_item_heat(limit: int = 20, start_date: Optional[str] = None, end_date: Optional[str] = None,
+                                user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
+    if not user_info:
+        raise HTTPException(status_code=401, detail='未登录或登录已过期')
+    try:
+        sd, ed = _report_date_window()
+        start_date = start_date or sd
+        end_date = end_date or ed
+        rows = _build_user_orders_report_rows(user_info['user_id'], start_date, end_date)
+        agg = {}
+        for r in rows:
+            if r['amount'] is None:
+                continue
+            key = r['item_id'] or 'unknown'
+            entry = agg.setdefault(key, {'orders': 0, 'sales': 0.0, 'refund': 0})
+            entry['orders'] += 1
+            entry['sales'] += r['amount']
+            if _is_refund_status(r['order_status']):
+                entry['refund'] += 1
+        from db_manager import db_manager
+        title_map = {}
+        if agg:
+            ids = list(agg.keys())
+            ph = ','.join(['?'] * len(ids))
+            trows = db_manager.execute_query(
+                f"SELECT item_id, item_title FROM item_info WHERE cookie_id IN (SELECT id FROM cookies WHERE user_id = ?) AND item_id IN ({ph})",
+                [user_info['user_id']] + ids)
+            for t in trows:
+                title_map[t[0]] = t[1]
+        ranked = sorted(agg.items(), key=lambda kv: kv[1]['sales'], reverse=True)[:limit]
+        data = [{
+            'item_id': k,
+            'title': title_map.get(k) or k,
+            'orders': v['orders'],
+            'sales': round(v['sales'], 2),
+            'refunds': v['refund'],
+        } for k, v in ranked]
+        return {'success': True, 'data': data, 'total_items': len(agg)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取商品热度排行失败: {mask_sensitive_text(e)}")
+        raise HTTPException(status_code=500, detail=safe_client_error('获取商品热度排行失败'))
+
+
+# 订单状态分布
+@app.get('/api/reports/orders-distribution')
+async def get_reports_orders_distribution(user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
+    if not user_info:
+        raise HTTPException(status_code=401, detail='未登录或登录已过期')
+    try:
+        from db_manager import db_manager
+        rows = _build_user_orders_report_rows(user_info['user_id'])
+        dist = {}
+        for r in rows:
+            status = r['order_status'] or 'unknown'
+            dist[status] = dist.get(status, 0) + 1
+        labels = {
+            'completed': '已完成', 'shipped': '已发货', 'pending_ship': '待发货',
+            'refunding': '退款中', 'refund_cancelled': '退款取消', 'cancelled': '已取消',
+            'pending_payment': '待付款', 'processing': '处理中', 'unknown': '未知',
+        }
+        data = [{'status': k, 'label': labels.get(k, k), 'count': v} for k, v in dist.items()]
+        data.sort(key=lambda x: x['count'], reverse=True)
+        return {'success': True, 'data': data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取订单分布失败: {mask_sensitive_text(e)}")
+        raise HTTPException(status_code=500, detail=safe_client_error('获取订单分布失败'))
+
+
+# 销售构成（按商品/账号/日）
+@app.get('/api/reports/sales-breakdown')
+async def get_reports_sales_breakdown(group: str = 'item', start_date: Optional[str] = None,
+                                      end_date: Optional[str] = None,
+                                      user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
+    if not user_info:
+        raise HTTPException(status_code=401, detail='未登录或登录已过期')
+    try:
+        if group not in ('item', 'account', 'day'):
+            raise HTTPException(status_code=400, detail='group 参数仅支持 item/account/day')
+        sd, ed = _report_date_window()
+        start_date = start_date or sd
+        end_date = end_date or ed
+        rows = _build_user_orders_report_rows(user_info['user_id'], start_date, end_date)
+        from db_manager import db_manager
+        account_names = db_manager.get_all_cookies(user_info['user_id'])
+        title_map = {}
+        if group == 'item':
+            item_ids = {r['item_id'] for r in rows if r['item_id']}
+            if item_ids:
+                ph = ','.join(['?'] * len(item_ids))
+                trows = db_manager.execute_query(
+                    f"SELECT item_id, item_title FROM item_info WHERE cookie_id IN (SELECT id FROM cookies WHERE user_id = ?) AND item_id IN ({ph})",
+                    [user_info['user_id']] + list(item_ids))
+                title_map = {t[0]: t[1] for t in trows}
+        agg = {}
+        for r in rows:
+            if r['amount'] is None or r['order_status'] not in SALES_ELIGIBLE_ORDER_STATUSES:
+                continue
+            if group == 'item':
+                key = title_map.get(r['item_id']) or r['item_id'] or '未知'
+            elif group == 'account':
+                key = account_names.get(r['cookie_id'], r['cookie_id'] or '未知')
+            else:
+                local_day = utc_timestamp_to_local_date_string(r['effective_sales_at']) if r['effective_sales_at'] else '未知'
+                key = local_day
+            agg[key] = agg.get(key, 0.0) + r['amount']
+        data = [{'name': k, 'value': round(v, 2)} for k, v in sorted(agg.items(), key=lambda kv: kv[1], reverse=True)]
+        return {'success': True, 'data': data, 'group': group}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取销售构成失败: {mask_sensitive_text(e)}")
+        raise HTTPException(status_code=500, detail=safe_client_error('获取销售构成失败'))
+
+
+# 报表导出（CSV）
+@app.get('/api/reports/export')
+async def get_reports_export(type: str = 'item-heat', start_date: Optional[str] = None, end_date: Optional[str] = None,
+                             user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
+    if not user_info:
+        raise HTTPException(status_code=401, detail='未登录或登录已过期')
+    try:
+        import csv as _csv
+        import io as _io
+        sd, ed = _report_date_window()
+        start_date = start_date or sd
+        end_date = end_date or ed
+        buf = _io.StringIO()
+        writer = _csv.writer(buf)
+        if type == 'overview':
+            from db_manager import db_manager
+            rows = _build_user_orders_report_rows(user_info['user_id'], start_date, end_date)
+            writer.writerow(['指标', '数值'])
+            total = sum(r['amount'] for r in rows if r['amount'] is not None and r['order_status'] in SALES_ELIGIBLE_ORDER_STATUSES)
+            refund = sum(r['amount'] for r in rows if r['amount'] is not None and _is_refund_status(r['order_status']))
+            writer.writerow(['销售额', round(total, 2)])
+            writer.writerow(['订单数', len(rows)])
+            writer.writerow(['退款金额', round(refund, 2)])
+            writer.writerow(['统计范围', f"{start_date} ~ {end_date}"])
+        elif type == 'keyword-hits':
+            from db_manager import db_manager
+            krows = db_manager.execute_query(
+                "SELECT rule_keyword, COUNT(*), COUNT(CASE WHEN status='success' THEN 1 END) FROM delivery_logs WHERE user_id=? AND rule_keyword IS NOT NULL AND rule_keyword!='' GROUP BY rule_keyword ORDER BY COUNT(*) DESC",
+                (user_info['user_id'],))
+            writer.writerow(['关键词', '触发次数', '成功次数'])
+            for k in krows:
+                writer.writerow(k)
+        elif type == 'orders-distribution':
+            rows = _build_user_orders_report_rows(user_info['user_id'], start_date, end_date)
+            dist = {}
+            for r in rows:
+                s = r['order_status'] or 'unknown'
+                dist[s] = dist.get(s, 0) + 1
+            writer.writerow(['状态', '数量'])
+            for k, v in dist.items():
+                writer.writerow([k, v])
+        else:  # item-heat 默认
+            from db_manager import db_manager
+            rows = _build_user_orders_report_rows(user_info['user_id'], start_date, end_date)
+            agg = {}
+            for r in rows:
+                if r['amount'] is None:
+                    continue
+                e = agg.setdefault(r['item_id'] or 'unknown', {'orders': 0, 'sales': 0.0})
+                e['orders'] += 1
+                e['sales'] += r['amount']
+            ids = list(agg.keys())
+            title_map = {}
+            if ids:
+                ph = ','.join(['?'] * len(ids))
+                trows = db_manager.execute_query(
+                    f"SELECT item_id, item_title FROM item_info WHERE cookie_id IN (SELECT id FROM cookies WHERE user_id = ?) AND item_id IN ({ph})",
+                    [user_info['user_id']] + ids)
+                title_map = {t[0]: t[1] for t in trows}
+            writer.writerow(['商品ID', '标题', '订单数', '销售额'])
+            for k, v in sorted(agg.items(), key=lambda kv: kv[1]['sales'], reverse=True):
+                writer.writerow([k, title_map.get(k) or '', v['orders'], round(v['sales'], 2)])
+        content = buf.getvalue()
+        filename_map = {'overview': 'overview', 'keyword-hits': 'keyword-hits', 'orders-distribution': 'orders-distribution', 'item-heat': 'item-heat'}
+        fname = filename_map.get(type, 'report')
+        return Response(content=content, media_type='text/csv; charset=utf-8', headers={
+            'Content-Disposition': f'attachment; filename="report-{fname}-{start_date}-{end_date}.csv"'
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"导出报表失败: {mask_sensitive_text(e)}")
+        raise HTTPException(status_code=500, detail=safe_client_error('导出报表失败'))
+
+
 # ========================= 防暴力破解管理API =========================
 
 @app.get('/admin/security/login-stats')

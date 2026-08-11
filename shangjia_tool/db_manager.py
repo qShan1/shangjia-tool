@@ -611,6 +611,15 @@ class DBManager:
                 self._execute_sql(cursor, "ALTER TABLE orders ADD COLUMN bargain_success_detected INTEGER DEFAULT 0")
                 logger.info("orders 表 bargain_success_detected 列添加完成")
 
+            # 售后分析：orders 退款记录列（金额/时间/原因）
+            for _col, _type in (('refund_amount', 'TEXT'), ('refunded_at', 'TIMESTAMP'), ('refund_reason', 'TEXT')):
+                try:
+                    self._execute_sql(cursor, f"SELECT {_col} FROM orders LIMIT 1")
+                except sqlite3.OperationalError:
+                    logger.info(f"正在为 orders 表添加 {_col} 列...")
+                    self._execute_sql(cursor, f"ALTER TABLE orders ADD COLUMN {_col} {_type}")
+                    logger.info(f"orders 表 {_col} 列添加完成")
+
             # 检查并添加 user_id 列（用于数据库迁移）
             try:
                 self._execute_sql(cursor, "SELECT user_id FROM cards LIMIT 1")
@@ -7895,6 +7904,22 @@ Cookie数量: {cookie_count}
             except Exception as e:
                 logger.error(f"获取订单退款前状态失败: {order_id} - {e}")
                 return None
+
+    def record_order_refund(self, order_id: str, amount: str = None, reason: str = None) -> bool:
+        """记录订单退款金额/原因/时间（售后分析用）。"""
+        with self.lock:
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute('''
+                UPDATE orders SET refund_amount = ?, refund_reason = ?, refunded_at = CURRENT_TIMESTAMP,
+                                  updated_at = CURRENT_TIMESTAMP
+                WHERE order_id = ?
+                ''', (amount, reason, order_id))
+                self.conn.commit()
+                return cursor.rowcount > 0
+            except Exception as e:
+                logger.error(f"记录订单退款信息失败: {order_id} - {e}")
+                return False
 
     def _lookup_buyer_nick_from_chat_messages(self, cookie_id: str, sid: str = None, buyer_id: str = None) -> str:
         chat_id = str(sid or '').strip().split('@')[0]

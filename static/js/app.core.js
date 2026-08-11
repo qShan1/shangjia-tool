@@ -304,6 +304,9 @@ function showSection(sectionName) {
     case 'license':          // 【我的授权菜单】
         loadMyLicense();
         break;
+    case 'data-reports':     // 【数据中心菜单】
+        loadReportsAll();
+        break;
     case 'online-users':     // 【在线用户菜单（管理员）】
         loadOnlineUsers();
         break;

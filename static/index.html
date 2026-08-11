@@ -337,6 +337,12 @@
         </a>
       </div>
       <div class="nav-divider"><small class="text-white-50">系统</small></div>
+      <div class="nav-item" data-menu-id="data-reports">
+        <a href="javascript:void(0)" class="nav-link" onclick="showSection('data-reports')">
+          <i class="bi bi-bar-chart-line"></i>
+          <span>数据中心</span>
+        </a>
+      </div>
       <div class="nav-item" data-menu-id="system-settings">
         <a href="javascript:void(0)" class="nav-link" onclick="showSection('system-settings')">
           <i class="bi bi-gear"></i>
@@ -4172,6 +4178,130 @@
       </div>
     </div>
 
+    <!-- 数据中心内容 -->
+    <div id="data-reports-section" class="content-section">
+      <div class="content-header">
+        <div class="d-flex justify-content-between align-items-center w-100">
+          <div>
+            <h2 class="mb-0">
+              <i class="bi bi-bar-chart-line me-2"></i>
+              数据中心
+            </h2>
+            <p class="text-muted mb-0">经营数据总览、关键词触发、商品热度、订单分布与销售构成</p>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <select class="form-select form-select-sm w-auto" id="reportsRangeSelect" onchange="loadReportsRange()">
+              <option value="7">近 7 天</option>
+              <option value="30" selected>近 30 天</option>
+              <option value="90">近 90 天</option>
+            </select>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadReportsAll()">
+              <i class="bi bi-arrow-clockwise me-1"></i>刷新
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-success" onclick="exportReportCsv('item-heat')">
+              <i class="bi bi-download me-1"></i>导出商品报表
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="content-body">
+        <!-- 总览统计卡 -->
+        <div class="row mb-4 g-3" id="reportsOverviewCards">
+          <div class="col-md-3 col-6">
+            <div class="card h-100">
+              <div class="card-body text-center">
+                <div class="fs-2 text-primary fw-bold" id="repTotalSales">-</div>
+                <p class="text-muted mb-0">销售额</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 col-6">
+            <div class="card h-100">
+              <div class="card-body text-center">
+                <div class="fs-2 text-info fw-bold" id="repOrderCount">-</div>
+                <p class="text-muted mb-0">订单数</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 col-6">
+            <div class="card h-100">
+              <div class="card-body text-center">
+                <div class="fs-2 text-success fw-bold" id="repCompletionRate">-</div>
+                <p class="text-muted mb-0">完成率</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 col-6">
+            <div class="card h-100">
+              <div class="card-body text-center">
+                <div class="fs-2 text-danger fw-bold" id="repRefundRate">-</div>
+                <p class="text-muted mb-0">退款率</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+          <!-- 订单状态分布（环形图） -->
+          <div class="col-xl-6">
+            <div class="card h-100">
+              <div class="card-header">
+                <i class="bi bi-pie-chart me-2"></i>订单状态分布
+              </div>
+              <div class="card-body">
+                <div style="height: 260px;">
+                  <canvas id="reportsOrdersChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 销售构成 -->
+          <div class="col-xl-6">
+            <div class="card h-100">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-bar-chart me-2"></i>销售构成</span>
+                <div class="btn-group btn-group-sm">
+                  <button type="button" class="btn btn-outline-primary is-active" data-breakdown="item" onclick="switchBreakdown('item')">按商品</button>
+                  <button type="button" class="btn btn-outline-primary" data-breakdown="account" onclick="switchBreakdown('account')">按账号</button>
+                  <button type="button" class="btn btn-outline-primary" data-breakdown="day" onclick="switchBreakdown('day')">按日期</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div style="height: 260px;">
+                  <canvas id="reportsBreakdownChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-4">
+          <!-- 关键词触发排行 -->
+          <div class="col-xl-6">
+            <div class="card h-100">
+              <div class="card-header">
+                <i class="bi bi-tags me-2"></i>关键词触发排行（发货规则）
+              </div>
+              <div class="card-body">
+                <div id="reportsKeywordHits" class="report-list"></div>
+              </div>
+            </div>
+          </div>
+          <!-- 商品热度排行 -->
+          <div class="col-xl-6">
+            <div class="card h-100">
+              <div class="card-header">
+                <i class="bi bi-fire me-2"></i>商品热度排行
+              </div>
+              <div class="card-body">
+                <div id="reportsItemHeat" class="report-list"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 我的授权内容 -->
     <div id="license-section" class="content-section">
       <div class="content-header">
@@ -5784,6 +5914,7 @@
   <script src="/static/js/app.orders.js?v=2.4.0"></script>
   <script src="/static/js/app.misc.js?v=2.4.0"></script>
   <script src="/static/js/app.license.js?v=2.4.0"></script>
+  <script src="/static/js/app.reports.js?v=2.4.0"></script>
 
   <!-- 默认回复管理模态框 -->
   <div class="modal fade" id="defaultReplyModal" tabindex="-1" aria-labelledby="defaultReplyModalLabel" aria-hidden="true">

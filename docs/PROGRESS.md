@@ -43,6 +43,11 @@
   - 前端：新增 `app.license.js`；侧边栏"我的授权"（兑换+状态）与管理员"在线用户/卡密管理"；心跳 60s；在线用户 15s 自动刷新
 - [x] 第二轮 AI 文案优化：`ai_reply_engine.optimize_item_copy`（一次调用不落库）+ `POST /api/item-copy/optimize`；发布页新增"AI 优化文案"按钮回填；`submitItemPublishForm` 合规检查不再硬阻断（改为风险确认）；移除"素材库/保存素材/新建素材"入口
 - [x] 第三轮 UI 动效：卡片 hover 上浮、表格行级联入场（1-12 行错开）、模态内容级联、下拉 pop、图表容器淡入、侧边栏折叠文字淡出、admin 菜单淡入、tab 指示条、空状态淡入、卡密统计数字滚动；reduced-motion 自动降级
+- [x] 第四轮 数据中心 + 售后/退款分析：
+  - orders 表加列 `refund_amount/refunded_at/refund_reason`；`db_manager.record_order_refund`
+  - 报表 API：`/api/reports/overview`（销售额/订单/完成率/退款率/退款金额/今日/发货/关键词）、`keyword-hits`（发货规则关键词排行）、`item-heat`（商品热度）、`orders-distribution`（订单状态分布）、`sales-breakdown?group=item|account|day`（销售构成）、`export`（CSV）
+  - 前端：新增 `app.reports.js` + 侧边栏"数据中心"菜单；总览统计卡、订单分布环形图、销售构成条形图（可切换）、关键词/商品排行进度条、导出 CSV
+  - 25 个菜单 playwright 巡检零错误；全量测试 64 passed
 - [ ] 打包新 dist（用户指示本次不打包）
 
 ## 注意事项 / 教训
