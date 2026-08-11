@@ -1,4 +1,10 @@
 /* Shared light glass theme for the management shell. */
+html {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
 :root {
   --ui-canvas: #e9edef;
   --ui-surface: rgba(255, 255, 255, 0.34);
@@ -482,6 +488,33 @@ body.sidebar-collapsed .main-content {
   transform: none;
 }
 
+/* 下拉框整体优化：隐藏原生箭头改为自定义图标，增强交互反馈 */
+.form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px 14px;
+  padding-right: 40px;
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+.form-select:hover {
+  border-color: color-mix(in srgb, var(--primary-color) 45%, transparent);
+}
+.form-select:active {
+  transform: scale(0.99);
+}
+.form-select option {
+  color: #1f2937;
+  background: #ffffff;
+}
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .form-label,
 .form-check-label,
 .col-form-label {
@@ -537,6 +570,13 @@ body.sidebar-collapsed .main-content {
   backdrop-filter: blur(6px);
 }
 
+/* 弹窗打开时锁定背景滚动，避免滚轮穿透到页面 */
+body.modal-open {
+  overflow: hidden;
+}
+html:has(body.modal-open) {
+  overflow: hidden;
+}
 .modal-content {
   background: rgba(255, 255, 255, 0.56);
   border: 1px solid rgba(255, 255, 255, 0.68);
@@ -569,16 +609,6 @@ body.sidebar-collapsed .main-content {
   border: 0;
   border-radius: 14px;
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
-}
-
-.color-preset {
-  padding: 0 !important;
-  border-radius: 11px !important;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.color-preset:hover {
-  transform: scale(1.06);
 }
 
 .custom-background-preview {
@@ -855,6 +885,18 @@ body.sidebar-collapsed .main-content {
   background: rgba(58, 58, 60, 0.96) !important;
 }
 
+[data-theme="dark"] .form-select {
+  color-scheme: dark;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px 14px;
+}
+[data-theme="dark"] .form-select option {
+  color: #e5e7eb;
+  background: #1f2023;
+}
+
 [data-theme="dark"] .table th {
   background: rgba(118, 118, 128, 0.16);
 }
@@ -934,7 +976,43 @@ body.sidebar-collapsed .main-content {
   border-color: var(--primary-color);
 }
 
-.item-stock-label { display: block; margin-top: 2px; font-size: 0.78rem; }
+.item-stock-input { width: 90px; }
+
+.theme-preset {
+  --swatch: #0a7c66;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.42rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-color);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+.theme-preset::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--swatch);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  flex: 0 0 auto;
+}
+.theme-preset:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+.theme-preset.is-active {
+  border-color: var(--swatch);
+  box-shadow: inset 0 0 0 1px var(--swatch), 0 8px 18px -14px rgba(15, 23, 42, 0.3);
+}
+[data-theme="dark"] .theme-preset {
+  background: rgba(30, 30, 33, 0.7);
+  color: var(--text-color);
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,

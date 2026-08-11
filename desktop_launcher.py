@@ -23,6 +23,7 @@ _LOCK_HANDLE = None
 _SERVICE_PROCESS = None
 _EXIT_REQUESTED = False
 _TRAY_ICON = None
+_WINDOW = None
 GITHUB_RELEASE_URL = "https://api.github.com/repos/qShan1/shangjia-tool/releases/latest"
 
 
@@ -251,21 +252,77 @@ def release_single_instance():
     _LOCK_HANDLE = None
 
 
+def _port_owner_pid():
+    """Return the PID currently LISTENING on PORT, or None."""
+    try:
+        result = subprocess.run(
+            ["netstat", "-ano", "-p", "TCP"],
+            capture_output=True,
+            text=True,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            timeout=15,
+        )
+        for line in result.stdout.splitlines():
+            fields = line.split()
+            if len(fields) >= 5 and fields[0] == "TCP" and fields[1].endswith(f":{PORT}"):
+                if fields[3] == "LISTENING":
+                    return fields[4]
+    except Exception:
+        pass
+    return None
+
+
 def stop_service():
-    """Stop only the service process launched by this desktop instance."""
+    """Stop the service and guarantee the HTTP port is actually released."""
     global _SERVICE_PROCESS
     process = _SERVICE_PROCESS
     _SERVICE_PROCESS = None
-    if process is None or process.poll() is not None:
+    pid = process.pid if (process is not None and process.poll() is None) else None
+
+    if process is not None and process.poll() is None:
+        # TerminateProcess: graceful teardown when the process is still alive.
+        try:
+            process.terminate()
+            process.wait(timeout=8)
+        except subprocess.TimeoutExpired:
+            pass
+        except OSError:
+            pass
+
+    # terminate() only kills the parent; orphan children can linger and hold the
+    # port. taskkill /T walks the whole process tree.
+    if pid is not None:
+        try:
+            subprocess.run(
+                ["taskkill", "/PID", str(pid), "/T", "/F"],
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                capture_output=True,
+                timeout=15,
+            )
+        except Exception:
+            pass
+
+    # Confirm the endpoint is actually down before returning.
+    deadline = time.time() + 20
+    while time.time() < deadline and healthy():
+        time.sleep(0.5)
+    if not healthy():
         return
-    try:
-        process.terminate()
-        process.wait(timeout=8)
-    except subprocess.TimeoutExpired:
-        process.kill()
-        process.wait(timeout=3)
-    except OSError:
-        pass
+
+    # Port still busy after our own process is gone: force-stop whatever holds it.
+    owner = _port_owner_pid()
+    if owner is not None:
+        try:
+            subprocess.run(
+                ["taskkill", "/PID", owner, "/T", "/F"],
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                capture_output=True,
+                timeout=15,
+            )
+        except Exception:
+            pass
+    with desktop_log_path().open("a", encoding="utf-8") as output:
+        output.write(f"Warning: port {PORT} still occupied after stop (pid={owner})\n")
 
 
 def request_exit(window=None):
@@ -286,7 +343,7 @@ def request_exit(window=None):
 
 def _start_tray(window):
     """Create a Windows tray menu after the user closes the main window."""
-    global _TRAY_ICON
+    global _TRAY_ICON, _WINDOW
     if _TRAY_ICON is not None:
         return True
     try:
@@ -343,8 +400,11 @@ def minimize_to_tray(window):
 
 
 def allow_window_close():
-    """The title-bar close button always performs a real application exit."""
-    return True
+    """标题栏关闭按钮 → 隐藏到系统托盘继续后台运行；真正退出请用托盘菜单。"""
+    if _EXIT_REQUESTED or _WINDOW is None:
+        return True
+    minimize_to_tray(_WINDOW)
+    return False
 
 def migrate_runtime_data():
     """Copy legacy runtime folders once; never remove or overwrite source data."""
@@ -375,10 +435,14 @@ def main():
     if offer_desktop_update():
         return
     if not acquire_single_instance():
-        if healthy():
-            webbrowser.open(f"http://127.0.0.1:{PORT}/admin")
-            return
-        raise RuntimeError("上架工具已在启动中，请稍候再试")
+        # 已有实例在运行：若服务尚未就绪则稍等，随后直接打开管理台，避免误报“已在启动”。
+        for _ in range(40):
+            if healthy():
+                webbrowser.open(f"http://127.0.0.1:{PORT}/admin")
+                return
+            time.sleep(0.75)
+        show_info("上架工具已在启动中，请稍候再试")
+        return
     migrate_runtime_data()
     env = os.environ.copy()
     env["APP_DATA_DIR"] = str(DATA_ROOT)
@@ -433,7 +497,9 @@ def main():
             height=900,
         )
         window.events.closing += allow_window_close
-        window.events.minimized += lambda: minimize_to_tray(window)
+        # 最小化按钮 → 普通任务栏最小化（不进入托盘）。仅标题栏 X 进入托盘后台。
+        global _WINDOW
+        _WINDOW = window
         webview.start()
     except ImportError:
         webbrowser.open(f"http://127.0.0.1:{PORT}/admin")

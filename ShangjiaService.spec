@@ -65,6 +65,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
+    icon=os.path.join(SPECPATH, 'static', 'ShangjiaTool.ico'),
     runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,

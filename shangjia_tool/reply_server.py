@@ -75,8 +75,9 @@ KEYWORDS_FILE = _PROJECT_ROOT / "回复关键字.txt"
 ADMIN_USERNAME = "admin"
 DEFAULT_ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")  # 从环境变量读取，未设置则为空（首次启动时随机生成）
 SESSION_TOKENS = {}  # 存储会话token: {token: {'user_id': int, 'username': str, 'timestamp': float}}
-TOKEN_EXPIRE_TIME = 24 * 60 * 60  # token过期时间：24小时
 
+TOKEN_EXPIRE_TIME = 24 * 60 * 60  # token过期时间：24小时
+REMEMBER_TOKEN_TTL = 30 * 24 * 60 * 60  # 【记住我】令牌有效期：30天
 # HTTP Bearer认证
 security = HTTPBearer(auto_error=False)
 
@@ -898,6 +899,7 @@ class LoginRequest(BaseModel):
     verification_code: Optional[str] = None
     captcha_id: Optional[str] = None      # 验证码ID
     captcha_code: Optional[str] = None    # 用户输入的验证码
+    remember_me: bool = False             # 记住我：持久化登录令牌，服务重启后免登录
 
 
 class LoginResponse(BaseModel):
@@ -964,22 +966,83 @@ def generate_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+def _persist_remembered_login(token: str, user_id: int, username: str, is_admin: bool, remember_me: bool) -> None:
+    """勾选【记住我】时，把令牌持久化到数据库，使服务重启后仍保持登录。"""
+    if not remember_me:
+        return
+    try:
+        from db_manager import db_manager
+        expires_at = time.time() + REMEMBER_TOKEN_TTL
+        db_manager.save_auth_token(token, {
+            'user_id': user_id,
+            'username': username,
+            'is_admin': is_admin,
+        }, expires_at)
+    except Exception:
+        pass
+
+
+def _load_remembered_token(token: str) -> Optional[Dict[str, Any]]:
+    """从数据库读取【记住我】的持久化会话，服务重启后仍可恢复登录。"""
+    try:
+        from db_manager import db_manager
+        stored = db_manager.get_auth_token(token)
+        if not stored:
+            return None
+        payload = stored.get('payload') or {}
+        expires_at = stored.get('expires_at') or 0
+        return {
+            'user_id': payload.get('user_id'),
+            'username': payload.get('username'),
+            'is_admin': payload.get('is_admin', False),
+            'remembered': True,
+            'remember_expires_at': expires_at,
+            'timestamp': time.time(),
+        }
+    except Exception:
+        return None
+
+
+def _drop_remembered_token(token: str) -> None:
+    try:
+        from db_manager import db_manager
+        db_manager.delete_auth_token(token)
+    except Exception:
+        pass
+
+
 def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[Dict[str, Any]]:
     """验证token并返回用户信息"""
     if not credentials:
         return None
 
     token = credentials.credentials
-    if token not in SESSION_TOKENS:
+    now = time.time()
+
+    token_data = SESSION_TOKENS.get(token)
+    if token_data is not None:
+        if token_data.get('remembered'):
+            # 记住我会话只受持久化有效期约束，并顺延刷新时间，避免重启后仍需重新登录
+            if now > (token_data.get('remember_expires_at') or 0):
+                del SESSION_TOKENS[token]
+                _drop_remembered_token(token)
+                return None
+            token_data['timestamp'] = now
+            return token_data
+        if now - token_data.get('timestamp', now) > TOKEN_EXPIRE_TIME:
+            del SESSION_TOKENS[token]
+            return None
+        return token_data
+
+    # 本进程会话表里没有 → 尝试从数据库恢复【记住我】会话
+    token_data = _load_remembered_token(token)
+    if token_data is None:
         return None
-
-    token_data = SESSION_TOKENS[token]
-
-    # 检查token是否过期
-    if time.time() - token_data['timestamp'] > TOKEN_EXPIRE_TIME:
-        del SESSION_TOKENS[token]
+    if now > token_data['remember_expires_at']:
+        _drop_remembered_token(token)
         return None
-
+    token_data['timestamp'] = now
+    SESSION_TOKENS[token] = token_data
     return token_data
 
 
@@ -1798,6 +1861,7 @@ async def login(login_request: LoginRequest, request: Request):
                     'is_admin': user_is_admin,
                     'timestamp': time.time()
                 }
+                _persist_remembered_login(token, user['id'], user['username'], user_is_admin, login_request.remember_me)
 
                 # 区分管理员和普通用户的日志
                 if user_is_admin:
@@ -1852,6 +1916,7 @@ async def login(login_request: LoginRequest, request: Request):
                 'is_admin': user_is_admin,
                 'timestamp': time.time()
             }
+            _persist_remembered_login(token, user['id'], user['username'], user_is_admin, login_request.remember_me)
 
             if user_is_admin:
                 logger.info(f"【{user['username']}#{user['id']}】邮箱登录成功（管理员）(IP: {client_ip})")
@@ -1966,6 +2031,8 @@ async def verify(user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
 async def logout(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)):
     if credentials and credentials.credentials in SESSION_TOKENS:
         del SESSION_TOKENS[credentials.credentials]
+    if credentials:
+        _drop_remembered_token(credentials.credentials)
     return {"message": "已登出"}
 
 
@@ -13157,6 +13224,48 @@ def update_item_multi_quantity_delivery(cookie_id: str, item_id: str, delivery_d
 
         if success:
             return {"message": f"商品多数量发货状态已{'开启' if multi_quantity_delivery else '关闭'}"}
+        else:
+            raise HTTPException(status_code=404, detail="商品不存在")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# 商品库存管理API
+@app.put("/items/{cookie_id}/{item_id}/stock")
+def update_item_stock(cookie_id: str, item_id: str, stock_data: dict, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """更新商品的库存数量（手动调整，标记为手动，避免被自动同步覆盖）"""
+    try:
+        from db_manager import db_manager
+
+        try:
+            item_stock = int(stock_data.get('item_stock', 0))
+        except (TypeError, ValueError):
+            item_stock = 0
+        if item_stock < 0:
+            item_stock = 0
+
+        success = db_manager.update_item_extra_fields(cookie_id, item_id, item_stock=item_stock, stock_manual=True)
+
+        if success:
+            return {"message": f"商品库存已更新为 {item_stock}", "stock_manual": True}
+        else:
+            raise HTTPException(status_code=404, detail="商品不存在")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# 恢复库存自动同步（清除手动标记）
+@app.post("/items/{cookie_id}/{item_id}/stock/restore-sync")
+def restore_item_stock_sync(cookie_id: str, item_id: str, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """清除手动库存标记，恢复由平台自动同步库存"""
+    try:
+        from db_manager import db_manager
+
+        success = db_manager.update_item_extra_fields(cookie_id, item_id, stock_manual=False)
+        if success:
+            return {"message": "已恢复库存自动同步"}
         else:
             raise HTTPException(status_code=404, detail="商品不存在")
 

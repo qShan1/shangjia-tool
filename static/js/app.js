@@ -198,6 +198,10 @@ function showSection(sectionName) {
     targetSection.classList.add('active');
     console.log('页面已激活:', sectionName + '-section'); // 调试信息
 
+    // 动效：平滑回到顶部 + 面板入场动画
+    animateSectionEnter(sectionName);
+    scrollTopSmooth();
+
     if (sectionName !== 'accounts' && typeof stopAccountFaceVerificationMonitor === 'function') {
         stopAccountFaceVerificationMonitor();
     }
@@ -258,6 +262,7 @@ function showSection(sectionName) {
         loadSystemSettings();
         initMenuManagement();
         loadAiSiteAuditPanel();
+        sgRenderReminderList();
         break;
     case 'logs':            // 【日志管理菜单】
         // 自动加载系统日志
@@ -720,8 +725,77 @@ function getDashboardAnnouncementDisplayTime(announcement) {
     return formatDateTime(timeValue);
 }
 
+// 从本地版本历史补充公告记录，保证离线/远端公告为空时也有内容查看
+function buildLocalAnnouncementHistory() {
+    const fallback = [];
+    const versionList = Array.isArray(LOCAL_VERSION_HISTORY?.versionHistory)
+        ? LOCAL_VERSION_HISTORY.versionHistory
+        : [];
+    versionList.forEach(version => {
+        const updates = Array.isArray(version?.updates) ? version.updates : [];
+        if (!updates.length) return;
+        const versionText = String(version?.version || '').trim();
+        const dateText = String(version?.date || '').trim();
+        fallback.push({
+            id: `local-version-${versionText}`,
+            level: 'info',
+            status: 'expired',
+            is_current: false,
+            title: `${versionText}${dateText ? `（${dateText}）` : ''}`,
+            message: updates.join('\n'),
+            action_type: 'changelog',
+            action_text: '更新日志',
+            published_at: dateText ? `${dateText}T00:00:00+08:00` : '',
+        });
+    });
+    return fallback;
+}
+
+function extractVersionNumber(text) {
+    const match = String(text || '').match(/v?\d+(?:\.\d+){1,2}/);
+    return match ? match[0].toLowerCase() : '';
+}
+
+function mergeAnnouncementHistoryWithLocal(history) {
+    const remoteHistory = Array.isArray(history) ? history.slice() : [];
+    const fallback = buildLocalAnnouncementHistory();
+    if (!fallback.length) {
+        return remoteHistory;
+    }
+
+    const remoteVersions = remoteHistory
+        .map(item => extractVersionNumber(item.title))
+        .filter(Boolean);
+    const fallbackVersions = new Set();
+
+    const merged = remoteHistory.slice();
+    fallback.forEach((item, index) => {
+        const versionText = extractVersionNumber(item.title);
+        if (versionText && remoteVersions.length && remoteVersions.includes(versionText)) {
+            return;
+        }
+        if (versionText && fallbackVersions.has(versionText)) {
+            return;
+        }
+        if (versionText) {
+            fallbackVersions.add(versionText);
+        }
+        merged.push(item);
+    });
+
+    merged.sort((a, b) => {
+        const aTime = String(a?.published_at || a?.start_at || a?.end_at || '').trim();
+        const bTime = String(b?.published_at || b?.start_at || b?.end_at || '').trim();
+        if (!aTime) return 1;
+        if (!bTime) return -1;
+        return bTime.localeCompare(aTime);
+    });
+    return merged;
+}
+
 function showDashboardAnnouncementHistoryModal() {
-    const history = Array.isArray(dashboardAnnouncementState.history) ? dashboardAnnouncementState.history : [];
+    let history = Array.isArray(dashboardAnnouncementState.history) ? dashboardAnnouncementState.history : [];
+    history = mergeAnnouncementHistoryWithLocal(history);
     if (!history.length) {
         showToast('暂无公告记录', 'info');
         return;
@@ -733,7 +807,11 @@ function showDashboardAnnouncementHistoryModal() {
         existingModal.remove();
     }
 
-    const historyHtml = history.map((announcement, index) => {
+    // 精简展示：仅保留最近若干条，完整版本历史引导到「更新日志」与 GitHub
+    const MAX_DISPLAY = 12;
+    const displayHistory = history.slice(0, MAX_DISPLAY);
+
+    const historyHtml = displayHistory.map((announcement, index) => {
         const level = ['info', 'success', 'warning', 'danger'].includes(String(announcement?.level || '').trim().toLowerCase())
             ? String(announcement.level || '').trim().toLowerCase()
             : 'info';
@@ -745,6 +823,7 @@ function showDashboardAnnouncementHistoryModal() {
         const currentBadge = announcement?.is_current
             ? '<span class="dashboard-announcement-history-badge is-current">当前</span>'
             : '';
+        const summaryLine = message.split('\n').map(s => s.trim()).filter(Boolean)[0] || '';
 
         return `
             <article class="dashboard-announcement-history-item ${announcement?.is_current ? 'is-current' : ''}">
@@ -771,10 +850,15 @@ function showDashboardAnnouncementHistoryModal() {
                         </button>
                     ` : ''}
                 </div>
-                <div class="dashboard-announcement-history-message">${escapeHtml(message)}</div>
+                ${summaryLine ? `<div class="dashboard-announcement-history-message">${escapeHtml(summaryLine)}</div>` : ''}
             </article>
         `;
     }).join('');
+
+    const hiddenCount = history.length - MAX_DISPLAY;
+    const moreNote = hiddenCount > 0
+        ? `<div class="dashboard-announcement-history-more">仅展示最近 ${displayHistory.length} 条，更早版本详见「更新日志」或 GitHub 仓库。</div>`
+        : '';
 
     document.body.insertAdjacentHTML('beforeend', `
         <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true">
@@ -783,9 +867,9 @@ function showDashboardAnnouncementHistoryModal() {
                     <div class="modal-header dashboard-announcement-history-modal-header">
                         <div>
                             <h5 class="modal-title mb-1">
-                                <i class="bi bi-megaphone-fill me-2"></i>公告记录
+                                <i class="bi bi-megaphone-fill me-2"></i>公告与更新摘录
                             </h5>
-                            <div class="dashboard-announcement-history-modal-subtitle">按发布时间倒序展示近期公告内容</div>
+                            <div class="dashboard-announcement-history-modal-subtitle">最近公告与版本更新摘要，完整更新记录请查看「更新日志」</div>
                         </div>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
                     </div>
@@ -793,6 +877,15 @@ function showDashboardAnnouncementHistoryModal() {
                         <div class="dashboard-announcement-history-list">
                             ${historyHtml}
                         </div>
+                        ${moreNote}
+                    </div>
+                    <div class="modal-footer dashboard-announcement-history-modal-footer">
+                        <a class="btn btn-sm btn-outline-secondary" href="https://github.com/qShan1/shangjia-tool/releases" target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-github me-1"></i>GitHub 发布记录
+                        </a>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="showChangelogModal()">
+                            <i class="bi bi-journal-text me-1"></i>查看更新日志
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1446,6 +1539,17 @@ function renderDashboardAccountOverview(accounts, totalItems = 0) {
         ['商品总数', String(totalItems), 'muted', []]
     ].map(([label, value, tone, details]) => renderDashboardSummaryCard(label, value, tone, details)).join('');
 
+    // 动效：统计卡数字滚动（纯数字卡片才滚动）
+    summary.querySelectorAll('.dashboard-account-summary-value').forEach((el, idx) => {
+        const raw = el.textContent.trim();
+        if (/^[\d,]+$/.test(raw)) {
+            const digits = raw.replace(/,/g, '');
+            el.dataset.motionFrom = '0';
+            el.textContent = '0'; // 先归零，避免跃迁闪烁
+            animateCountUp(el, Number(digits), 550 + idx * 60);
+        }
+    });
+
     enabledHint.textContent = `${enabledAccounts.length} 个账号`;
     disabledHint.textContent = disabledAccounts.length
         ? `${disabledAccounts.length} 个账号待恢复${riskProtectedAccounts ? `，其中 ${riskProtectedAccounts} 个处于风控保护中` : ''}`
@@ -1473,6 +1577,7 @@ async function loadDashboard() {
     try {
     toggleLoading(true);
     loadDashboardAnnouncement();
+    startAnnouncementRefreshTimer();
 
     // 获取账号列表
     const cookiesResponse = await fetch(`${apiBase}/cookies/details`, {
@@ -1621,6 +1726,30 @@ async function loadOrderDashboardMetrics() {
 
 // 销售额摘要定时刷新定时器
 let salesSummaryRefreshTimer = null;
+// 公告定时刷新定时器（仪表盘停留时自动同步远端公告）
+let announcementRefreshTimer = null;
+
+// 启动公告定时刷新（每3分钟同步一次远端公告，若公告有变化则自动重绘）
+function startAnnouncementRefreshTimer() {
+    if (announcementRefreshTimer) {
+        clearInterval(announcementRefreshTimer);
+    }
+    announcementRefreshTimer = setInterval(async () => {
+        try {
+            await loadDashboardAnnouncement();
+        } catch (error) {
+            console.debug('公告自动刷新失败:', error);
+        }
+    }, 3 * 60 * 1000);
+}
+
+// 停止公告定时刷新
+function stopAnnouncementRefreshTimer() {
+    if (announcementRefreshTimer) {
+        clearInterval(announcementRefreshTimer);
+        announcementRefreshTimer = null;
+    }
+}
 
 // 加载销售额摘要数据
 async function loadSalesSummary() {
@@ -1796,27 +1925,37 @@ function updateChartButtonState(activePeriod) {
     });
 }
 
+// 本地日期字符串（避免 toISOString 的 UTC 偏移导致日期错一天）
+function toLocalDateString(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
 // 加载销售额图表数据
 async function loadSalesChart(period) {
     showChartLoading();
     updateChartButtonState(period);
     setDateRangePickerVisible(false);
-    
+
     try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         let startDate, endDate;
         const now = new Date();
 
-        if (period === 'week') {
+        if (period === 'day') {
+            startDate = new Date(now);
+        } else if (period === 'week') {
             startDate = new Date(now);
             startDate.setDate(now.getDate() - 6);
         } else if (period === 'month') {
             startDate = new Date(now);
-            startDate.setMonth(now.getMonth() - 1);
+            startDate.setDate(now.getDate() - 29);
         }
 
-        const startDateStr = startDate.toISOString().split('T')[0];
-        const endDateStr = now.toISOString().split('T')[0];
+        const startDateStr = toLocalDateString(startDate);
+        const endDateStr = toLocalDateString(now);
 
         const response = await fetch(`/api/sales?start_date=${startDateStr}&end_date=${endDateStr}`, {
             headers: {
@@ -1824,14 +1963,24 @@ async function loadSalesChart(period) {
             }
         });
 
+        if (!response.ok) {
+            showToast(`加载销售额数据失败（HTTP ${response.status}）`, 'danger');
+            renderSalesChart([], period);
+            return;
+        }
+
         const data = await response.json();
         if (data.success && data.data) {
             currentChartPeriod = period;
             renderSalesChart(data.data.sales, period);
+        } else {
+            showToast(data.message || '加载销售额数据失败', 'warning');
+            renderSalesChart([], period);
         }
     } catch (error) {
         console.error('加载销售额图表数据失败:', error);
         showToast('加载销售额数据失败', 'danger');
+        renderSalesChart([], period);
     } finally {
         hideChartLoading();
     }
@@ -1856,21 +2005,31 @@ async function loadCustomSalesChart() {
     updateChartButtonState('custom');
 
     try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await fetch(`/api/sales?start_date=${startDate}&end_date=${endDate}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
         });
 
+        if (!response.ok) {
+            showToast(`加载销售额数据失败（HTTP ${response.status}）`, 'danger');
+            renderSalesChart([], 'custom');
+            return;
+        }
+
         const data = await response.json();
         if (data.success && data.data) {
             currentChartPeriod = 'custom';
             renderSalesChart(data.data.sales, 'custom');
+        } else {
+            showToast(data.message || '加载销售额数据失败', 'warning');
+            renderSalesChart([], 'custom');
         }
     } catch (error) {
         console.error('加载自定义销售额数据失败:', error);
         showToast('加载销售额数据失败', 'danger');
+        renderSalesChart([], 'custom');
     } finally {
         hideChartLoading();
     }
@@ -1938,9 +2097,26 @@ function toggleDateRangePicker() {
 
 // 渲染销售额图表
 function renderSalesChart(salesData, period) {
+    salesData = Array.isArray(salesData) ? salesData : [];
     const canvas = document.getElementById('salesChart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+
+    // 空数据：清空图表并显示占位提示而非报错
+    if (salesData.length === 0) {
+        const existing = typeof Chart !== 'undefined' ? Chart.getChart(canvas) : null;
+        if (existing) {
+            existing.data.labels = [];
+            existing.data.datasets[0].data = [];
+            existing.update('none');
+        }
+        const emptyTip = document.getElementById('salesChartEmpty');
+        if (emptyTip) emptyTip.style.display = 'block';
+        salesChartInstance = existing || null;
+        return;
+    }
+    const emptyTip = document.getElementById('salesChartEmpty');
+    if (emptyTip) emptyTip.style.display = 'none';
 
     // 准备数据
     const labels = salesData.map(item => item.date);
@@ -2104,10 +2280,12 @@ function renderSalesChart(salesData, period) {
 
 // 获取图表标题
 function getChartTitle(period) {
-    if (period === 'week') {
-        return '最近1周销售额趋势';
+    if (period === 'day') {
+        return '今日销售额趋势';
+    } else if (period === 'week') {
+        return '最近7天销售额趋势';
     } else if (period === 'month') {
-        return '最近1月销售额趋势';
+        return '最近30天销售额趋势';
     } else {
         return '自定义时间范围销售额趋势';
     }
@@ -3464,7 +3642,7 @@ function cancelEdit() {
 
 // 删除关键词
 async function deleteKeyword(cookieId, index) {
-    if (!confirm('确定要删除这个关键词吗？')) {
+    if (!await uiConfirm('确定要删除这个关键词吗？')) {
     return;
     }
 
@@ -3508,7 +3686,7 @@ async function deleteSpecificKeyword(groupId, keywordIndex) {
     }
     
     const targetKeyword = group.keywords[keywordIndex];
-    if (!confirm(`确定要删除关键词 "${targetKeyword}" 在所有商品中的配置吗？`)) {
+    if (!await uiConfirm(`确定要删除关键词 "${targetKeyword}" 在所有商品中的配置吗？`)) {
         return;
     }
     
@@ -3568,7 +3746,7 @@ async function deleteSpecificItem(groupId, itemIndex) {
     const itemId = targetItem.item_id || '';
     const itemName = itemId ? `商品 ${itemId} - ${getItemName(itemId, targetItem.item_title)}` : '通用关键词（所有商品）';
     
-    if (!confirm(`确定要删除 "${itemName}" 的所有关键词配置吗？\n将删除该商品下的 ${group.keywords.length} 个关键词。`)) {
+    if (!await uiConfirm(`确定要删除 "${itemName}" 的所有关键词配置吗？\n将删除该商品下的 ${group.keywords.length} 个关键词。`)) {
         return;
     }
     
@@ -3702,6 +3880,274 @@ function showToast(message, type = 'success') {
     toast.addEventListener('hidden.bs.toast', () => {
         toast.remove();
     });
+}
+
+// ================================
+// 统一弹窗系统（uiAlert / uiConfirm）
+// ================================
+// 提醒记忆：用于「下次不再提醒」，key 存于 localStorage，可在设置页重新启用
+const SG_REMINDER_PREFIX = 'sg_reminder_disabled_';
+
+function sgReminderStored(key) {
+    if (!key) return false;
+    try { return localStorage.getItem(SG_REMINDER_PREFIX + key) === '1'; } catch (e) { return false; }
+}
+
+function sgReminderDisable(key) {
+    if (!key) return;
+    try { localStorage.setItem(SG_REMINDER_PREFIX + key, '1'); } catch (e) { /* localStorage 不可用则忽略 */ }
+}
+
+function sgReminderEnable(key) {
+    if (!key) return;
+    try { localStorage.removeItem(SG_REMINDER_PREFIX + key); } catch (e) { /* ignore */ }
+}
+
+function sgReminderList() {
+    const out = [];
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith(SG_REMINDER_PREFIX)) out.push(k.slice(SG_REMINDER_PREFIX.length));
+        }
+    } catch (e) { /* ignore */ }
+    return out;
+}
+
+// 设置页提醒清单：列出被「下次不再提醒」关闭的项，可逐条或一键恢复
+function sgReminderLabel(key) {
+    const map = {
+        'updateInstallConfirm': '桌面更新下载确认',
+    };
+    if (map[key]) return map[key];
+    return key.replace(/_/g, ' ').trim() || key;
+}
+
+function sgRenderReminderList() {
+    const wrap = document.getElementById('sgReminderList');
+    if (!wrap) return;
+    const keys = sgReminderList();
+    const emptyEl = document.getElementById('sgReminderEmpty');
+    if (emptyEl) emptyEl.style.display = keys.length ? 'none' : '';
+    wrap.querySelectorAll('[data-sg-reminder-key]').forEach(function (el) { el.remove(); });
+    keys.forEach(function (key) {
+        const row = document.createElement('div');
+        row.className = 'd-flex align-items-center justify-content-between border rounded px-2 py-1 mb-1';
+        row.setAttribute('data-sg-reminder-key', key);
+        row.innerHTML = `
+            <span class="small">${escapeHtml(sgReminderLabel(key))}</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="sgRestoreReminder(this)" data-sg-reminder-key="${escapeHtml(key)}">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>恢复
+            </button>`;
+        wrap.appendChild(row);
+    });
+}
+
+function sgRestoreReminder(btn) {
+    const key = btn && btn.getAttribute('data-sg-reminder-key');
+    if (!key) return;
+    sgReminderEnable(key);
+    sgRenderReminderList();
+    showToast('已恢复该提醒', 'success');
+}
+
+function sgRestoreAllReminders() {
+    const keys = sgReminderList();
+    keys.forEach((k) => sgReminderEnable(k));
+    sgRenderReminderList();
+    showToast(keys.length ? `已恢复全部 ${keys.length} 条提醒` : '当前没有已关闭的提醒', keys.length ? 'success' : 'info');
+}
+
+// 构建统一弹窗 DOM 结构
+function buildSgModal() {
+    let el = document.getElementById('sgModalRoot');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'sgModalRoot';
+    el.innerHTML = `
+        <div class="modal fade" id="sgModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="sgModalTitle"></h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="sgModalMessage"></div>
+                        <div class="form-check mt-3 mb-0" id="sgModalRememberWrap" style="display:none;">
+                            <input class="form-check-input" type="checkbox" id="sgModalRemember">
+                            <label class="form-check-label small text-muted" for="sgModalRemember" id="sgModalRememberLabel">下次不再提醒</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="sgModalCancelBtn">取消</button>
+                        <button type="button" class="btn btn-primary" id="sgModalOkBtn">确定</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    document.body.appendChild(el);
+    return el;
+}
+
+// 统一提示弹窗（替代原生 alert）
+// options: { title, message, type: 'info'|'danger'|'warning'|'success', okText, rememberKey, rememberLabel }
+function uiAlert(options = {}) {
+    const opts = typeof options === 'string' ? { message: options } : options;
+    const message = opts.message || '';
+    const type = opts.type || 'info';
+    const title = opts.title || sgAlertDefaultTitle(type);
+    const rememberKey = opts.rememberKey;
+    if (rememberKey && sgReminderStored(rememberKey)) {
+        return Promise.resolve(null);
+    }
+    return new Promise((resolve) => {
+        const root = buildSgModal();
+        const modalEl = root.querySelector('#sgModal');
+        const titleEl = root.querySelector('#sgModalTitle');
+        const msgEl = root.querySelector('#sgModalMessage');
+        const cancelBtn = root.querySelector('#sgModalCancelBtn');
+        const okBtn = root.querySelector('#sgModalOkBtn');
+        const rememberWrap = root.querySelector('#sgModalRememberWrap');
+        const rememberInput = root.querySelector('#sgModalRemember');
+
+        titleEl.innerHTML = `<i class="bi ${sgAlertIcon(type)} me-2"></i>${title}`;
+        titleEl.closest('.modal-header').className = `modal-header ${sgModalHeaderClass(type)}`;
+        msgEl.textContent = String(message ?? '');
+        msgEl.style.whiteSpace = 'pre-line';
+
+        if (rememberKey) {
+            rememberWrap.style.display = '';
+            rememberInput.checked = false;
+            root.querySelector('#sgModalRememberLabel').textContent =
+                opts.rememberLabel != null ? opts.rememberLabel : rememberWrap.querySelector('#sgModalRememberLabel').textContent;
+        } else {
+            rememberWrap.style.display = 'none';
+        }
+
+        cancelBtn.style.display = 'none';
+        okBtn.className = `btn ${type === 'danger' ? 'btn-danger' : 'btn-primary'}`;
+        okBtn.innerHTML = `<i class="bi bi-check-lg me-1"></i>${opts.okText || '知道了'}`;
+
+        let settled = false;
+        const finish = (value) => {
+            if (settled) return;
+            settled = true;
+            const bs = bootstrap.Modal.getInstance(modalEl);
+            if (bs) bs.hide();
+        };
+
+        okBtn.onclick = () => {
+            if (rememberKey && rememberInput.checked) sgReminderDisable(rememberKey);
+            finish(true);
+            resolve(true);
+        };
+        modalEl.addEventListener('hidden.bs.modal', function onHidden() {
+            modalEl.removeEventListener('hidden.bs.modal', onHidden);
+            root.remove();
+            resolve(settled ? true : false);
+        });
+
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+    });
+}
+
+// 统一确认弹窗（替代原生 confirm），返回 Promise<boolean>
+// options: { title, message, confirmText, cancelText, danger, rememberKey, rememberLabel }
+function uiConfirm(options = {}) {
+    const opts = typeof options === 'string' ? { message: options } : options;
+    const message = opts.message || '';
+    const danger = !!opts.danger;
+    const title = opts.title || (danger ? '操作确认' : '请确认');
+    const rememberKey = opts.rememberKey;
+    if (rememberKey && sgReminderStored(rememberKey)) {
+        return Promise.resolve(true);
+    }
+    return new Promise((resolve) => {
+        const root = buildSgModal();
+        const modalEl = root.querySelector('#sgModal');
+        const titleEl = root.querySelector('#sgModalTitle');
+        const msgEl = root.querySelector('#sgModalMessage');
+        const cancelBtn = root.querySelector('#sgModalCancelBtn');
+        const okBtn = root.querySelector('#sgModalOkBtn');
+        const rememberWrap = root.querySelector('#sgModalRememberWrap');
+        const rememberInput = root.querySelector('#sgModalRemember');
+
+        titleEl.innerHTML = `<i class="bi ${danger ? 'bi-exclamation-triangle' : 'bi-question-circle'} me-2"></i>${title}`;
+        titleEl.closest('.modal-header').className = `modal-header ${danger ? 'bg-danger text-white' : ''}`;
+        msgEl.textContent = String(message ?? '');
+        msgEl.style.whiteSpace = 'pre-line';
+
+        if (rememberKey) {
+            rememberWrap.style.display = '';
+            rememberInput.checked = false;
+            root.querySelector('#sgModalRememberLabel').textContent =
+                opts.rememberLabel != null ? opts.rememberLabel : '下次不再提醒';
+        } else {
+            rememberWrap.style.display = 'none';
+        }
+
+        cancelBtn.style.display = '';
+        cancelBtn.innerHTML = `<i class="bi bi-x-lg me-1"></i>${opts.cancelText || '取消'}`;
+        okBtn.className = `btn ${danger ? 'btn-danger' : 'btn-primary'}`;
+        okBtn.innerHTML = `<i class="bi bi-check-lg me-1"></i>${opts.confirmText || '确定'}`;
+
+        let settled = false;
+        const finish = (value) => {
+            if (settled) return;
+            settled = true;
+            const bs = bootstrap.Modal.getInstance(modalEl);
+            if (bs) bs.hide();
+        };
+
+        const confirm = () => {
+            if (rememberKey && rememberInput.checked) sgReminderDisable(rememberKey);
+            finish(true);
+            resolve(true);
+        };
+        const cancel = () => {
+            finish(false);
+            resolve(false);
+        };
+
+        okBtn.onclick = confirm;
+        cancelBtn.onclick = cancel;
+        modalEl.addEventListener('hidden.bs.modal', function onHidden() {
+            modalEl.removeEventListener('hidden.bs.modal', onHidden);
+            root.remove();
+            if (settled) return;
+            resolve(false);
+        });
+        // 点击遮罩关闭等同取消
+        modalEl.addEventListener('click', function onBackdrop(e) {
+            if (e.target === modalEl) cancel();
+        });
+
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+    });
+}
+
+function sgModalHeaderClass(type) {
+    if (type === 'danger') return 'bg-danger text-white';
+    if (type === 'warning') return 'bg-warning text-dark';
+    if (type === 'success') return 'bg-success text-white';
+    return '';
+}
+
+function sgAlertIcon(type) {
+    if (type === 'danger') return 'bi-exclamation-octagon';
+    if (type === 'warning') return 'bi-exclamation-triangle';
+    if (type === 'success') return 'bi-check-circle';
+    return 'bi-info-circle';
+}
+
+function sgAlertDefaultTitle(type) {
+    if (type === 'danger') return '操作失败';
+    if (type === 'warning') return '提示';
+    if (type === 'success') return '操作成功';
+    return '提示';
 }
 
 // 错误处理
@@ -4108,7 +4554,7 @@ async function toggleMessageFilter(ruleId, isEnabled) {
 }
 
 async function deleteMessageFilter(ruleId) {
-    if (!confirm('确定删除这条消息过滤规则吗？')) return;
+    if (!await uiConfirm('确定删除这条消息过滤规则吗？')) return;
     try {
         const result = await fetchJSON(`${apiBase}/api/message-filters/${ruleId}`, {
             method: 'DELETE'
@@ -4381,7 +4827,7 @@ async function togglePersonalBlacklist(recordId, isEnabled) {
 }
 
 async function deletePersonalBlacklist(recordId) {
-    if (!confirm('确定删除这条黑名单记录吗？')) return;
+    if (!await uiConfirm('确定删除这条黑名单记录吗？')) return;
     try {
         const result = await fetchJSON(`${apiBase}/api/blacklist/personal/${recordId}`, {
             method: 'DELETE'
@@ -4431,7 +4877,7 @@ async function batchDeletePersonalBlacklist() {
         showToast('请先选择要删除的黑名单', 'warning');
         return;
     }
-    if (!confirm(`确定删除选中的 ${selectedIds.length} 条黑名单记录吗？`)) return;
+    if (!await uiConfirm(`确定删除选中的 ${selectedIds.length} 条黑名单记录吗？`)) return;
 
     try {
         const result = await fetchJSON(`${apiBase}/api/blacklist/personal/batch-delete`, {
@@ -5551,7 +5997,7 @@ async function refreshRealCookie(cookieId) {
         }
 
         // 确认操作
-        if (!confirm(`确定要刷新账号 "${cookieId}" 的真实Cookie吗？\n\n此操作将使用当前Cookie访问闲鱼IM界面获取最新的真实Cookie。`)) {
+        if (!await uiConfirm(`确定要刷新账号 "${cookieId}" 的真实Cookie吗？\n\n此操作将使用当前Cookie访问闲鱼IM界面获取最新的真实Cookie。`)) {
             return;
         }
 
@@ -5627,13 +6073,13 @@ async function showCooldownStatus(cookieId) {
                 statusMessage += `在冷却期间，_refresh_cookies_via_browser 方法将被跳过。\n\n`;
                 statusMessage += `是否要重置冷却时间？`;
 
-                if (confirm(statusMessage)) {
+                if (await uiConfirm(statusMessage)) {
                     await resetCooldownTime(cookieId);
                 }
             } else {
                 statusMessage += `冷却状态: 无冷却\n`;
                 statusMessage += `可以正常执行 _refresh_cookies_via_browser 方法`;
-                alert(statusMessage);
+                await uiAlert(statusMessage);
             }
         } else {
             showToast(`获取冷却状态失败: ${result.message}`, 'danger');
@@ -5686,7 +6132,7 @@ async function resetCooldownTime(cookieId) {
 
 // 删除Cookie
 async function delCookie(id) {
-    if (!confirm(`确定要删除账号 "${id}" 吗？此操作不可恢复。`)) return;
+    if (!await uiConfirm(`确定要删除账号 "${id}" 吗？此操作不可恢复。`)) return;
 
     try {
     await fetchJSON(apiBase + `/cookies/${id}`, { method: 'DELETE' });
@@ -6186,7 +6632,7 @@ async function runHistoricalAutoComment(accountIds, options = {}) {
     }
 
     const confirmText = options.confirmText || `确定要为 ${normalizedIds.length} 个账号执行历史订单补评价吗？\n\n将从闲鱼待评价列表拉取订单，并按账号激活的好评模板逐单评价。`;
-    if (!options.skipConfirm && !confirm(confirmText)) return;
+    if (!options.skipConfirm && !await uiConfirm(confirmText)) return;
 
     toggleLoading(true);
     showToast('正在执行历史订单补评价，请稍候...', 'info');
@@ -6281,7 +6727,7 @@ async function runAutoRedFlowerForAccount(accountId) {
         return;
     }
 
-    const confirmed = confirm(`确定要立即为账号「${accountId}」执行一轮求小红花吗？`);
+    const confirmed = await uiConfirm(`确定要立即为账号「${accountId}」执行一轮求小红花吗？`);
     if (!confirmed) return;
 
     toggleLoading(true);
@@ -6592,7 +7038,7 @@ async function saveEditCommentTemplate() {
 
 // 删除好评模板
 async function deleteCommentTemplate(accountId, templateId) {
-    if (!confirm('确定要删除此好评模板吗？')) {
+    if (!await uiConfirm('确定要删除此好评模板吗？')) {
         return;
     }
     
@@ -6678,6 +7124,8 @@ function goToAutoReply(accountId) {
 async function logout() {
     // 停止销售额摘要定时刷新
     stopSalesSummaryRefreshTimer();
+    // 停止公告定时刷新
+    stopAnnouncementRefreshTimer();
     
     try {
     if (authToken) {
@@ -6773,6 +7221,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 初始化侧边栏折叠状态
     initSidebarCollapse();
+    // 初始化动效（Lenis / anime.js / Magic.css / Hover.css）
+    initUiMotion();
     // 初始化暗色模式
     initDarkMode();
     // 初始化账号保活诊断事件
@@ -6858,6 +7308,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 初始加载仪表盘
     loadDashboard();
+
+    // 后台预热在线客服数据（非阻塞），加快首次打开在线客服务页面
+    warmUpChatBackground();
 
     // 加载菜单设置并应用
     loadMenuSettings();
@@ -7097,7 +7550,7 @@ async function saveDefaultReply() {
 
 // 清空默认回复记录
 async function clearDefaultReplyRecords(accountId) {
-    if (!confirm(`确定要清空账号 "${accountId}" 的默认回复记录吗？\n\n清空后，该账号将可以重新对之前回复过的对话进行默认回复。`)) {
+    if (!await uiConfirm(`确定要清空账号 "${accountId}" 的默认回复记录吗？\n\n清空后，该账号将可以重新对之前回复过的对话进行默认回复。`)) {
         return;
     }
 
@@ -7514,7 +7967,7 @@ async function deleteSelectedPreset() {
 
     const preset = _aiPresets.find(p => String(p.id) === presetId);
     if (!preset) return;
-    if (!confirm(`确定删除预设「${preset.preset_name}」吗？`)) return;
+    if (!await uiConfirm(`确定删除预设「${preset.preset_name}」吗？`)) return;
 
     try {
         await fetchJSON(`${apiBase}/ai-config-presets/${presetId}`, {
@@ -8106,7 +8559,7 @@ function renderNotificationChannels(channels) {
 
 // 删除通知渠道
 async function deleteNotificationChannel(channelId) {
-    if (!confirm('确定要删除这个通知渠道吗？')) {
+    if (!await uiConfirm('确定要删除这个通知渠道吗？')) {
     return;
     }
 
@@ -8465,7 +8918,7 @@ async function saveNotificationTemplate(templateType) {
 
 // 重置通知模板
 async function resetNotificationTemplate(templateType) {
-    if (!confirm('确定要恢复默认模板吗？当前修改将会丢失。')) {
+    if (!await uiConfirm('确定要恢复默认模板吗？当前修改将会丢失。')) {
         return;
     }
 
@@ -8742,7 +9195,7 @@ async function configAccountNotification(accountId) {
 
 // 删除账号通知配置
 async function deleteAccountNotification(accountId) {
-    if (!confirm(`确定要删除账号 ${accountId} 的通知配置吗？`)) {
+    if (!await uiConfirm(`确定要删除账号 ${accountId} 的通知配置吗？`)) {
     return;
     }
 
@@ -9687,6 +10140,7 @@ async function refreshTodayDeliveryCount() {
             const todayEl = document.getElementById('todayDeliveries');
             if (todayEl) {
                 todayEl.textContent = stats.today_delivery_count || 0;
+                animateCountUp(todayEl, stats.today_delivery_count || 0, 600);
             }
         }
     } catch (error) {
@@ -10150,7 +10604,7 @@ async function updateCardWithImage(cardId, cardData, imageFile) {
 
 // 删除卡券
 async function deleteCard(cardId) {
-    if (confirm('确定要删除这个卡券吗？删除后无法恢复！')) {
+    if (await uiConfirm('确定要删除这个卡券吗？删除后无法恢复！')) {
     try {
         const response = await fetch(`${apiBase}/cards/${cardId}`, {
         method: 'DELETE',
@@ -10321,7 +10775,7 @@ async function updateDeliveryRule() {
 
 // 删除发货规则
 async function deleteDeliveryRule(ruleId) {
-    if (confirm('确定要删除这个发货规则吗？删除后无法恢复！')) {
+    if (await uiConfirm('确定要删除这个发货规则吗？删除后无法恢复！')) {
     try {
         const response = await fetch(`${apiBase}/delivery-rules/${ruleId}`, {
         method: 'DELETE',
@@ -10373,6 +10827,13 @@ async function loadUserSettings() {
                 updatePresetSelection(color);
             } else {
                 localStorage.removeItem('themeColor');
+                // 没有服务端主题色时，跟随本机保存的液态玻璃预设
+                const savedPreset = String(localStorage.getItem('liquid_glass_preset') || '').trim().toLowerCase();
+                if (isLiquidPresetName(savedPreset)) {
+                    applyLiquidPreset(savedPreset, false);
+                } else {
+                    applyLiquidPreset('jade', false);
+                }
             }
         }
     } catch (error) {
@@ -10383,28 +10844,79 @@ async function loadUserSettings() {
 const LEGACY_THEME_COLORS = new Set(['#4f46e5', '#7c3aed', '#059669']);
 const CUSTOM_BACKGROUND_STORAGE_KEY = 'customBackgroundImage';
 
+// 液态玻璃预设（颜色需与 glass-theme.css 中 data-liquid-preset 规则保持一致）
+const LIQUID_PRESET_COLORS = {
+    jade: '#0a7c66',
+    ocean: '#1677b8',
+    graphite: '#424853',
+    rose: '#b94d6a'
+};
+
+function isLiquidPresetName(value) {
+    return Object.prototype.hasOwnProperty.call(LIQUID_PRESET_COLORS, String(value || '').trim().toLowerCase());
+}
+
 function normalizeThemeColor(color) {
     const normalized = String(color || '').trim().toLowerCase();
     return LEGACY_THEME_COLORS.has(normalized) ? '#0a7c66' : color;
 }
 
-// 应用主题颜色（支持任意十六进制颜色）
+// 应用液态玻璃预设（走 CSS data-liquid-preset 变量，包含材质差异）
+function applyLiquidPreset(preset, persist = true) {
+    let target = String(preset || '').trim().toLowerCase();
+    if (!isLiquidPresetName(target)) {
+        target = 'jade';
+    }
+    const root = document.documentElement;
+    root.dataset.liquidPreset = target;
+    root.style.removeProperty('--primary-color');
+    root.style.removeProperty('--primary-hover');
+    root.style.removeProperty('--primary-light');
+
+    if (persist) {
+        localStorage.setItem('liquid_glass_preset', target);
+        localStorage.setItem('themeColor', LIQUID_PRESET_COLORS[target]);
+    }
+
+    const picker = document.getElementById('themeColorPicker');
+    const hex = document.getElementById('themeColorHex');
+    if (picker) picker.value = LIQUID_PRESET_COLORS[target];
+    if (hex) hex.value = LIQUID_PRESET_COLORS[target];
+
+    // 同步所有预设按钮的选中态（主题设置卡片 + 桌面体验面板）
+    document.querySelectorAll('.theme-preset').forEach(btn => {
+        const active = btn.dataset.liquidPreset === target;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-liquid-preset]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.liquidPreset === target);
+    });
+}
+
+// 应用主题颜色（自定义任意十六进制，覆盖预设）
 function applyThemeColor(color) {
     color = normalizeThemeColor(color);
     if (!/^#[0-9a-fA-F]{6}$/.test(color)) return;
 
-    document.documentElement.style.setProperty('--primary-color', color);
+    const root = document.documentElement;
+    root.dataset.liquidPreset = 'custom';
+    root.style.setProperty('--primary-color', color);
 
     // 计算hover颜色（稍微深一点）
     const hoverColor = adjustBrightness(color, -20);
-    document.documentElement.style.setProperty('--primary-hover', hoverColor);
+    root.style.setProperty('--primary-hover', hoverColor);
 
     // 计算浅色版本（用于某些UI元素）
     const lightColor = adjustBrightness(color, 40);
-    document.documentElement.style.setProperty('--primary-light', lightColor);
+    root.style.setProperty('--primary-light', lightColor);
 
     // 缓存主题色，供页面首次渲染前预应用，避免刷新闪回默认蓝色
     localStorage.setItem('themeColor', color);
+    localStorage.removeItem('liquid_glass_preset');
+
+    document.querySelectorAll('.theme-preset').forEach(btn => btn.classList.remove('is-active'));
+    document.querySelectorAll('[data-liquid-preset]').forEach(btn => btn.classList.remove('active'));
 }
 
 function isCustomBackgroundDataUrl(value) {
@@ -10528,15 +11040,14 @@ function adjustBrightness(hex, percent) {
 
 // 更新预设颜色按钮选中状态
 function updatePresetSelection(selectedColor) {
-    document.querySelectorAll('.color-preset').forEach(btn => {
-        if (btn.dataset.color === selectedColor) {
-            btn.style.border = '2px solid #333';
-            btn.style.boxShadow = '0 0 0 2px rgba(255, 255, 255, 0.95), 0 0 0 4px var(--primary-color)';
-        } else {
-            btn.style.border = '2px solid transparent';
-            btn.style.boxShadow = 'none';
-        }
-    });
+    const normalized = String(selectedColor || '').trim().toLowerCase();
+    const matchedPreset = Object.keys(LIQUID_PRESET_COLORS).find(key => LIQUID_PRESET_COLORS[key].toLowerCase() === normalized);
+    if (matchedPreset) {
+        applyLiquidPreset(matchedPreset, false);
+    } else {
+        document.querySelectorAll('.theme-preset').forEach(btn => btn.classList.remove('is-active'));
+        document.querySelectorAll('[data-liquid-preset]').forEach(btn => btn.classList.remove('active'));
+    }
 }
 
 // ==================== 菜单管理功能 ====================
@@ -10932,14 +11443,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 预设颜色按钮点击
-    document.querySelectorAll('.color-preset').forEach(btn => {
+    // 预设配色按钮点击（液态玻璃预设）
+    document.querySelectorAll('.theme-preset').forEach(btn => {
         btn.addEventListener('click', function() {
-            const color = this.dataset.color;
-            if (themeColorPicker) themeColorPicker.value = color;
-            if (themeColorHex) themeColorHex.value = color;
-            applyThemeColor(color);
-            updatePresetSelection(color);
+            applyLiquidPreset(this.dataset.liquidPreset);
         });
     });
 
@@ -11102,7 +11609,7 @@ async function uploadDatabaseBackup() {
     return;
     }
 
-    if (!confirm('恢复数据库将完全替换当前所有数据，包括所有用户、Cookie、卡券等信息。\n\n此操作不可撤销！\n\n确定要继续吗？')) {
+    if (!await uiConfirm('恢复数据库将完全替换当前所有数据，包括所有用户、Cookie、卡券等信息。\n\n此操作不可撤销！\n\n确定要继续吗？')) {
     return;
     }
 
@@ -11128,8 +11635,8 @@ async function uploadDatabaseBackup() {
         fileInput.value = '';
 
         // 提示用户刷新页面
-        setTimeout(() => {
-        if (confirm('数据库已恢复，建议刷新页面以加载新数据。是否立即刷新？')) {
+        setTimeout(async () => {
+        if (await uiConfirm('数据库已恢复，建议刷新页面以加载新数据。是否立即刷新？')) {
             window.location.reload();
         }
         }, 2000);
@@ -11205,7 +11712,7 @@ async function importBackup() {
     return;
     }
 
-    if (!confirm('导入备份将覆盖当前所有数据，确定要继续吗？')) {
+    if (!await uiConfirm('导入备份将覆盖当前所有数据，确定要继续吗？')) {
     return;
     }
 
@@ -11984,7 +12491,7 @@ function loadItemPublishMaterialToForm(materialId) {
 }
 
 async function deleteItemPublishMaterial(materialId) {
-    if (!confirm('确定删除该商品素材吗？')) {
+    if (!await uiConfirm('确定删除该商品素材吗？')) {
         return;
     }
     try {
@@ -12248,6 +12755,48 @@ async function toggleItemMultiQuantityDelivery(cookieId, itemId, multiQuantityDe
     }
 }
 
+// 手动更新商品库存
+async function updateItemStock(inputElement) {
+    try {
+        const cookieId = inputElement.getAttribute('data-cookie-id');
+        const itemId = inputElement.getAttribute('data-item-id');
+        const rawValue = String(inputElement.value || '').trim();
+        if (!rawValue) {
+            // 清空视为未同步，不做修改，仅刷新回显
+            await refreshItemsData();
+            return;
+        }
+
+        const itemStock = parseInt(rawValue, 10);
+        if (!Number.isFinite(itemStock) || itemStock < 0) {
+            showToast('库存必须是非负整数', 'warning');
+            await refreshItemsData();
+            return;
+        }
+
+        const response = await fetch(`${apiBase}/items/${encodeURIComponent(cookieId)}/${encodeURIComponent(itemId)}/stock`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ item_stock: itemStock })
+        });
+
+        if (response.ok) {
+            showToast('库存已更新', 'success');
+            await refreshItemsData();
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.error || '操作失败');
+        }
+    } catch (error) {
+        console.error('更新商品库存失败:', error);
+        showToast(`更新商品库存失败: ${error.message}`, 'danger');
+        await refreshItemsData();
+    }
+}
+
 // 加载商品列表
 async function loadItems() {
     try {
@@ -12259,6 +12808,73 @@ async function loadItems() {
     } catch (error) {
     console.error('加载商品列表失败:', error);
     showToast('加载商品列表失败', 'danger');
+    }
+}
+
+// 显示商品SKU规格明细弹窗
+function showItemSkuInfo(buttonElement) {
+    const raw = buttonElement ? (buttonElement.getAttribute('data-sku') || '') : '';
+    let rows = [];
+    try {
+        rows = JSON.parse(raw);
+        if (!Array.isArray(rows)) rows = [];
+    } catch (e) {
+        rows = [];
+    }
+
+    const bodyEl = document.getElementById('itemSkuInfoBody');
+    if (rows.length === 0) {
+        bodyEl.innerHTML = '<p class="text-muted text-center mb-0">暂无规格明细数据</p>';
+    } else {
+        const rowsHtml = rows.map((r, idx) => {
+            const name = escapeHtml(r.name || ('规格' + (idx + 1)));
+            const qty = r.quantity != null ? r.quantity : '未知';
+            const price = r.price != null && r.price !== '' ? escapeHtml(String(r.price)) : '未知';
+            return `
+                <tr>
+                    <td>${escapeHtml(name)}</td>
+                    <td>${escapeHtml(String(qty))}</td>
+                    <td>${price}</td>
+                </tr>`;
+        }).join('');
+        bodyEl.innerHTML = `
+            <table class="table table-bordered table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>规格名称</th>
+                        <th>库存</th>
+                        <th>价格</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>`;
+    }
+
+    const modalElement = document.getElementById('itemSkuInfoModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+    modal.show();
+}
+
+// 恢复商品库存自动同步（清除手动标记）
+async function restoreItemStockSync(cookieId, itemId) {
+    try {
+        const response = await fetch(`${apiBase}/items/${encodeURIComponent(cookieId)}/${encodeURIComponent(itemId)}/stock/restore-sync`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        if (response.ok) {
+            showToast('已恢复库存自动同步', 'success');
+            await refreshItemsData();
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || '操作失败');
+        }
+    } catch (error) {
+        console.error('恢复库存自动同步失败:', error);
+        showToast(`恢复库存自动同步失败: ${error.message}`, 'danger');
     }
 }
 
@@ -12463,7 +13079,7 @@ function displayCurrentPageItems() {
     const tbody = document.getElementById('itemsTableBody');
 
     if (!filteredItemsData || filteredItemsData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">暂无商品数据</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted">暂无商品数据</td></tr>';
         resetItemsSelection();
         return;
     }
@@ -12493,6 +13109,22 @@ function displayCurrentPageItems() {
             '<span class="badge bg-success">多规格</span>' :
             '<span class="badge bg-secondary">普通</span>';
 
+        // SKU规格明细（同步时记录的多规格明细）
+        let skuInfoButton = '';
+        if (item.sku_info) {
+            const skuDataAttr = escapeHtml(item.sku_info).replace(/"/g, '&quot;');
+            skuInfoButton = `<button type="button" class="btn btn-sm btn-outline-info mt-1" title="查看规格明细" data-sku='${skuDataAttr}' onclick="showItemSkuInfo(this)"><i class="bi bi-list-ul"></i> 规格明细</button>`;
+        }
+
+        // 库存显示（支持手动修改；手动标记时显示标签，可恢复自动同步）
+        const itemStock = item.item_stock != null ? Number(item.item_stock) : null;
+        const isManualStock = item.stock_manual == 1;
+        const manualStockBadge = isManualStock ?
+            `<span class="badge bg-warning text-dark mt-1" title="该库存为手动设置，自动同步不会覆盖">手动库存</span>` : '';
+        const restoreSyncBtn = isManualStock ?
+            `<button type="button" class="btn btn-sm btn-outline-secondary mt-1" title="恢复为平台自动同步库存" onclick="restoreItemStockSync('${escapeHtml(item.cookie_id)}', '${escapeHtml(item.item_id)}')"><i class="bi bi-arrow-counterclockwise"></i> 恢复同步</button>` : '';
+        const stockDisplay = `<div><input type="number" class="form-control form-control-sm item-stock-input" min="0" value="${itemStock != null ? itemStock : ''}" placeholder="未同步" data-cookie-id="${escapeHtml(item.cookie_id)}" data-item-id="${escapeHtml(item.item_id)}" onchange="updateItemStock(this)">${manualStockBadge}${restoreSyncBtn}</div>`;
+
         // 多数量发货状态显示
         const isMultiQuantityDelivery = item.multi_quantity_delivery;
         const multiQuantityDeliveryDisplay = isMultiQuantityDelivery ?
@@ -12511,11 +13143,11 @@ function displayCurrentPageItems() {
             <td>${escapeHtml(item.item_id)}</td>
             <td title="${escapeHtml(item.item_title || '未设置')}">
                 <div>${escapeHtml(itemTitleDisplay)}</div>
-                <small class="text-muted item-stock-label">库存：${escapeHtml(item.stock ?? item.quantity ?? '未同步')}</small>
             </td>
             <td title="${escapeHtml(getItemDetailText(item.item_detail || ''))}">${escapeHtml(itemDetailDisplay)}</td>
             <td>${escapeHtml(item.item_price || '未设置')}</td>
-            <td>${multiSpecDisplay}</td>
+            <td>${stockDisplay}</td>
+            <td><div>${multiSpecDisplay}${skuInfoButton}</div></td>
             <td>${multiQuantityDeliveryDisplay}</td>
             <td>${formatDateTime(item.updated_at)}</td>
             <td>
@@ -12908,7 +13540,7 @@ async function saveItemDetail() {
 async function deleteItem(cookieId, itemId, itemTitle) {
     try {
     // 确认删除
-    const confirmed = confirm(`确定要删除商品信息吗？\n\n商品ID: ${itemId}\n商品标题: ${itemTitle || '未设置'}\n\n此操作不可撤销！`);
+    const confirmed = await uiConfirm(`确定要删除商品信息吗？\n\n商品ID: ${itemId}\n商品标题: ${itemTitle || '未设置'}\n\n此操作不可撤销！`);
     if (!confirmed) {
         return;
     }
@@ -12945,7 +13577,7 @@ async function batchDeleteItems() {
     }
 
     // 确认删除
-    const confirmed = confirm(`确定要删除选中的 ${checkboxes.length} 个商品信息吗？\n\n此操作不可撤销！`);
+    const confirmed = await uiConfirm(`确定要删除选中的 ${checkboxes.length} 个商品信息吗？\n\n此操作不可撤销！`);
     if (!confirmed) {
         return;
     }
@@ -13468,7 +14100,7 @@ async function saveItemReply() {
 // 删除商品回复
 async function deleteItemReply(cookieId, itemId, itemTitle) {
   try {
-    const confirmed = confirm(`确定要删除该商品的自动回复吗？\n\n商品ID: ${itemId}\n商品标题: ${itemTitle || '未设置'}\n\n此操作不可撤销！`);
+    const confirmed = await uiConfirm(`确定要删除该商品的自动回复吗？\n\n商品ID: ${itemId}\n商品标题: ${itemTitle || '未设置'}\n\n此操作不可撤销！`);
     if (!confirmed) return;
 
     const response = await fetch(`${apiBase}/item-reply/${encodeURIComponent(cookieId)}/${encodeURIComponent(itemId)}`, {
@@ -13500,7 +14132,7 @@ async function batchDeleteItemReplies() {
       return;
     }
 
-    const confirmed = confirm(`确定要删除选中商品的自动回复吗？\n共 ${checkboxes.length} 个商品\n\n此操作不可撤销！`);
+    const confirmed = await uiConfirm(`确定要删除选中商品的自动回复吗？\n共 ${checkboxes.length} 个商品\n\n此操作不可撤销！`);
     if (!confirmed) return;
 
     const itemsToDelete = Array.from(checkboxes).map(checkbox => ({
@@ -13674,7 +14306,7 @@ function toggleAutoRefresh() {
 
 // 清空服务器日志
 async function clearLogsServer() {
-    if (!confirm('确定要清空服务器端的所有日志吗？此操作不可恢复！')) {
+    if (!await uiConfirm('确定要清空服务器端的所有日志吗？此操作不可恢复！')) {
     return;
     }
 
@@ -18090,7 +18722,7 @@ async function loadItemDetailForOrder(itemId, cookieId) {
 // 删除订单
 async function deleteOrder(orderId) {
     try {
-        const confirmed = confirm(`确定要删除订单吗？\n\n订单ID: ${orderId}\n\n此操作不可撤销！`);
+        const confirmed = await uiConfirm(`确定要删除订单吗？\n\n订单ID: ${orderId}\n\n此操作不可撤销！`);
         if (!confirmed) {
             return;
         }
@@ -18125,7 +18757,7 @@ async function batchDeleteOrders() {
     }
 
     const orderIds = Array.from(checkboxes).map(cb => cb.value);
-    const confirmed = confirm(`确定要删除选中的 ${orderIds.length} 个订单吗？\n\n此操作不可撤销！`);
+    const confirmed = await uiConfirm(`确定要删除选中的 ${orderIds.length} 个订单吗？\n\n此操作不可撤销！`);
 
     if (!confirmed) return;
 
@@ -18169,7 +18801,7 @@ async function batchDeleteOrders() {
 // 手动发货订单
 async function manualDeliverOrder(orderId) {
     try {
-        const confirmed = confirm(`确定要手动发货此订单吗？\n\n订单ID: ${orderId}\n\n系统将根据发货规则自动匹配发货内容并发送给买家。`);
+        const confirmed = await uiConfirm(`确定要手动发货此订单吗？\n\n订单ID: ${orderId}\n\n系统将根据发货规则自动匹配发货内容并发送给买家。`);
         if (!confirmed) {
             return;
         }
@@ -18208,7 +18840,7 @@ async function manualDeliverOrder(orderId) {
 // 手动补确认发货（只调用平台确认，不重复发送卡券）
 async function retryOrderPlatformConfirm(orderId) {
     try {
-        const confirmed = confirm(`确定要补确认此订单吗？\n\n订单ID: ${orderId}\n\n只会调用闲鱼平台确认发货接口，不会重复发送卡券/发货内容。`);
+        const confirmed = await uiConfirm(`确定要补确认此订单吗？\n\n订单ID: ${orderId}\n\n只会调用闲鱼平台确认发货接口，不会重复发送卡券/发货内容。`);
         if (!confirmed) {
             return;
         }
@@ -18311,7 +18943,7 @@ async function batchRefreshOrders() {
     }
 
     const orderIds = Array.from(checkboxes).map(cb => cb.value);
-    const confirmed = confirm(`确定要刷新选中的 ${orderIds.length} 个订单状态吗？\n\n这可能需要一些时间...`);
+    const confirmed = await uiConfirm(`确定要刷新选中的 ${orderIds.length} 个订单状态吗？\n\n这可能需要一些时间...`);
 
     if (!confirmed) return;
 
@@ -18594,7 +19226,7 @@ function createUserCard(user) {
 async function toggleUserAdmin(userId, username, setAdmin) {
     const action = setAdmin ? '设置为管理员' : '取消管理员权限';
 
-    if (!confirm(`确定要将用户 "${username}" ${action}吗？`)) {
+    if (!await uiConfirm(`确定要将用户 "${username}" ${action}吗？`)) {
         return;
     }
 
@@ -18949,7 +19581,7 @@ async function clearTableData() {
     }
 
     const description = tableDescriptions[currentTable] || currentTable;
-    const confirmed = confirm(`确定要清空 "${description}" 的所有数据吗？\n\n此操作不可撤销！`);
+    const confirmed = await uiConfirm(`确定要清空 "${description}" 的所有数据吗？\n\n此操作不可撤销！`);
 
     if (!confirmed) return;
 
@@ -20336,7 +20968,7 @@ async function loadCookieFilterOptions() {
 
 // 删除风控日志记录
 async function deleteRiskControlLog(logId) {
-    if (!confirm('确定要删除这条风控日志记录吗？')) {
+    if (!await uiConfirm('确定要删除这条风控日志记录吗？')) {
         return;
     }
 
@@ -20365,7 +20997,7 @@ async function deleteRiskControlLog(logId) {
 
 // 清空风控日志
 async function clearRiskControlLogs() {
-    if (!confirm('确定要清空所有风控日志吗？此操作不可恢复！')) {
+    if (!await uiConfirm('确定要清空所有风控日志吗？此操作不可恢复！')) {
         return;
     }
 
@@ -20985,9 +21617,73 @@ function clearIgnoredUpdateVersion(showFeedback = true) {
 
 // 本地版本历史（远程服务禁用时使用）
 const LOCAL_VERSION_HISTORY = {
-    version: 'v2.0.5',
+    version: 'v2.3.0',
     intro: '本系统仅供个人学习研究使用，请勿用于商业用途。如有问题或建议，欢迎反馈。',
     versionHistory: [
+        {
+            version: 'v2.3.0',
+            date: '2026-08-10',
+            updates: [
+                '【发布】v2.3.0 正式版：基于 v2.3.0-beta 验证通过',
+                '【修复】桌面端窗口启动崩溃：移除 pywebview create_window 不支持的 icon 参数，窗口/任务栏图标统一跟随 EXE 图标',
+                '【修复】桌面端点击关闭按钮改为隐藏到系统托盘后台运行，真正退出请使用托盘菜单',
+                '【修复】桌面端后台服务（ShangjiaService）补齐品牌图标',
+                '【清理】移除已废弃的 Docker 部署面与相关代码路径，发布审计中两条 High 风险随之解除'
+            ]
+        },
+        {
+            version: 'v2.3.0-beta',
+            date: '2026-08-10',
+            updates: [
+                '【优化】淘宝/闲鱼 H5 客户端 appKey 集中外置（utils/taobao_keys.py），支持 TAOBAO_APP_KEY / TAOBAO_H5_APP_KEY 环境变量覆盖，清除 15 个文件中的硬编码副本且默认值不变',
+                '【安全】新增 scripts/audit_routes.py 全量审计 274 条路由（241 已鉴权 / 20 公开白名单 / 2 独立 APIKey / 11 滑块控制子系统，0 未保护），并为 2 个全局设置写入接口补充登录鉴权',
+                '【文档】发布审计文档补充前端三层样式覆盖的维护债务说明'
+            ]
+        },
+        {
+            version: 'v2.2.3',
+            date: '2026-08-10',
+            updates: [
+                '【优化】前端资源本地化：Chart.js 图表库由 CDN 改为随包内置（离线可用），图片占位图不再依赖外部图床',
+                '【清理】前端重复代码清理：移除 escapeHtml / formatLogTimestamp / exportKeywords / refreshQRCode 等 5 段重复实现，统一保留生效定义',
+                '【测试】新增前端冒烟测试（登录页、仪表盘图表渲染、用户管理、账号管理、未登录跳转）',
+                '【工具】新增版本发布辅助脚本 scripts/bump_version.ps1（版本号/缓存参数/更新日志一键同步）'
+            ]
+        },
+        {
+            version: 'v2.2.2',
+            date: '2026-08-09',
+            updates: [
+                '【修复】销售额图表「最近1周 / 最近1月」切换不自动更新：改为通过 Chart.js 实例注册表销毁重建，杜绝画布占用导致图表不刷新，同时升级静态资源缓存版本号',
+                '【修复】桌面软件图标仍显示旧版：桌面窗口与任务栏图标统一使用新的透明圆角 ShangjiaTool.ico',
+                '【修复】侧边栏最底部堆积的空分组标题：分组分隔符跟随所属菜单项显示，空分组自动隐藏',
+                '【优化】全面升级 Apple Liquid Glass 液态玻璃 UI，完善无障碍与降级（prefers-reduced-motion / prefers-reduced-transparency）'
+            ]
+        },
+        {
+            version: 'v2.2.1',
+            date: '2026-08-09',
+            updates: [
+                '【修复】管理台遗留 UI 对比度与配色问题：Toast 提示、用户管理统计卡、系统设置深色模式、信息色徽章、折叠/扫码按钮可读性'
+            ]
+        },
+        {
+            version: 'v2.2.0',
+            date: '2026-08-09',
+            updates: [
+                '【优化】整体 UI 重构为现代液态玻璃风格，修复侧栏 Logo 与产品名不可见、深色模式白字浅底、折叠菜单错位等问题',
+                '【修复】重新生成桌面应用图标：透明圆角多尺寸 ICO，桌面与托盘图标不再显示白色方块底',
+                '【优化】登录/注册页重做为液态玻璃风格，支持浅色/深色模式'
+            ]
+        },
+        {
+            version: 'v2.1.4',
+            date: '2026-08-08',
+            updates: [
+                '【新功能】发布 Windows 桌面版（EXE 双击启动，无需安装 Python 环境），支持自动检查更新与热更新',
+                '【新功能】桌面端支持系统托盘常驻与后台运行，数据目录统一迁移到用户数据目录'
+            ]
+        },
         {
             version: 'v2.0.5',
             date: '2026-07-10',
@@ -23096,6 +23792,7 @@ let chatCurrentItemId = '';
 let chatSessionsCache = [];
 let chatAccountsCache = [];
 let chatCurrentAccount = null;
+let chatWarmedUp = false;
 let chatSessionsNextCursor = null;
 let chatSessionsHasMore = false;
 let chatMessagesNextCursor = null;
@@ -23335,7 +24032,7 @@ async function toggleChatBlacklist() {
     const confirmMessage = action === 'block'
         ? `确认将买家 ${chatCurrentSenderName || chatCurrentToUserId} 加入当前账号黑名单吗？\n\n加入后自动回复、客服发送和发货流程都会拦截该买家。`
         : `确认解除买家 ${chatCurrentSenderName || chatCurrentToUserId} 的当前账号黑名单吗？`;
-    if (!window.confirm(confirmMessage)) return;
+    if (!await uiConfirm(confirmMessage)) return;
 
     chatBlacklistState = { ...chatBlacklistState, loading: true };
     renderChatBlacklistButton();
@@ -23570,48 +24267,54 @@ async function refreshChatAccounts() {
             body.innerHTML = '<div class="text-center text-muted py-4 small">加载失败</div>';
             return;
         }
-        const accounts = result.accounts || [];
-        chatAccountsCache = accounts;
-        chatCurrentAccount = accounts.find(account => account.id === chatCurrentCookieId) || null;
-        const runtimeSummary = document.getElementById('chatRuntimeSummary');
-        if (runtimeSummary) {
-            const current = chatCurrentAccount;
-            runtimeSummary.textContent = current
-                ? '运行状态：' + getChatAccountStatus(current).label + ' · ' + (current.message_stream_note || '暂无平台消息流说明')
-                : '运行状态：请选择账号；会话可能来自平台或本地缓存';
-        }
-        if (!accounts.length) {
-            body.innerHTML = '<div class="text-center text-muted py-4 small">暂无可用账号</div>';
-            return;
-        }
-        body.innerHTML = '';
-        accounts.forEach(account => {
-            const status = getChatAccountStatus(account);
-            const actionLabel = account.enabled && (account.running || account.connected) ? '断开' : '连接';
-            const actionIcon = actionLabel === '断开' ? 'bi-plug' : 'bi-play-circle';
-            const div = document.createElement('div');
-            div.className = 'chat-account-item' + (account.id === chatCurrentCookieId ? ' active' : '');
-            div.innerHTML = `
-                <div class="chat-account-dot ${status.className}"></div>
-                <div class="chat-account-main">
-                    <div class="chat-account-name" title="${escapeHtml(account.id)}">${escapeHtml(account.name || account.id)}</div>
-                    <div class="chat-account-status ${status.className}" title="${escapeHtml(account.message_stream_note || '')}">${escapeHtml(status.label)}</div>
-                </div>
-                <button class="chat-account-action" title="${escapeHtml(actionLabel)}">
-                    <i class="bi ${actionIcon}"></i>
-                </button>
-            `;
-            div.onclick = () => selectChatAccount(account.id);
-            div.querySelector('.chat-account-action')?.addEventListener('click', event => {
-                event.stopPropagation();
-                toggleChatAccountConnection(account.id, actionLabel === '断开');
-            });
-            body.appendChild(div);
-        });
+        renderChatAccountsList(result.accounts || []);
     } catch (error) {
         console.error('加载账号列表失败:', error);
         body.innerHTML = '<div class="text-center text-muted py-4 small">加载失败</div>';
     }
+}
+
+// 使用缓存渲染客服账号列表（不重新请求网络）
+function renderChatAccountsList(accounts) {
+    const body = document.getElementById('chatAccountsBody');
+    if (!body) return;
+    chatAccountsCache = Array.isArray(accounts) ? accounts : [];
+    chatCurrentAccount = chatAccountsCache.find(account => account.id === chatCurrentCookieId) || null;
+    const runtimeSummary = document.getElementById('chatRuntimeSummary');
+    if (runtimeSummary) {
+        const current = chatCurrentAccount;
+        runtimeSummary.textContent = current
+            ? '运行状态：' + getChatAccountStatus(current).label + ' · ' + (current.message_stream_note || '暂无平台消息流说明')
+            : '运行状态：请选择账号；会话可能来自平台或本地缓存';
+    }
+    if (!chatAccountsCache.length) {
+        body.innerHTML = '<div class="text-center text-muted py-4 small">暂无可用账号</div>';
+        return;
+    }
+    body.innerHTML = '';
+    chatAccountsCache.forEach(account => {
+        const status = getChatAccountStatus(account);
+        const actionLabel = account.enabled && (account.running || account.connected) ? '断开' : '连接';
+        const actionIcon = actionLabel === '断开' ? 'bi-plug' : 'bi-play-circle';
+        const div = document.createElement('div');
+        div.className = 'chat-account-item' + (account.id === chatCurrentCookieId ? ' active' : '');
+        div.innerHTML = `
+            <div class="chat-account-dot ${status.className}"></div>
+            <div class="chat-account-main">
+                <div class="chat-account-name" title="${escapeHtml(account.id)}">${escapeHtml(account.name || account.id)}</div>
+                <div class="chat-account-status ${status.className}" title="${escapeHtml(account.message_stream_note || '')}">${escapeHtml(status.label)}</div>
+            </div>
+            <button class="chat-account-action" title="${escapeHtml(actionLabel)}">
+                <i class="bi ${actionIcon}"></i>
+            </button>
+        `;
+        div.onclick = () => selectChatAccount(account.id);
+        div.querySelector('.chat-account-action')?.addEventListener('click', event => {
+            event.stopPropagation();
+            toggleChatAccountConnection(account.id, actionLabel === '断开');
+        });
+        body.appendChild(div);
+    });
 }
 
 async function toggleChatAccountConnection(cookieId, disconnect = false) {
@@ -23668,24 +24371,14 @@ async function refreshChatSessions(append = false) {
         return;
     }
     if (!append) {
-        chatSessionsNextCursor = null;
-        chatSessionsHasMore = false;
         body.innerHTML = '<div class="text-center text-muted py-4 small"><div class="spinner-border spinner-border-sm"></div></div>';
     }
     try {
-        let url = `${apiBase}/api/chat/sessions?cookie_id=${encodeURIComponent(chatCurrentCookieId)}&include_order_fallback=true&remote=true&limit=60`;
-        if (append && chatSessionsNextCursor) {
-            url += `&cursor=${encodeURIComponent(chatSessionsNextCursor)}`;
-        }
-        const result = await fetchJSON(url);
-        if (!result.success) {
+        const result = await fetchChatSessionsRaw(chatCurrentCookieId, append);
+        if (!result || !result.success) {
             body.innerHTML = '<div class="text-center text-muted py-4 small">加载失败</div>';
             return;
         }
-        chatSessionsNextCursor = result.next_cursor || null;
-        chatSessionsHasMore = Boolean(result.has_more && chatSessionsNextCursor);
-        const incomingSessions = sortChatSessions(result.sessions || []);
-        chatSessionsCache = append ? mergeChatSessionLists(chatSessionsCache, incomingSessions) : incomingSessions;
         const runtimeSummary = document.getElementById('chatRuntimeSummary');
         if (runtimeSummary && !append) {
             const source = result.source === 'remote_im' ? '平台 IM' : '本地缓存/订单回退';
@@ -23702,6 +24395,23 @@ async function refreshChatSessions(append = false) {
         console.error('获取会话列表失败:', error);
         body.innerHTML = '<div class="text-center text-muted py-4 small">加载失败</div>';
     }
+}
+
+// 仅拉取会话数据到缓存（不入 DOM），供后台预热使用
+async function fetchChatSessionsRaw(cookieId, append = false) {
+    if (!cookieId) return null;
+    let url = `${apiBase}/api/chat/sessions?cookie_id=${encodeURIComponent(cookieId)}&include_order_fallback=true&remote=true&limit=60`;
+    if (append && chatSessionsNextCursor) {
+        url += `&cursor=${encodeURIComponent(chatSessionsNextCursor)}`;
+    }
+    const result = await fetchJSON(url);
+    if (result && result.success) {
+        chatSessionsNextCursor = result.next_cursor || null;
+        chatSessionsHasMore = Boolean(result.has_more && chatSessionsNextCursor);
+        const incomingSessions = sortChatSessions(result.sessions || []);
+        chatSessionsCache = append ? mergeChatSessionLists(chatSessionsCache, incomingSessions) : incomingSessions;
+    }
+    return result;
 }
 
 function loadMoreChatSessions() {
@@ -24403,13 +25113,47 @@ function formatChatTime(ts) {
 }
 
 async function loadOnlineIm() {
-    await refreshChatAccounts();
+    // 优先使用后台预热好的缓存，未预热才请求网络
+    if (chatAccountsCache.length) {
+        renderChatAccountsList(chatAccountsCache);
+    } else {
+        await refreshChatAccounts();
+    }
     // 客服页首次打开时预选唯一账号，避免“已连接”却仍要求再次点选。
     if (!chatCurrentCookieId && chatAccountsCache.length === 1) {
         await selectChatAccount(chatAccountsCache[0].id);
+    } else if (chatCurrentCookieId && chatSessionsCache.length) {
+        // 后台已取回会话缓存，直接渲染
+        renderChatSessions(chatSessionsCache);
     }
     initChatSSE();
     startChatSessionsAutoRefresh();
+}
+
+// 登录后后台静默预热客服数据，减少首次打开时的卡顿
+async function warmUpChatBackground() {
+    if (chatWarmedUp) return;
+    chatWarmedUp = true;
+    try {
+        const result = await fetchJSON(`${apiBase}/api/chat/accounts`);
+        if (result && result.success && Array.isArray(result.accounts)) {
+            chatAccountsCache = result.accounts;
+            chatCurrentAccount = chatAccountsCache.find(account => account.id === chatCurrentCookieId) || null;
+        }
+        if (!chatCurrentCookieId && chatAccountsCache.length === 1) {
+            chatCurrentCookieId = chatAccountsCache[0].id;
+            chatCurrentAccount = chatAccountsCache[0];
+        }
+        if (chatCurrentCookieId) {
+            await fetchChatSessionsRaw(chatCurrentCookieId, false);
+        }
+        // 预连接平台消息流，后台随时接收新消息
+        if (!chatSseAbortController) {
+            initChatSSE();
+        }
+    } catch (error) {
+        console.debug('客服后台预热失败:', error);
+    }
 }
 
 function startChatSessionsAutoRefresh() {
@@ -24695,7 +25439,7 @@ async function checkDesktopReleaseNow() {
         if (status) status.textContent = available
             ? `发现 ${latest}，当前为 ${installed}。选择“下次启动安装”后退出并重新打开软件。`
             : `已是最新版本 ${installed}。`;
-        if (available && window.confirm(`发现 ${latest}。是否在下次启动时下载、校验并安装？`)) {
+        if (available && await uiConfirm({ message: `发现 ${latest}。是否在下次启动时下载、校验并安装？`, rememberKey: 'updateInstallConfirm' })) {
             await saveDesktopUpdatePreference({ manual_update_check: true });
             showToast('已安排下次启动安装。请从托盘菜单选择“退出”，再重新打开商家工具。', 'success');
         }
@@ -24765,14 +25509,10 @@ async function initializeDesktopExperienceControls() {
         }
     });
     const activePreset = localStorage.getItem('liquid_glass_preset') || 'jade';
-    document.documentElement.dataset.liquidPreset = activePreset;
+    applyLiquidPreset(activePreset, false);
     host.querySelectorAll('[data-liquid-preset]').forEach(button => {
-        button.classList.toggle('active', button.dataset.liquidPreset === activePreset);
         button.addEventListener('click', () => {
-            const preset = button.dataset.liquidPreset;
-            localStorage.setItem('liquid_glass_preset', preset);
-            document.documentElement.dataset.liquidPreset = preset;
-            host.querySelectorAll('[data-liquid-preset]').forEach(item => item.classList.toggle('active', item === button));
+            applyLiquidPreset(button.dataset.liquidPreset);
         });
     });
 }
@@ -24811,3 +25551,181 @@ document.addEventListener('DOMContentLoaded', () => {
     const nav = document.querySelector('#sidebar .sidebar-nav');
     if (nav) new MutationObserver(hideEmptySidebarGroups).observe(nav, { attributes: true, subtree: true, attributeFilter: ['style', 'class'] });
 }, { once: true });
+
+/* ============ 动效接线：Lenis / anime.js / Magic.css / Hover.css ============ */
+
+let lenisInstance = null;
+let uiMotionInitialized = false;
+
+// Magic.css 入场动画辅助（移除旧类强制重触发）
+function magicIn(el, effect, duration) {
+    if (!el) return;
+    const base = 'magictime';
+    el.classList.remove(base, 'swashIn', 'puffIn', 'fadeIn', 'slideDown', 'tinDownIn', 'fadeInLeft');
+    void el.offsetWidth; // 强制 reflow 使动画可重复触发
+    el.classList.add(base, effect || 'puffIn');
+    el.style.animationDuration = (duration || 0.45) + 's';
+}
+
+// anime.js 数字滚动（data-count-up 或显式传值）
+function animateCountUp(el, to, duration) {
+    if (!el) return;
+    if (typeof anime === 'undefined' || typeof anime.animate !== 'function') {
+        el.textContent = to != null ? Number(to) : '';
+        return;
+    }
+    const from = Number(el.dataset.motionFrom !== undefined ? el.dataset.motionFrom : 0);
+    const target = to != null ? Number(to) : 0;
+    if (from === target) { el.textContent = String(target); return; }
+    const obj = { v: from };
+    const anim = anime.animate(obj, {
+        v: target,
+        duration: duration || 700,
+        ease: 'outExpo',
+        onUpdate: () => {
+            if (el) el.textContent = Math.round(obj.v).toLocaleString('zh-CN');
+        },
+        onComplete: () => {
+            if (el) el.textContent = target.toLocaleString('zh-CN');
+        }
+    });
+}
+
+// 给表格/card 的加载容器做入场
+function animateSectionEnter(sectionName) {
+    const sec = document.getElementById(sectionName + '-section');
+    if (!sec) return;
+    const body = sec.querySelector('.content-body') || sec;
+    magicIn(body, 'fadeIn');
+}
+
+function initUiMotion() {
+    if (uiMotionInitialized || !document.body) return;
+    uiMotionInitialized = true;
+
+    // ---- Lenis 平滑滚动（绑定给 body 滚动）：降级处理，仅桌面端启用 ----
+    try {
+        const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (typeof Lenis !== 'undefined' && !prefersReduced && window.innerWidth > 992) {
+            lenisInstance = new Lenis({
+                duration: 1.05,
+                easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+                smoothWheel: true,
+                touchMultiplier: 1.5,
+                allowNestedScroll: true
+            });
+            const raf = (time) => { lenisInstance.raf(time); requestAnimationFrame(raf); };
+            requestAnimationFrame(raf);
+        }
+    } catch (e) {
+        console.debug('Lenis init failed:', e);
+        lenisInstance = null;
+    }
+
+    // ---- 滚轮分区：鼠标悬停侧边栏/弹窗等内部滚动容器时，滚轮归各自容器 ----
+    // allowNestedScroll 已让 Lenis 自动识别可滚动子容器；这里再显式豁免：
+    // 1) 所有 Bootstrap modal 内部滚动走原生（避免弹窗内滚轮穿透到背景页面）
+    // 2) 侧边栏菜单可独立滚动
+    // 3) 账号操作条/表格横向滚动支持滚轮左右滑
+    const routeWheelToNestedContainers = () => {
+        // 弹窗整体豁免 Lenis：滚轮进入 modal 后走原生滚动（modal-body 自身 overflow）
+        document.querySelectorAll('.modal').forEach((m) => {
+            if (!m.hasAttribute('data-lenis-prevent')) m.setAttribute('data-lenis-prevent', '');
+        });
+        // 内嵌纵向滚动容器显式豁免，避免 Lenis 抢占
+        document.querySelectorAll('.sidebar-nav, .chat-panel-body, .chat-messages-area, .chat-reply-body, .log-container, .table-container, .cookie-value, .menu-sort-list, [data-wheel-scroll-vertical]').forEach((el) => {
+            if (!el.hasAttribute('data-lenis-prevent-vertical')) el.setAttribute('data-lenis-prevent-vertical', '');
+        });
+    };
+    routeWheelToNestedContainers();
+    // 动态生成的 modal/容器也要豁免
+    if ('MutationObserver' in window) {
+        const nestedObserver = new MutationObserver(() => routeWheelToNestedContainers());
+        nestedObserver.observe(document.body, { childList: true, subtree: true });
+    }
+
+    // 横向滚动容器：鼠标悬停时滚轮左右滑动（替代 shift+滚轮），仅当容器确实可横向滚动
+    const handleHorizontalWheel = (e) => {
+        const container = e.target && e.target.closest
+            ? e.target.closest('.account-actions-toolbar, .table-responsive, [data-wheel-scroll-horizontal]')
+            : null;
+        if (!container) return;
+        const canScrollX = container.scrollWidth > container.clientWidth + 1;
+        if (!canScrollX) return;
+        // 允许 shift+滚轮 的原生横向行为，避免重复处理
+        if (e.shiftKey) return;
+        const factor = e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? container.clientHeight : 1);
+        if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+            container.scrollLeft += e.deltaX;
+        } else {
+            container.scrollLeft += e.deltaY * factor;
+        }
+        e.preventDefault();
+    };
+    document.addEventListener('wheel', handleHorizontalWheel, { passive: false });
+
+    // 记录引用以便 stopUiMotion 时清理
+    window.__sgWheelHandler = handleHorizontalWheel;
+
+    // ---- Toast 容器：新 toast 弹入动画（MutationObserver 注入）----
+    const observeToasts = () => {
+        const container = document.querySelector('.toast-container');
+        if (!container) return;
+        new MutationObserver((records) => {
+            records.forEach((r) => {
+                r.addedNodes.forEach((node) => {
+                    if (node.nodeType === 1 && node.classList && node.classList.contains('toast')) {
+                        magicIn(node, 'puffIn', 0.4);
+                    }
+                });
+            });
+        }).observe(container, { childList: true });
+    };
+    observeToasts();
+    // 容器是 showToast 里创建的，若尚无容器则监听 body 何时新增
+    if (!document.querySelector('.toast-container')) {
+        const bodyObserver = new MutationObserver(() => {
+            if (document.querySelector('.toast-container')) {
+                bodyObserver.disconnect();
+                observeToasts();
+            }
+        });
+        bodyObserver.observe(document.body, { childList: true });
+    }
+
+    // ---- Hover.css：给操作按钮加 hover 效果（hvr-float/glow 组合），shrink 防抖 ----
+    const applyHoverToButtons = () => {
+        document.querySelectorAll('.btn:not(.hvr-grow):not(.hvr-float)').forEach((btn) => {
+            const cls = btn.classList;
+            if (cls.contains('btn-primary') || cls.contains('btn-danger') || cls.contains('btn-success') || cls.contains('btn-warning')) {
+                cls.add('hvr-grow');
+            }
+        });
+    };
+    applyHoverToButtons();
+    if ('MutationObserver' in window) {
+        new MutationObserver(applyHoverToButtons).observe(document.body, { childList: true, subtree: true });
+    }
+}
+
+function stopUiMotion() {
+    if (lenisInstance) {
+        lenisInstance.destroy && lenisInstance.destroy();
+        lenisInstance = null;
+        if (typeof window.__sgWheelHandler === 'function') {
+            document.removeEventListener('wheel', window.__sgWheelHandler);
+            window.__sgWheelHandler = null;
+        }
+        uiMotionInitialized = false; // 允许重新 init（Toast/hover 观察会再挂）
+        initUiMotion();
+    }
+}
+
+// 若 Lenis 生效时切换页面前先 scroll to top
+function scrollTopSmooth() {
+    if (lenisInstance && typeof lenisInstance.scrollTo === 'function') {
+        lenisInstance.scrollTo(0, { duration: 0.4 });
+    } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}

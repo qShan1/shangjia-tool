@@ -9254,6 +9254,85 @@ class XianyuLive:
             except Exception as notify_e:
                 logger.error(f"【{self.cookie_id}】发送重启失败通知时出错: {self._safe_str(notify_e)}")
 
+    async def _sync_item_extra_fields(self, item_id: str, item_title: str = ''):
+        """从商品详情接口同步多规格与库存信息（失败不影响主流程）
+
+        Args:
+            item_id: 商品ID
+            item_title: 商品标题（仅用于日志）
+        """
+        try:
+            detail = await self.get_item_info(item_id)
+            item_do = ((detail or {}).get('data') or {}).get('itemDO') or {}
+
+            skus = item_do.get('skus') or item_do.get('skuList') or []
+            if not isinstance(skus, list):
+                skus = []
+
+            has_spec_flag = item_do.get('hasSku') or item_do.get('hasSpec') or item_do.get('hasSkuInfo') or False
+            is_multi = None
+            if skus:
+                is_multi = bool(len(skus) > 1)
+            elif has_spec_flag:
+                is_multi = True
+
+            # 组装多规格明细（JSON 字符串），供商品管理页展示具体规格与各库存
+            sku_info = None
+            if len(skus) > 1:
+                sku_rows = []
+                for sku in skus:
+                    name_parts = []
+                    name = sku.get('name') or sku.get('skuName') or ''
+                    if name:
+                        name_parts.append(str(name))
+                    sku_specs = sku.get('skuSpec') or {}
+                    for value in sku_specs.values():
+                        if value not in (None, ''):
+                            name_parts.append(str(value))
+                    sku_qty = sku.get('quantity')
+                    if sku_qty is None:
+                        sku_qty = sku.get('skuQuantity')
+                    if sku_qty is None:
+                        sku_qty = sku.get('stock')
+                    price = sku.get('price') or sku.get('priceCent') or sku.get('priceValue') or ''
+                    sku_rows.append({
+                        'name': ' / '.join(name_parts) if name_parts else '',
+                        'quantity': int(sku_qty) if isinstance(sku_qty, (int, float)) else None,
+                        'price': price,
+                    })
+                if sku_rows:
+                    sku_info = json.dumps(sku_rows, ensure_ascii=False)
+
+            stock = item_do.get('itemQuantity')
+            if stock is None:
+                stock = item_do.get('quantityValue')
+            if stock is None:
+                stock = item_do.get('quantity')
+            if stock is None and skus:
+                total = 0
+                for sku in skus:
+                    sku_qty = sku.get('quantity') if sku.get('quantity') is not None else (sku.get('skuQuantity') if sku.get('skuQuantity') is not None else sku.get('stock'))
+                    if isinstance(sku_qty, (int, float)):
+                        total += int(sku_qty)
+                stock = total
+
+            from db_manager import db_manager
+            updated = db_manager.update_item_extra_fields(
+                self.cookie_id,
+                item_id,
+                is_multi_spec=is_multi,
+                item_stock=int(stock) if stock is not None else None,
+                sku_info=sku_info,
+                stock_from_sync=True,
+            )
+
+            if updated:
+                logger.info(f"已同步商品附加字段: {item_id} - {item_title}, multi_spec={is_multi}, stock={stock}")
+            else:
+                logger.debug(f"商品附加字段无需变更或未找到: {item_id}")
+        except Exception as e:
+            logger.warning(f"同步商品附加字段失败: {item_id} - {item_title}, error: {self._safe_str(e)}")
+
     async def save_item_info_to_db(self, item_id: str, item_detail: str = None, item_title: str = None):
         """保存商品信息到数据库
 
@@ -9714,6 +9793,9 @@ class XianyuLive:
                             item_id,
                             force_refresh=force_refresh,
                         )
+
+                        # 同步多规格/库存等附加字段（失败不影响详情同步结果）
+                        await self._sync_item_extra_fields(item_id, item_title)
 
                         if item_detail_text:
                             # 保存详情到数据库

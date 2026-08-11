@@ -363,7 +363,13 @@ def _start_api_server():
     # 在后台线程中创建独立事件循环并直接运行 server.serve()
     import uvicorn
     try:
-        config = uvicorn.Config("shangjia_tool.reply_server:app", host=host, port=port, log_level="info")
+        # log_config=None：禁用 uvicorn 自带 dictConfig，避免 PyInstaller frozen
+        # 环境下 "Unable to configure formatter 'default'" 导致 Web 服务无法启动；
+        # 日志输出统一由项目的 loguru 配置接管。
+        config = uvicorn.Config(
+            "shangjia_tool.reply_server:app", host=host, port=port,
+            log_level="info", log_config=None,
+        )
         server = uvicorn.Server(config)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

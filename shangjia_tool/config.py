@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import yaml
 from pathlib import Path
 from typing import Dict, Any
@@ -24,19 +25,16 @@ class Config:
         """加载配置文件
         
         从global_config.yml文件中加载配置信息。
-        如果文件不存在则抛出FileNotFoundError异常。
+        兼容 PyInstaller 打包：优先读 _MEIPASS 内的打包副本，
+        其次读用户可写的持久化副本；仍不存在则抛出FileNotFoundError。
         """
-        # 兼容 PyInstaller 打包：frozen 时用 _MEIPASS
-        if getattr(sys, 'frozen', False):
-            _base = Path(sys._MEIPASS)
-        else:
-            _base = Path(__file__).resolve().parent.parent
-        config_path = os.path.join(str(_base), 'global_config.yml')
-        if not os.path.exists(config_path):
-            raise FileNotFoundError(f"配置文件不存在: {config_path}")
-
+        config_path = self._find_config_path()
         with open(config_path, 'r', encoding='utf-8') as f:
-            self._config = yaml.safe_load(f)
+            self._config = yaml.safe_load(f) or {}
+
+        # 有持久化目录时，把加载到的配置落一份副本，避免后续启动时
+        # 因 onefile 临时解包目录被清理/复用而找不到配置文件而崩溃。
+        self._mirror_to_persistent(config_path)
 
     def get(self, key: str, default: Any = None) -> Any:
         """获取配置项
@@ -76,12 +74,72 @@ class Config:
 
     def save(self) -> None:
         """保存配置到文件
-        
-        将当前配置保存回global_config.yml文件
+
+        写回到用户可写的持久化配置目录，避免 onefile 临时目录丢失导致配置无法持久化。
         """
-        config_path = os.path.join(Path(__file__).resolve().parent.parent, 'global_config.yml')
-        with open(config_path, 'w', encoding='utf-8') as f:
-            yaml.safe_dump(self._config, f, allow_unicode=True, default_flow_style=False)
+        self._write(_persistent_config_path(), self._config)
+
+    @staticmethod
+    def _runtime_base() -> Path:
+        if getattr(sys, 'frozen', False):
+            return Path(sys._MEIPASS)
+        return Path(__file__).resolve().parent.parent
+
+    @staticmethod
+    def _persistent_config_path() -> Path:
+        base = os.environ.get('SHANGJIA_CONFIG_DIR') or os.environ.get('APP_DATA_DIR')
+        if base:
+            return Path(base) / 'global_config.yml'
+        local = os.environ.get('LOCALAPPDATA') or str(Path.home())
+        return Path(local) / 'ShangjiaTool' / 'global_config.yml'
+
+    @classmethod
+    def _write(cls, path: Path, payload: Dict[str, Any]) -> None:
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, 'w', encoding='utf-8') as f:
+                yaml.safe_dump(payload, f, allow_unicode=True, default_flow_style=False)
+        except OSError:
+            pass
+
+    @classmethod
+    def _read(cls, path: Path) -> Dict[str, Any]:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+        return data if isinstance(data, dict) else {}
+
+    def _find_config_path(self) -> Path:
+        bundled = self._runtime_base() / 'global_config.yml'
+        persistent = self._persistent_config_path()
+
+        # onefile 解包存在瞬时竞态：临时目录可能正被上一实例清理/复用，
+        # 短暂重试可避免误判。
+        for _ in range(5):
+            if bundled.exists():
+                return bundled
+            if persistent.exists():
+                return persistent
+            time.sleep(0.5)
+
+        # 兜底：若打包副本恢复可用则用之
+        if bundled.exists():
+            return bundled
+
+        raise FileNotFoundError(
+            "配置文件不存在: " + "; ".join(str(p) for p in (bundled, persistent))
+        )
+
+    def _mirror_to_persistent(self, loaded_path: Path) -> None:
+        if not self._config:
+            return
+        persistent = self._persistent_config_path()
+        if loaded_path != persistent:
+            try:
+                persistent.parent.mkdir(parents=True, exist_ok=True)
+                if not persistent.exists():
+                    self._write(persistent, self._config)
+            except OSError:
+                pass
 
     @property
     def config(self) -> Dict[str, Any]:

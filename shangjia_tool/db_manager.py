@@ -627,6 +627,7 @@ class DBManager:
                 item_price TEXT,
                 item_detail TEXT,
                 is_multi_spec BOOLEAN DEFAULT FALSE,
+                item_stock INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (cookie_id) REFERENCES cookies(id) ON DELETE CASCADE,
@@ -642,6 +643,22 @@ class DBManager:
                 logger.info("正在为 item_info 表添加 multi_quantity_delivery 列...")
                 self._execute_sql(cursor, "ALTER TABLE item_info ADD COLUMN multi_quantity_delivery BOOLEAN DEFAULT FALSE")
                 logger.info("item_info 表 multi_quantity_delivery 列添加完成")
+
+            # 检查并添加 sku_info 列（商品多规格明细，JSON 文本）
+            try:
+                self._execute_sql(cursor, "SELECT sku_info FROM item_info LIMIT 1")
+            except sqlite3.OperationalError:
+                logger.info("正在为 item_info 表添加 sku_info 列...")
+                self._execute_sql(cursor, "ALTER TABLE item_info ADD COLUMN sku_info TEXT")
+                logger.info("item_info 表 sku_info 列添加完成")
+
+            # 检查并添加 stock_manual 列（标记库存为手动设置，防止同步覆盖）
+            try:
+                self._execute_sql(cursor, "SELECT stock_manual FROM item_info LIMIT 1")
+            except sqlite3.OperationalError:
+                logger.info("正在为 item_info 表添加 stock_manual 列...")
+                self._execute_sql(cursor, "ALTER TABLE item_info ADD COLUMN stock_manual INTEGER DEFAULT 0")
+                logger.info("item_info 表 stock_manual 列添加完成")
 
             # 创建自动发货规则表
             cursor.execute('''
@@ -1701,6 +1718,14 @@ Cookie数量: {cookie_count}
                     # 多数量发货字段不存在，需要添加
                     self._execute_sql(cursor, "ALTER TABLE item_info ADD COLUMN multi_quantity_delivery BOOLEAN DEFAULT FALSE")
                     logger.info("为item_info表添加多数量发货字段")
+
+                # 为item_info表添加库存字段（如果不存在）
+                try:
+                    self._execute_sql(cursor, "SELECT item_stock FROM item_info LIMIT 1")
+                except sqlite3.OperationalError:
+                    # 库存字段不存在，需要添加
+                    self._execute_sql(cursor, "ALTER TABLE item_info ADD COLUMN item_stock INTEGER")
+                    logger.info("为item_info表添加库存字段")
 
                 # 处理keywords表的唯一约束问题
                 # 由于SQLite不支持直接修改约束，我们需要重建表
@@ -4207,6 +4232,65 @@ Cookie数量: {cookie_count}
                 self.conn.rollback()
                 return False
 
+    def save_auth_token(self, token: str, payload: Dict, expires_at: float) -> bool:
+        """持久化【记住我】登录令牌，服务重启后仍有效。"""
+        with self.lock:
+            try:
+                cursor = self.conn.cursor()
+                self._execute_sql(cursor, "SELECT value FROM system_settings WHERE key = 'auth_tokens'", ())
+                row = cursor.fetchone()
+                tokens = json.loads(row[0]) if row and row[0] else {}
+                tokens[token] = {'payload': payload, 'expires_at': expires_at}
+                now = time.time()
+                tokens = {k: v for k, v in tokens.items() if v.get('expires_at', 0) > now}
+                self._execute_sql(
+                    cursor,
+                    "INSERT OR REPLACE INTO system_settings (key, value, description, updated_at) "
+                    "VALUES ('auth_tokens', ?, NULL, CURRENT_TIMESTAMP)",
+                    (json.dumps(tokens, ensure_ascii=False),),
+                )
+                self.conn.commit()
+                return True
+            except Exception as e:
+                logger.error(f"保存记住我令牌失败: {e}")
+                return False
+
+    def get_auth_token(self, token: str) -> Optional[Dict]:
+        """读取持久化的【记住我】登录令牌。"""
+        with self.lock:
+            try:
+                cursor = self.conn.cursor()
+                self._execute_sql(cursor, "SELECT value FROM system_settings WHERE key = 'auth_tokens'", ())
+                row = cursor.fetchone()
+                if not row or not row[0]:
+                    return None
+                tokens = json.loads(row[0])
+                return tokens.get(token)
+            except Exception:
+                return None
+
+    def delete_auth_token(self, token: str) -> bool:
+        """删除持久化的【记住我】登录令牌。"""
+        with self.lock:
+            try:
+                cursor = self.conn.cursor()
+                self._execute_sql(cursor, "SELECT value FROM system_settings WHERE key = 'auth_tokens'", ())
+                row = cursor.fetchone()
+                if not row or not row[0]:
+                    return True
+                tokens = json.loads(row[0])
+                tokens.pop(token, None)
+                self._execute_sql(
+                    cursor,
+                    "INSERT OR REPLACE INTO system_settings (key, value, description, updated_at) "
+                    "VALUES ('auth_tokens', ?, NULL, CURRENT_TIMESTAMP)",
+                    (json.dumps(tokens, ensure_ascii=False),),
+                )
+                self.conn.commit()
+                return True
+            except Exception:
+                return False
+
     def get_all_system_settings(self) -> Dict[str, str]:
         """获取所有系统设置"""
         with self.lock:
@@ -6471,6 +6555,82 @@ Cookie数量: {cookie_count}
 
         except Exception as e:
             logger.error(f"获取商品多数量发货状态失败: {e}")
+            return False
+
+    def update_item_extra_fields(self, cookie_id: str, item_id: str, is_multi_spec: bool = None, item_stock: Any = None, sku_info: Optional[str] = None, stock_manual: bool = None, stock_from_sync: bool = False) -> bool:
+        """更新商品的同步附加字段（多规格、库存、规格明细）
+
+        Args:
+            cookie_id: Cookie ID
+            item_id: 商品ID
+            is_multi_spec: 多规格状态，None表示不修改
+            item_stock: 库存数量，None表示不修改
+            sku_info: 多规格明细（JSON 字符串），None表示不修改
+            stock_manual: 标记该库存为手动设置（True=手动，False=自动，None=不改标记）
+            stock_from_sync: 本次库存来源是否为自动同步（若为 True 且当前为手动标记，则跳过覆盖）
+
+        Returns:
+            bool: 是否更新成功
+        """
+        try:
+            # 使用 (列名, 值) 配对齐，确保过滤后 SQL 与参数一一对应
+            updates = []
+
+            if is_multi_spec is not None:
+                updates.append(("is_multi_spec", 1 if bool(is_multi_spec) else 0))
+
+            if sku_info is not None:
+                updates.append(("sku_info", sku_info if isinstance(sku_info, str) else (str(sku_info or ''))))
+
+            if stock_manual is not None:
+                updates.append(("stock_manual", 1 if stock_manual else 0))
+
+            keep_stock = True
+            if item_stock is not None:
+                try:
+                    stock_value = int(item_stock)
+                except (TypeError, ValueError):
+                    stock_value = 0
+                stock_value = max(0, stock_value)
+                # 自动同步来源且商品标记为手动时，不覆盖手动库存
+                if stock_from_sync and stock_manual is not True:
+                    with self.lock:
+                        cursor_check = self.conn.cursor()
+                        cursor_check.execute(
+                            "SELECT stock_manual FROM item_info WHERE cookie_id = ? AND item_id = ?",
+                            (cookie_id, item_id))
+                        row = cursor_check.fetchone()
+                        if row and int(row[0] or 0) == 1:
+                            keep_stock = False
+                        cursor_check.close()
+                if keep_stock:
+                    updates.append(("item_stock", stock_value))
+
+            if not updates:
+                return False
+
+            update_fields = [f"{col} = ?" for col, _ in updates]
+            params = [value for _, value in updates]
+            update_fields.append("updated_at = CURRENT_TIMESTAMP")
+            logger.debug(f"更新追加字段: {item_id} -> keep_stock={keep_stock}, fields={update_fields}")
+
+            with self.lock:
+                cursor = self.conn.cursor()
+                cursor.execute(f'''
+                UPDATE item_info
+                SET {", ".join(update_fields)}
+                WHERE cookie_id = ? AND item_id = ?
+                ''', (*params, cookie_id, item_id))
+
+                if cursor.rowcount > 0:
+                    self.conn.commit()
+                    logger.info(f"更新商品附加字段成功: {item_id} -> multi_spec={is_multi_spec}, stock={item_stock}, manual={stock_manual}")
+                    return True
+                return False
+
+        except Exception as e:
+            logger.error(f"更新商品附加字段失败: {e}")
+            self.conn.rollback()
             return False
 
     def get_items_by_cookie(self, cookie_id: str) -> List[Dict]:
