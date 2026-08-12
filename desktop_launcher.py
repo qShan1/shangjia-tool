@@ -24,7 +24,11 @@ _SERVICE_PROCESS = None
 _EXIT_REQUESTED = False
 _TRAY_ICON = None
 _WINDOW = None
-GITHUB_RELEASE_URL = "https://api.github.com/repos/qShan1/shangjia-tool/releases/latest"
+# 更新清单：从仓库 raw 文件读取，避免 GitHub API 速率限制(403)。raw 不受 API 限流。
+UPDATE_MANIFEST_URL = os.environ.get(
+    "SHANGJIA_UPDATE_MANIFEST_URL",
+    "https://raw.githubusercontent.com/qShan1/shangjia-tool/main/update-manifest.json",
+)
 
 
 def current_version():
@@ -94,22 +98,34 @@ def show_question(message):
 
 
 def release_update():
-    request = urllib.request.Request(GITHUB_RELEASE_URL, headers={"User-Agent": "ShangjiaTool"})
+    """从更新清单文件读取最新版本与下载地址。
+
+    清单是仓库里的 raw JSON（如 update-manifest.json），内容形如：
+      {"latest": "v2.4.0", "zip_url": "https://.../ShangjiaTool-v2.4.0-windows-x64.zip",
+       "digest": "", "force": true}
+    使用 raw 而非 GitHub API，可避开 API 速率限制(403)。
+    """
+    request = urllib.request.Request(UPDATE_MANIFEST_URL, headers={"User-Agent": "ShangjiaTool"})
     try:
-        with urllib.request.urlopen(request, timeout=8) as response:
-            release = json.load(response)
+        with urllib.request.urlopen(request, timeout=3) as response:
+            manifest = json.load(response)
     except Exception as error:
         with desktop_log_path().open("a", encoding="utf-8") as output:
             output.write(f"Update check skipped: {error}\n")
         return None
-    tag = str(release.get("tag_name") or "").strip()
+    if not isinstance(manifest, dict):
+        return None
+    tag = str(manifest.get("latest") or "").strip()
     if not tag or _version_key(tag) <= _version_key(current_version()):
         return None
-    for asset in release.get("assets", []):
-        name = str(asset.get("name") or "")
-        if name.startswith("ShangjiaTool-") and name.endswith("-windows-x64.zip"):
-            return {"tag": tag, "name": name, "url": asset.get("browser_download_url"), "digest": asset.get("digest", "")}
-    return None
+    # zip 文件名：清单可给 zip_url，否则按命名规则拼接
+    name = str(manifest.get("name") or f"ShangjiaTool-{tag}-windows-x64.zip").strip()
+    url = str(manifest.get("zip_url") or "").strip()
+    if not url:
+        url = f"https://github.com/qShan1/shangjia-tool/releases/download/{tag}/{name}"
+    force = bool(manifest.get("force", False))
+    digest = str(manifest.get("digest") or "")
+    return {"tag": tag, "name": name, "url": url, "digest": digest, "force": force}
 
 
 def _download_update(update):
@@ -117,8 +133,13 @@ def _download_update(update):
     staging.mkdir(parents=True, exist_ok=True)
     archive = staging / update["name"]
     request = urllib.request.Request(update["url"], headers={"User-Agent": "ShangjiaTool"})
-    with urllib.request.urlopen(request, timeout=90) as response, archive.open("wb") as target:
-        shutil.copyfileobj(response, target)
+    try:
+        with urllib.request.urlopen(request, timeout=300) as response, archive.open("wb") as target:
+            shutil.copyfileobj(response, target)
+    except Exception as e:
+        with desktop_log_path().open("a", encoding="utf-8") as output:
+            output.write(f"Update download failed: {e}\n")
+        raise
     digest = str(update.get("digest") or "")
     if digest.startswith("sha256:"):
         actual = hashlib.sha256(archive.read_bytes()).hexdigest()
@@ -128,8 +149,23 @@ def _download_update(update):
     return archive
 
 
-def schedule_desktop_update(update):
-    archive = _download_update(update)
+def _apply_update_in_background(update):
+    """后台下载并应用更新；下载前提示，避免同步下载让启动流程“假死”。"""
+    try:
+        show_info(f"正在下载新版本 {update['tag']}，请稍候...\n\n"
+                  "下载完成后将自动安装并重启软件，现有数据不会丢失。")
+        archive = _download_update(update)
+        _schedule_install_script(archive, update)
+    except Exception as error:
+        try:
+            show_error(f"更新下载失败：{error}\n\n当前版本将继续运行。")
+        except Exception:
+            pass
+        with desktop_log_path().open("a", encoding="utf-8") as output:
+            output.write(f"Background update failed: {error}\n")
+
+
+def _schedule_install_script(archive, update):
     staging = DATA_ROOT / "updates" / "staging"
     script = staging / "apply-desktop-update.ps1"
     backup = ROOT.parent / f"{ROOT.name}.backup-{current_version().lstrip('v')}"
@@ -169,6 +205,11 @@ def schedule_desktop_update(update):
     ], creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
 
 
+def schedule_desktop_update(update):
+    """旧入口：直接同步下载并应用（保留，供手动/测试路径）。"""
+    _apply_update_in_background(update)
+
+
 def offer_desktop_update():
     if not getattr(sys, "frozen", False):
         return False
@@ -180,6 +221,15 @@ def offer_desktop_update():
         clear_desktop_update_request()
     if not update:
         return False
+    if update.get("force"):
+        # 强制更新：不询问，直接下载安装并重启，避免旧版本继续运行造成数据/接口不兼容
+        show_info(f"检测到新版本 {update['tag']}，正在自动更新...\n\n更新将安装到当前目录并自动重启，现有数据不会丢失。")
+        try:
+            schedule_desktop_update(update)
+            return True
+        except Exception as error:
+            show_error(f"更新下载失败：{error}\n当前版本将继续运行。")
+            return False
     if not show_question(f"A new version {update['tag']} is available.\n\nDownload, install, and restart now? Existing data will not be modified."):
         return False
     try:
@@ -375,6 +425,35 @@ def request_exit(window=None):
     stop_service()
 
 
+def _check_update_from_tray(window=None):
+    """从托盘手动检查并安装更新（提示 → 点击安装 → 自动重启）。
+
+    在独立线程中执行：网络请求和原生 MessageBox 都不阻塞 pystray 的回调线程，
+    避免“点检查更新后弹窗卡住 / 无法关闭”的现象。
+    """
+    def _run():
+        try:
+            update = release_update()
+            if not update:
+                show_info("当前已是最新版本，无需更新。")
+                return
+            if not show_question(
+                f"发现新版本 {update['tag']}。\n\n"
+                "点击「是」将自动下载并安装到当前安装目录，"
+                "安装完成后会自动关闭窗口并重新启动软件。现有数据不会丢失。"
+            ):
+                return
+            schedule_desktop_update(update)
+            request_exit(window)
+        except Exception as error:
+            try:
+                show_error(f"更新下载失败：{error}\n当前版本将继续运行。")
+            except Exception:
+                pass
+
+    threading.Thread(target=_run, name="shangjia-tray-update", daemon=True).start()
+
+
 def _start_tray(window):
     """Create a Windows tray menu after the user closes the main window."""
     global _TRAY_ICON, _WINDOW
@@ -398,8 +477,12 @@ def _start_tray(window):
             try:
                 window.show()
                 window.restore()
+                window.focus()
             except Exception:
                 pass
+
+        def check_update(_icon, _item):
+            _check_update_from_tray(window)
 
         def exit_app(_icon, _item):
             request_exit(window)
@@ -410,6 +493,7 @@ def _start_tray(window):
             APP_NAME,
             menu=pystray.Menu(
                 pystray.MenuItem("打开商家工具", show_window, default=True),
+                pystray.MenuItem("检查更新", check_update),
                 pystray.MenuItem("退出", exit_app),
             ),
         )
@@ -433,9 +517,126 @@ def minimize_to_tray(window):
         pass
 
 
+def desktop_close_behavior():
+    """关闭按钮行为：prompt(弹窗选择) / tray(最小化托盘) / exit(直接退出)。"""
+    behavior = desktop_settings().get("close_behavior", "prompt")
+    if behavior not in ("prompt", "tray", "exit"):
+        return "prompt"
+    return behavior
+
+
+def desktop_remember_close_choice():
+    return desktop_settings().get("remember_close_choice", False) is not False
+
+
+def _prompt_close_choice():
+    """弹出选择提示：最小化到托盘 / 直接退出，附带“记住本次选择”勾选框。
+    返回 (choice, remember)；choice 为 'tray' 或 'exit'，remember 为是否勾选记住。
+    """
+    try:
+        import ctypes
+        from ctypes import POINTER, Structure, c_int, c_longlong, c_wchar_p
+        import ctypes.wintypes as wt
+
+        ID_TRAY = 1001
+        ID_EXIT = 1002
+
+        class TASKDIALOG_BUTTON(Structure):
+            _fields_ = [("nButtonID", c_int), ("pszButtonText", c_wchar_p)]
+
+        class TASKDIALOGCONFIG(Structure):
+            _fields_ = [
+                ("cbSize", c_int),
+                ("hwndParent", wt.HWND),
+                ("hInstance", wt.HINSTANCE),
+                ("dwFlags", c_int),
+                ("dwCommonButtons", c_int),
+                ("pszWindowTitle", c_wchar_p),
+                ("hMainIcon", c_longlong),
+                ("pszMainInstruction", c_wchar_p),
+                ("pszContent", c_wchar_p),
+                ("cButtons", c_int),
+                ("pButtons", POINTER(TASKDIALOG_BUTTON)),
+                ("nDefaultButton", c_int),
+                ("cRadioButtons", c_int),
+                ("pRadioButtons", POINTER(TASKDIALOG_BUTTON)),
+                ("nDefaultRadioButton", c_int),
+                ("pszVerificationText", c_wchar_p),
+                ("pszExpandedInformation", c_wchar_p),
+                ("pszExpandedControlText", c_wchar_p),
+                ("pszCollapsedControlText", c_wchar_p),
+                ("hFooterIcon", c_longlong),
+                ("pszFooter", c_wchar_p),
+                ("pfCallback", c_longlong),
+                ("lpCallbackData", c_longlong),
+                ("cxWidth", c_int),
+            ]
+
+        buttons = (TASKDIALOG_BUTTON * 2)(
+            TASKDIALOG_BUTTON(ID_TRAY, "最小化到系统托盘后台运行"),
+            TASKDIALOG_BUTTON(ID_EXIT, "直接退出软件"),
+        )
+        config = TASKDIALOGCONFIG()
+        config.cbSize = ctypes.sizeof(TASKDIALOGCONFIG)
+        config.pszWindowTitle = APP_NAME
+        config.pszMainInstruction = "关闭软件后希望如何操作？"
+        config.pszContent = (
+            "· 最小化到系统托盘后台运行：主窗口隐藏，软件在右下角通知区域常驻，"
+            "双击托盘图标可重新打开窗口。\n"
+            "· 直接退出软件：完全关闭后台服务与进程。"
+        )
+        config.pszVerificationText = "记住本次选择，后续不再弹窗提醒"
+        config.cButtons = 2
+        config.pButtons = buttons
+        config.nDefaultButton = ID_TRAY
+
+        pnButton = c_int(0)
+        pnRadio = c_int(0)
+        pfVerification = c_int(0)
+        comctl = ctypes.windll.comctl32.TaskDialogIndirect
+        comctl.restype = ctypes.c_long
+        hr = comctl(
+            ctypes.byref(config),
+            ctypes.byref(pnButton),
+            ctypes.byref(pnRadio),
+            ctypes.byref(pfVerification),
+        )
+        if hr != 0:
+            raise RuntimeError(f"TaskDialogIndirect hr=0x{hr & 0xFFFFFFFF:x}")
+        remember = pfVerification.value != 0
+        choice = "exit" if pnButton.value == ID_EXIT else "tray"
+        return choice, remember
+    except Exception as error:
+        with desktop_log_path().open("a", encoding="utf-8") as output:
+            output.write(f"Close-prompt dialog failed, defaulting to tray: {error}\n")
+        return "tray", False
+
+
 def allow_window_close():
-    """标题栏关闭按钮 → 隐藏到系统托盘继续后台运行；真正退出请用托盘菜单。"""
+    """标题栏关闭按钮 → 依据配置：弹窗选择 / 最小化托盘 / 直接退出。"""
     if _EXIT_REQUESTED or _WINDOW is None:
+        return True
+    behavior = desktop_close_behavior()
+    if behavior == "exit":
+        request_exit(_WINDOW)
+        return True
+    if behavior == "tray":
+        minimize_to_tray(_WINDOW)
+        return False
+    # prompt：弹出选择提示（带“记住选择”），首次无记忆时始终弹窗。
+    choice, remember = _prompt_close_choice()
+    if remember:
+        try:
+            settings = desktop_settings()
+            settings["close_behavior"] = choice
+            settings["remember_close_choice"] = True
+            desktop_settings_path().parent.mkdir(parents=True, exist_ok=True)
+            desktop_settings_path().write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception as error:
+            with desktop_log_path().open("a", encoding="utf-8") as output:
+                output.write(f"Persist close choice failed: {error}\n")
+    if choice == "exit":
+        request_exit(_WINDOW)
         return True
     minimize_to_tray(_WINDOW)
     return False
@@ -555,3 +756,23 @@ if __name__ == "__main__":
     except Exception as error:
         show_error(str(error))
         raise
+    finally:
+        # 兜底：确保托盘“退出”后 launcher 自身进程真正结束、服务彻底停止，
+        # 避免出现“退出后服务仍在后台 / 进程残留”的情况。
+        if _EXIT_REQUESTED:
+            try:
+                stop_service()
+            except Exception:
+                pass
+            # 再次确认没有残留服务进程；若有则用 taskkill 补杀，并等其真正退出。
+            try:
+                subprocess.run(
+                    ["taskkill", "/IM", "ShangjiaService.exe", "/T", "/F"],
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                    capture_output=True,
+                    timeout=15,
+                )
+                time.sleep(1)
+            except Exception:
+                pass
+            os._exit(0)
