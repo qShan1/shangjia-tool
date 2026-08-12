@@ -54,6 +54,12 @@
   - API Key 掩码：GET 返回掩码，保存时掩码/空值自动保留原 key
   - `optimize_item_copy` 支持 `mode=generate`（从零生成完整文案）；发布页新增"AI 写文案"按钮（输入卖点/关键词回填）
   - 25 菜单巡检零错误；全量测试 64 passed
+- [x] 第六轮 商品发布重构（第一批）：
+  - 位置可配置：新增系统设置 `publish_default_longitude/latitude`（发布页右侧"发布位置"卡片可保存/重置默认坐标）；`ItemPublisher.get_default_location` 支持坐标覆盖，优先用发布请求坐标 → 系统默认 → 账号默认地址（原硬编码南京）
+  - 品牌接线：发布表单新增"品牌"输入，拼进类目提示辅助闲鱼识别；单发 JSON / multipart / 批量发布均透传 brand
+  - 素材管理激活：发布页右侧"发布素材"卡片（保存为素材/列表/载入/删除），复用既有 product-materials 后端
+  - 批量发布 UI：新增"批量发布"按钮 + 弹窗（多选账号 × 多选素材 + 可选位置坐标 → `/product-publish/batch` → 3s 轮询进度条 + 按账号结果明细）
+  - 全链路 TestClient 验证（素材brand/批量location/单发location/系统设置）；64 passed；25 菜单巡检零错误
 - [ ] 打包新 dist（用户指示本次不打包）
 
 ## 注意事项 / 教训

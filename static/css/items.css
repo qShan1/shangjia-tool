@@ -250,3 +250,20 @@
     height: 120px;
   }
 }
+
+/* 批量发布 */
+.batch-publish-check-list {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.batch-publish-check-item {
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.96);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.batch-publish-check-item:hover {
+  background: rgba(239, 246, 255, 0.92);
+  border-color: rgba(59, 130, 246, 0.4);
+}

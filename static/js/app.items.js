@@ -7,7 +7,9 @@ async function loadItemPublish() {
     handlePublishDeliveryChoiceChange();
     await Promise.all([
         loadItemPublishAccounts(),
-        loadItemPublishLogs()
+        loadItemPublishLogs(),
+        loadItemPublishMaterials(),
+        loadPublishDefaultLocation()
     ]);
 }
 
@@ -314,6 +316,7 @@ function getItemPublishFormValues() {
         accountId: document.getElementById('publishCookieId')?.value || '',
         title: document.getElementById('publishTitle')?.value.trim() || '',
         category: document.getElementById('publishCategory')?.value.trim() || '',
+        brand: document.getElementById('publishBrand')?.value.trim() || '',
         description: document.getElementById('publishDescription')?.value.trim() || '',
         currentPrice: document.getElementById('publishCurrentPrice')?.value.trim() || '',
         originalPrice: document.getElementById('publishOriginalPrice')?.value.trim() || '',
@@ -386,6 +389,7 @@ function buildItemPublishJsonPayload(values, images) {
         title: values.title,
         description: values.description,
         category: values.category,
+        brand: values.brand,
         price: parseOptionalPublishNumber(values.currentPrice, '现价'),
         original_price: parseOptionalPublishNumber(values.originalPrice, '原价'),
         images,
@@ -581,6 +585,7 @@ function loadItemPublishMaterialToForm(materialId) {
 
     document.getElementById('publishTitle').value = material.title || '';
     document.getElementById('publishCategory').value = material.category || '';
+    document.getElementById('publishBrand').value = material.brand || '';
     document.getElementById('publishDescription').value = material.description || '';
     document.getElementById('publishCurrentPrice').value = material.price ?? '';
     document.getElementById('publishOriginalPrice').value = material.original_price ?? '';
@@ -616,6 +621,281 @@ async function deleteItemPublishMaterial(materialId) {
         console.error('删除商品素材失败:', error);
         showToast(error.message || '删除商品素材失败', 'danger');
     }
+}
+
+async function loadPublishDefaultLocation() {
+    try {
+        const response = await fetch(`${apiBase}/system-settings`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const settings = await response.json();
+        const longitude = settings.publish_default_longitude || '';
+        const latitude = settings.publish_default_latitude || '';
+        const lngInput = document.getElementById('publishLocationLongitude');
+        const latInput = document.getElementById('publishLocationLatitude');
+        const hint = document.getElementById('publishLocationHint');
+        if (lngInput) lngInput.value = longitude;
+        if (latInput) latInput.value = latitude;
+        if (hint) {
+            hint.textContent = longitude && latitude
+                ? `已设置默认位置：${longitude}, ${latitude}。新发布默认使用该位置。`
+                : '默认使用账号地址。可填写坐标并“保存为默认位置”。';
+        }
+    } catch (error) {
+        console.error('加载发布默认位置失败:', error);
+    }
+}
+
+async function savePublishDefaultLocation() {
+    const longitude = document.getElementById('publishLocationLongitude')?.value?.trim() || '';
+    const latitude = document.getElementById('publishLocationLatitude')?.value?.trim() || '';
+    if (!longitude || !latitude) {
+        showToast('请先填写经度和纬度', 'warning');
+        return;
+    }
+    const lng = Number(longitude);
+    const lat = Number(latitude);
+    if (!Number.isFinite(lng) || !Number.isFinite(lat) || lng < -180 || lng > 180 || lat < -90 || lat > 90) {
+        showToast('经度需在 -180~180，纬度需在 -90~90 之间', 'warning');
+        return;
+    }
+    try {
+        for (const [key, value, description] of [
+            ['publish_default_longitude', String(lng), '商品发布默认经度（留空使用账号默认地址）'],
+            ['publish_default_latitude', String(lat), '商品发布默认纬度（留空使用账号默认地址）'],
+        ]) {
+            const response = await fetch(`${apiBase}/system-settings/${encodeURIComponent(key)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                body: JSON.stringify({ key, value, description })
+            });
+            if (!response.ok) {
+                throw new Error(`保存 ${key} 失败`);
+            }
+        }
+        const hint = document.getElementById('publishLocationHint');
+        if (hint) hint.textContent = `已设置默认位置：${lng}, ${lat}。新发布默认使用该位置。`;
+        showToast('发布默认位置已保存', 'success');
+    } catch (error) {
+        console.error('保存发布默认位置失败:', error);
+        showToast(error.message || '保存发布默认位置失败', 'danger');
+    }
+}
+
+async function resetPublishDefaultLocation() {
+    try {
+        for (const key of ['publish_default_longitude', 'publish_default_latitude']) {
+            await fetch(`${apiBase}/system-settings/${encodeURIComponent(key)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                body: JSON.stringify({ key, value: '', description: '商品发布默认坐标（留空使用账号默认地址）' })
+            });
+        }
+        const lngInput = document.getElementById('publishLocationLongitude');
+        const latInput = document.getElementById('publishLocationLatitude');
+        if (lngInput) lngInput.value = '';
+        if (latInput) latInput.value = '';
+        const hint = document.getElementById('publishLocationHint');
+        if (hint) hint.textContent = '默认使用账号地址。可填写坐标并“保存为默认位置”。';
+        showToast('已恢复为账号默认地址', 'success');
+    } catch (error) {
+        console.error('重置发布默认位置失败:', error);
+        showToast(error.message || '重置发布默认位置失败', 'danger');
+    }
+}
+
+async function openBatchPublishModal() {
+    const modal = document.getElementById('batchPublishModal');
+    if (!modal) {
+        showToast('批量发布窗口不存在', 'warning');
+        return;
+    }
+    await Promise.all([loadBatchPublishAccounts(), loadBatchPublishMaterials()]);
+    const progress = document.getElementById('batchPublishProgress');
+    if (progress) progress.style.display = 'none';
+    const detail = document.getElementById('batchPublishResultDetail');
+    if (detail) detail.innerHTML = '';
+    const btn = document.getElementById('batchPublishStartBtn');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-rocket-takeoff me-1"></i>开始批量发布';
+    }
+    if (window.bootstrap && bootstrap.Modal) {
+        bootstrap.Modal.getOrCreateInstance(modal).show();
+    } else {
+        modal.style.display = 'block';
+        modal.classList.add('show');
+    }
+}
+
+async function loadBatchPublishAccounts() {
+    const container = document.getElementById('batchPublishAccountList');
+    if (!container) return;
+    container.innerHTML = '<div class="text-muted small">正在加载账号...</div>';
+    try {
+        const response = await fetch(`${apiBase}/cookies/details`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const accounts = await response.json();
+        const available = accounts.filter(a => a.has_cookie_value !== false && a.enabled !== false);
+        if (!available.length) {
+            container.innerHTML = '<div class="text-muted small">暂无可用账号</div>';
+            return;
+        }
+        container.innerHTML = available.map(a => `
+            <label class="batch-publish-check-item d-flex align-items-center gap-2 p-2 border rounded mb-1">
+                <input type="checkbox" class="form-check-input m-0 batch-publish-account-check" value="${escapeHtml(a.id)}">
+                <span class="small">${escapeHtml(buildItemPublishAccountLabel(a))}</span>
+            </label>
+        `).join('');
+    } catch (error) {
+        console.error('加载批量发布账号失败:', error);
+        container.innerHTML = '<div class="text-muted small">加载账号失败</div>';
+    }
+}
+
+async function loadBatchPublishMaterials() {
+    const container = document.getElementById('batchPublishMaterialList');
+    if (!container) return;
+    container.innerHTML = '<div class="text-muted small">正在加载素材...</div>';
+    try {
+        const data = await requestItemPublishJson('/product-materials?page=1&page_size=100');
+        const materials = data.list || [];
+        if (!materials.length) {
+            container.innerHTML = '<div class="text-muted small">暂无素材，请先在发布表单中“保存为素材”。</div>';
+            return;
+        }
+        container.innerHTML = materials.map(m => {
+            const image = Array.isArray(m.images) && m.images.length ? m.images[0] : null;
+            const imageSrc = getItemPublishImageSrc(image);
+            return `
+                <label class="batch-publish-check-item d-flex align-items-center gap-2 p-2 border rounded mb-1">
+                    <input type="checkbox" class="form-check-input m-0 batch-publish-material-check" value="${m.id}">
+                    ${imageSrc ? `<img class="batch-publish-thumb" src="${escapeHtml(imageSrc)}" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:6px;">` : ''}
+                    <span class="small text-truncate" title="${escapeHtml(m.title || '未命名素材')}">${escapeHtml(m.title || '未命名素材')}</span>
+                </label>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('加载批量发布素材失败:', error);
+        container.innerHTML = '<div class="text-muted small">加载素材失败</div>';
+    }
+}
+
+async function startBatchPublish() {
+    const accountChecks = Array.from(document.querySelectorAll('.batch-publish-account-check:checked'));
+    const materialChecks = Array.from(document.querySelectorAll('.batch-publish-material-check:checked'));
+    const accountIds = accountChecks.map(c => c.value);
+    const materialIds = materialChecks.map(c => Number(c.value));
+
+    if (!accountIds.length) {
+        showToast('请至少选择 1 个发布账号', 'warning');
+        return;
+    }
+    if (!materialIds.length) {
+        showToast('请至少选择 1 个素材', 'warning');
+        return;
+    }
+    if (accountIds.length * materialIds.length > 100) {
+        showToast('单次批量发布最多支持 100 个任务', 'warning');
+        return;
+    }
+
+    const lng = document.getElementById('batchPublishLocationLongitude')?.value?.trim();
+    const lat = document.getElementById('batchPublishLocationLatitude')?.value?.trim();
+    const location = (lng && lat) ? { longitude: Number(lng), latitude: Number(lat) } : undefined;
+
+    const btn = document.getElementById('batchPublishStartBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>启动中...';
+    }
+
+    try {
+        const result = await requestItemPublishJson('/product-publish/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ account_ids: accountIds, material_ids: materialIds, location })
+        });
+        showToast(result.message || '批量发布任务已启动', 'success');
+        await pollBatchPublishProgress(result.batch_id, result.total);
+    } catch (error) {
+        console.error('启动批量发布失败:', error);
+        showToast(error.message || '启动批量发布失败', 'danger');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-rocket-takeoff me-1"></i>开始批量发布';
+        }
+    }
+}
+
+async function pollBatchPublishProgress(batchId, total) {
+    const progress = document.getElementById('batchPublishProgress');
+    const progressText = document.getElementById('batchPublishProgressText');
+    const progressBar = document.getElementById('batchPublishProgressBar');
+    const progressBadge = document.getElementById('batchPublishProgressBadge');
+    const detail = document.getElementById('batchPublishResultDetail');
+    if (progress) progress.style.display = 'block';
+
+    let completed = 0;
+    let lastError = null;
+    const deadline = Date.now() + 30 * 60 * 1000;
+
+    while (Date.now() < deadline) {
+        try {
+            const data = await requestItemPublishJson(`/product-publish/batch/${encodeURIComponent(batchId)}`);
+            const summary = data.data || data || {};
+            const counts = {
+                success: Number(summary.success || 0),
+                failed: Number(summary.failed || 0),
+                publishing: Number(summary.publishing || 0),
+                pending: Number(summary.pending || 0),
+            };
+            const accounts = summary.account_statuses || [];
+            completed = counts.success + counts.failed;
+            const percent = total > 0 ? Math.min(100, Math.round(completed * 100 / total)) : 0;
+            if (progressBar) progressBar.style.width = `${percent}%`;
+            if (progressBadge) progressBadge.textContent = `${percent}%`;
+            if (progressText) {
+                progressText.textContent = `已完成 ${completed}/${total}，成功 ${counts.success}，失败 ${counts.failed}${counts.publishing || counts.pending ? '，进行中 ' + (counts.publishing + counts.pending) : ''}`;
+            }
+            if (detail) {
+                detail.innerHTML = accounts.map(acc => `
+                    <div class="d-flex justify-content-between">
+                        <span>${escapeHtml(acc.account_id || '')}</span>
+                        <span class="text-muted">成功 ${acc.success || 0} · 失败 ${acc.failed || 0} · 发布中 ${acc.publishing || 0} · 等待 ${acc.pending || 0}</span>
+                    </div>
+                `).join('');
+            }
+            if (completed >= total) {
+                const allFailed = counts.failed === total && counts.success === 0;
+                showToast(allFailed ? '批量发布结束，但任务全部失败' : '批量发布完成', allFailed ? 'warning' : 'success');
+                const btn = document.getElementById('batchPublishStartBtn');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-rocket-takeoff me-1"></i>开始批量发布';
+                }
+                await loadItemPublishLogs();
+                return;
+            }
+        } catch (error) {
+            lastError = error;
+            console.error('查询批量发布进度失败:', error);
+        }
+        await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+
+    const btn = document.getElementById('batchPublishStartBtn');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-rocket-takeoff me-1"></i>开始批量发布';
+    }
+    if (progressText) progressText.textContent = lastError ? `查询进度超时或失败：${lastError.message}` : '查询进度超时，请到发布记录查看结果';
+    showToast('批量发布进度查询超时，请查看发布记录', 'warning');
 }
 
 function getItemPublishStatusBadge(status) {
@@ -890,6 +1170,7 @@ async function submitItemPublishForm() {
             formData.append('cookie_id', values.accountId);
             formData.append('title', values.title);
             formData.append('category', values.category);
+            formData.append('brand', values.brand);
             formData.append('description', values.description);
             formData.append('current_price', values.currentPrice);
             formData.append('original_price', values.originalPrice);
@@ -898,6 +1179,12 @@ async function submitItemPublishForm() {
             formData.append('can_self_pickup', values.canSelfPickup ? 'true' : 'false');
             formData.append('condition', values.condition);
             formData.append('quantity', String(values.quantity));
+            const longitude = document.getElementById('publishLocationLongitude')?.value?.trim();
+            const latitude = document.getElementById('publishLocationLatitude')?.value?.trim();
+            if (longitude && latitude) {
+                formData.append('location_longitude', longitude);
+                formData.append('location_latitude', latitude);
+            }
             values.files.forEach(file => formData.append('images', file));
 
             const response = await fetch(`${apiBase}/item-publish`, {
@@ -920,6 +1207,14 @@ async function submitItemPublishForm() {
             }
         } else {
             const payload = buildItemPublishJsonPayload(values, itemPublishLoadedMaterialImages);
+            const longitude = document.getElementById('publishLocationLongitude')?.value?.trim();
+            const latitude = document.getElementById('publishLocationLatitude')?.value?.trim();
+            if (longitude && latitude) {
+                payload.location = {
+                    longitude: parseFloat(longitude),
+                    latitude: parseFloat(latitude),
+                };
+            }
             responseData = await requestItemPublishJson('/product-publish', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

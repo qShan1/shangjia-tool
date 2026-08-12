@@ -1071,7 +1071,9 @@ Cookie数量: {cookie_count}
             ('qq_notification_api_url', '', 'QQ 私信通知 API 地址（留空则禁用 QQ 私信通知）'),
             ('auto_comment_api_url', '', '自动好评辅助 API 地址（留空则禁用此功能，避免 Cookie 外发）'),
             ('auto_red_flower_interval_seconds', '300', '自动求小红花后台任务检查间隔秒数'),
-            ('qq_reply_secret_key', '', 'QQ回复消息API秘钥（未配置时/send-message接口将被禁用）')
+            ('qq_reply_secret_key', '', 'QQ回复消息API秘钥（未配置时/send-message接口将被禁用）'),
+            ('publish_default_longitude', '', '商品发布默认经度（留空使用账号默认地址）'),
+            ('publish_default_latitude', '', '商品发布默认纬度（留空使用账号默认地址）')
             ''')
 
             # 检查并升级数据库

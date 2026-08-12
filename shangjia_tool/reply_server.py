@@ -11284,6 +11284,7 @@ class ProductMaterialUpdateRequest(BaseModel):
 class ProductBatchPublishRequest(BaseModel):
     account_ids: List[str]
     material_ids: List[int]
+    location: Optional[Dict[str, Any]] = None
 
 
 class ProductSinglePublishRequest(BaseModel):
@@ -11300,6 +11301,7 @@ class ProductSinglePublishRequest(BaseModel):
     brand: Optional[str] = None
     condition: Optional[str] = "全新"
     quantity: Optional[int] = 1
+    location: Optional[Dict[str, Any]] = None
 
 
 def _parse_optional_non_negative_float(value: Any, field_label: str) -> Optional[float]:
@@ -11567,6 +11569,8 @@ async def _publish_product_to_account(
     material_id: Optional[int] = None,
     batch_id: Optional[str] = None,
     log_id: Optional[int] = None,
+    brand: Optional[str] = None,
+    location: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     from utils.item_publisher import ItemPublisher
 
@@ -11631,6 +11635,21 @@ async def _publish_product_to_account(
         )
 
         async with ItemPublisher(cookies_str, cleaned_account_id, proxy_config=proxy_config) as publisher:
+            effective_location = None
+            if location and location.get("longitude") is not None and location.get("latitude") is not None:
+                effective_location = location
+            else:
+                system_longitude = db_manager.get_system_setting('publish_default_longitude')
+                system_latitude = db_manager.get_system_setting('publish_default_latitude')
+                if system_longitude and system_latitude:
+                    try:
+                        effective_location = {
+                            "longitude": float(system_longitude),
+                            "latitude": float(system_latitude),
+                        }
+                    except (TypeError, ValueError):
+                        effective_location = None
+
             publish_result = await publisher.publish_item(
                 title=cleaned_title,
                 description=cleaned_description,
@@ -11643,6 +11662,8 @@ async def _publish_product_to_account(
                 category_hint=category_hint,
                 condition=condition,
                 quantity=quantity,
+                brand=brand,
+                location_override=effective_location,
             )
             latest_cookies_str = publisher.cookies_str
             published_item_id = publisher.extract_published_item_id(publish_result)
@@ -11768,6 +11789,8 @@ async def _run_product_batch_publish(batch_id: str, jobs: List[Dict[str, Any]], 
                 material_id=material.get('id'),
                 batch_id=batch_id,
                 log_id=log_id,
+                brand=material.get('brand'),
+                location=job.get('location'),
             )
         except HTTPException as exc:
             logger.warning(
@@ -11943,6 +11966,8 @@ async def publish_product_json(
         category_hint=data.get('category'),
         condition=data.get('condition'),
         quantity=data.get('quantity'),
+        brand=data.get('brand'),
+        location=request.location,
     )
 
 
@@ -11983,7 +12008,7 @@ async def batch_publish_products(
                 batch_id=batch_id,
                 status='pending',
             )
-            jobs.append({"log_id": log_id, "account_id": account_id, "material": material})
+            jobs.append({"log_id": log_id, "account_id": account_id, "material": material, "location": request.location})
 
     background_tasks.add_task(_run_product_batch_publish, batch_id, jobs, dict(current_user))
     return {
@@ -12167,6 +12192,9 @@ async def publish_item(
     can_self_pickup: str = Form(default="false"),
     condition: str = Form(default="全新"),
     quantity: str = Form(default="1"),
+    brand: str = Form(default=""),
+    location_longitude: str = Form(default=""),
+    location_latitude: str = Form(default=""),
     images: List[UploadFile] = File(...),
     current_user: Dict[str, Any] = Depends(get_current_user),
 ):
@@ -12185,6 +12213,16 @@ async def publish_item(
             "content": image_content,
         })
 
+    location_override = None
+    if str(location_longitude).strip() and str(location_latitude).strip():
+        try:
+            location_override = {
+                "longitude": float(str(location_longitude).strip()),
+                "latitude": float(str(location_latitude).strip()),
+            }
+        except (TypeError, ValueError):
+            location_override = None
+
     return await _publish_product_to_account(
         current_user=current_user,
         account_id=cookie_id,
@@ -12199,6 +12237,8 @@ async def publish_item(
         category_hint=category,
         condition=condition,
         quantity=int(quantity) if str(quantity).isdigit() else 1,
+        brand=str(brand).strip() or None,
+        location=location_override,
     )
 
 

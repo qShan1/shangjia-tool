@@ -1042,6 +1042,21 @@
                       <div class="form-text">发布失败提示“闲鱼渠道类目路径查询失败”时，可填写更明确的类目词帮助闲鱼识别。</div>
                     </div>
 
+                    <div class="col-md-6">
+                      <label for="publishBrand" class="form-label">品牌 <span class="text-muted small">（可选）</span></label>
+                      <input type="text" class="form-control" id="publishBrand" maxlength="40" placeholder="例如：华为、耐克、无品牌">
+                      <div class="form-text">会作为类目提示的一部分辅助闲鱼识别类目。</div>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="publishCondition" class="form-label">成色</label>
+                      <select class="form-select" id="publishCondition">
+                        <option value="全新">全新</option>
+                        <option value="几乎全新">几乎全新</option>
+                        <option value="轻微使用痕迹">轻微使用痕迹</option>
+                        <option value="明显使用痕迹">明显使用痕迹</option>
+                      </select>
+                    </div>
+
                     <div class="col-12">
                       <label for="publishDescription" class="form-label">商品描述</label>
                       <textarea class="form-control" id="publishDescription" rows="5" maxlength="5000" placeholder="输入商品描述，建议包含成色、规格、发货说明等信息" required></textarea>
@@ -1071,15 +1086,6 @@
                       </div>
                     </div>
 
-                    <div class="col-md-6">
-                      <label for="publishCondition" class="form-label">成色</label>
-                      <select class="form-select" id="publishCondition">
-                        <option value="全新">全新</option>
-                        <option value="几乎全新">几乎全新</option>
-                        <option value="轻微使用痕迹">轻微使用痕迹</option>
-                        <option value="明显使用痕迹">明显使用痕迹</option>
-                      </select>
-                    </div>
                     <div class="col-md-6">
                       <label for="publishQuantity" class="form-label">数量</label>
                       <input type="number" class="form-control" id="publishQuantity" min="1" step="1" value="1">
@@ -1125,6 +1131,9 @@
                     </button>
                     <button type="submit" class="btn btn-primary" id="itemPublishSubmitBtn">
                       <i class="bi bi-cloud-upload me-1"></i>发布商品
+                    </button>
+                    <button type="button" class="btn btn-outline-success" id="itemPublishBatchBtn" onclick="openBatchPublishModal()">
+                      <i class="bi bi-collection me-1"></i>批量发布
                     </button>
                     <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('itemPublishForm').reset(); clearItemPublishForm(false);">
                       <i class="bi bi-arrow-counterclockwise me-1"></i>重置表单
@@ -1178,7 +1187,48 @@
               </div>
             </div>
 
-            <div class="card item-publish-material-card mt-4" style="display: none;"></div>
+            <div class="card item-publish-material-card mt-4" id="publishMaterialCard">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-collection me-1"></i>发布素材</h5>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveItemPublishMaterial()" id="itemPublishSaveMaterialBtn">
+                  <i class="bi bi-save me-1"></i>保存为素材
+                </button>
+              </div>
+              <div class="card-body">
+                <div class="text-muted small mb-2">将当前表单保存为素材，可在单发或批量发布中复用。</div>
+                <div id="publishMaterialList" class="item-publish-side-list">
+                  <div class="item-publish-preview-empty">填写表单后可点击“保存为素材”。</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card item-publish-location-card mt-4" id="publishLocationCard">
+              <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-geo-alt me-1"></i>发布位置</h5>
+              </div>
+              <div class="card-body">
+                <div class="text-muted small mb-2">默认使用账号的默认地址；如需指定坐标，可填写后保存。</div>
+                <div class="row g-2">
+                  <div class="col-6">
+                    <label for="publishLocationLongitude" class="form-label">经度</label>
+                    <input type="number" class="form-control" id="publishLocationLongitude" step="0.000001" placeholder="例如 118.782483">
+                  </div>
+                  <div class="col-6">
+                    <label for="publishLocationLatitude" class="form-label">纬度</label>
+                    <input type="number" class="form-control" id="publishLocationLatitude" step="0.000001" placeholder="例如 31.916291">
+                  </div>
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                  <button type="button" class="btn btn-sm btn-outline-primary" onclick="savePublishDefaultLocation()">
+                    <i class="bi bi-geo-alt me-1"></i>保存为默认位置
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetPublishDefaultLocation()">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>恢复账号默认
+                  </button>
+                </div>
+                <div class="text-muted small mt-2" id="publishLocationHint">默认使用账号地址。</div>
+              </div>
+            </div>
 
             <div class="card item-publish-log-card mt-4">
               <div class="card-header d-flex justify-content-between align-items-center">
@@ -1193,6 +1243,60 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 批量发布弹窗 -->
+    <div class="modal fade" id="batchPublishModal" tabindex="-1" aria-labelledby="batchPublishModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="batchPublishModalLabel"><i class="bi bi-collection me-1"></i>批量发布</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-4">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">选择发布账号</label>
+                <div id="batchPublishAccountList" class="batch-publish-check-list">
+                  <div class="text-muted small">正在加载账号...</div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">选择发布素材</label>
+                <div id="batchPublishMaterialList" class="batch-publish-check-list">
+                  <div class="text-muted small">正在加载素材...</div>
+                </div>
+              </div>
+            </div>
+            <div class="row g-2 mt-3">
+              <div class="col-md-6">
+                <label for="batchPublishLocationLongitude" class="form-label">经度 <span class="text-muted small">（留空使用账号默认）</span></label>
+                <input type="number" class="form-control" id="batchPublishLocationLongitude" step="0.000001" placeholder="例如 118.782483">
+              </div>
+              <div class="col-md-6">
+                <label for="batchPublishLocationLatitude" class="form-label">纬度 <span class="text-muted small">（留空使用账号默认）</span></label>
+                <input type="number" class="form-control" id="batchPublishLocationLatitude" step="0.000001" placeholder="例如 31.916291">
+              </div>
+            </div>
+            <div class="mt-3" id="batchPublishProgress" style="display:none;">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small" id="batchPublishProgressText">准备中...</span>
+                <span class="badge text-bg-primary" id="batchPublishProgressBadge">0%</span>
+              </div>
+              <div class="progress" style="height: 10px;">
+                <div class="progress-bar" id="batchPublishProgressBar" role="progressbar" style="width: 0%;"></div>
+              </div>
+              <div id="batchPublishResultDetail" class="mt-2 small"></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">关闭</button>
+            <button type="button" class="btn btn-primary" id="batchPublishStartBtn" onclick="startBatchPublish()">
+              <i class="bi bi-rocket-takeoff me-1"></i>开始批量发布
+            </button>
           </div>
         </div>
       </div>

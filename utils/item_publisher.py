@@ -38,6 +38,7 @@ class ItemPublisher:
         self._http_proxy_url: Optional[str] = None
         self._http_proxy_auth: Optional[aiohttp.BasicAuth] = None
         self.session: Optional[aiohttp.ClientSession] = None
+        self.location_override: Optional[Dict[str, Any]] = None
 
     async def __aenter__(self):
         await self.create_session()
@@ -294,6 +295,8 @@ class ItemPublisher:
         category_hint: Optional[str] = None,
         condition: Optional[str] = "全新",
         quantity: int = 1,
+        brand: Optional[str] = None,
+        location_override: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         if delivery_choice not in self.ALLOWED_DELIVERY_CHOICES:
             raise ValueError("不支持的运费方式")
@@ -312,6 +315,11 @@ class ItemPublisher:
         if not publish_desc:
             raise ValueError("商品描述不能为空")
 
+        if brand:
+            clean_brand = str(brand).strip()
+            if clean_brand:
+                category_hint = f"{clean_brand} {category_hint}".strip() if category_hint else clean_brand
+
         channel_res = await self.get_public_channel(publish_title, publish_desc, uploaded_images, category_hint=category_hint)
         if not self.is_success_response(channel_res):
             raise RuntimeError(f"获取发布类目失败: {self.extract_error_message(channel_res)}")
@@ -319,7 +327,7 @@ class ItemPublisher:
         category_result = self._validate_category_recommendation(channel_res)
         category_debug = self._build_category_debug(channel_res, category_hint=category_hint)
 
-        location = await self.get_default_location()
+        location = await self.get_default_location(location_override=location_override)
 
         publish_data = self._build_publish_payload(
             title=publish_title,
@@ -494,7 +502,36 @@ class ItemPublisher:
             spm_pre="a21ybx.item.sidebar.1.67321598K9Vgx8",
         )
 
-    async def get_default_location(self) -> Dict[str, Any]:
+    async def get_default_location(self, location_override: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        if self.location_override:
+            location_override = self.location_override
+        if location_override:
+            longitude = location_override.get("longitude")
+            latitude = location_override.get("latitude")
+            if longitude is not None and latitude is not None:
+                payload = {
+                    "longitude": float(longitude),
+                    "latitude": float(latitude),
+                }
+                result = await self._post_mtop(
+                    api_name="mtop.taobao.idle.local.poi.get",
+                    version="1.0",
+                    payload=payload,
+                    spm_cnt="a21ybx.publish.0.0",
+                    spm_pre="a21ybx.item.sidebar.1.38262218ame5nr",
+                    extra_headers={
+                        "eagleeye-userdata": "spm-cnt=a21ybx",
+                    },
+                )
+                if self.is_success_response(result):
+                    address_list = (
+                        result.get("data", {}).get("commonAddresses")
+                        if isinstance(result.get("data"), dict)
+                        else None
+                    ) or []
+                    if address_list:
+                        return address_list[0]
+
         payload = {
             "longitude": 118.78248347393424,
             "latitude": 31.91629189813543,
