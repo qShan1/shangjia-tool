@@ -657,31 +657,31 @@
             <div class="row mb-4">
               <div class="col-12">
                 <div class="d-grid gap-2 d-md-flex justify-content-md-center">
-                  <button type="button" class="btn btn-lg me-md-2 flex-fill qr-login-btn" onclick="showQRCodeLogin()" style="max-width: 300px;">
+                  <button type="button" class="btn btn-lg me-md-2 flex-fill account-login-btn qr-login-btn" onclick="showQRCodeLogin()" style="max-width: 300px;">
                     <i class="bi bi-qr-code me-2"></i>
                     <span class="fw-bold">扫码登录</span>
                     <br>
                     <small class="opacity-75">适合直接添加新账号</small>
                   </button>
-                  <button type="button" class="btn btn-outline-info btn-lg me-md-2 flex-fill qr-login-lite-btn" onclick="showQRCodeLogin('lite')" style="max-width: 300px;">
+                  <button type="button" class="btn btn-outline-info btn-lg me-md-2 flex-fill account-login-btn qr-login-lite-btn" onclick="showQRCodeLogin('lite')" style="max-width: 300px;">
                     <i class="bi bi-qr-code-scan me-2"></i>
                     <span class="fw-bold">轻量扫码</span>
                     <br>
                     <small class="opacity-75">纯 HTTP，无浏览器，秒级出码</small>
                   </button>
-                  <button type="button" class="btn btn-outline-primary btn-lg flex-fill password-login-btn" onclick="togglePasswordLogin()" style="max-width: 300px;">
+                  <button type="button" class="btn btn-outline-primary btn-lg flex-fill account-login-btn password-login-btn" onclick="togglePasswordLogin()" style="max-width: 300px;">
                     <i class="bi bi-key me-2"></i>
                     <span class="fw-bold">账密登录</span>
                     <br>
                     <small class="opacity-75">需填写账号密码，成功后自动保存</small>
                   </button>
-                  <button type="button" class="btn btn-outline-warning btn-lg flex-fill refresh-cookie-btn" onclick="toggleRefreshCookieForm()" style="max-width: 300px;">
+                  <button type="button" class="btn btn-outline-warning btn-lg flex-fill account-login-btn refresh-cookie-btn" onclick="toggleRefreshCookieForm()" style="max-width: 300px;">
                     <i class="bi bi-arrow-repeat me-2"></i>
                     <span class="fw-bold">手动刷新 Cookie</span>
                     <br>
                     <small class="opacity-75">使用已保存账密手动刷新已有账号</small>
                   </button>
-                  <button type="button" class="btn btn-outline-secondary btn-lg flex-fill manual-input-btn" onclick="toggleManualInput()" style="max-width: 300px;">
+                  <button type="button" class="btn btn-outline-secondary btn-lg flex-fill account-login-btn manual-input-btn" onclick="toggleManualInput()" style="max-width: 300px;">
                     <i class="bi bi-keyboard me-2"></i>
                     <span class="fw-bold">导入 Cookie</span>
                     <br>
@@ -1095,6 +1095,41 @@
                     <div class="col-md-6">
                       <label for="publishQuantity" class="form-label">数量</label>
                       <input type="number" class="form-control" id="publishQuantity" min="1" step="1" value="1">
+                    </div>
+
+                    <div class="col-12">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="publishMultiSkuEnabled" onchange="togglePublishMultiSku()">
+                        <label class="form-check-label" for="publishMultiSkuEnabled">
+                          多规格发布 <span class="text-muted small">（不同规格可设不同价格和库存，上限 1500 种组合）</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div class="col-12 d-none" id="publishMultiSkuEditor">
+                      <div class="item-publish-sku-editor">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                          <span class="form-label mb-0">规格组合</span>
+                          <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPublishSkuRow()">
+                            <i class="bi bi-plus-lg me-1"></i>添加规格
+                          </button>
+                        </div>
+                        <div class="table-responsive">
+                          <table class="table table-sm table-bordered align-middle mb-2 item-publish-sku-table">
+                            <thead>
+                              <tr>
+                                <th style="width: 22%;">规格名</th>
+                                <th style="width: 22%;">规格值</th>
+                                <th style="width: 16%;">价格 (¥)</th>
+                                <th style="width: 12%;">库存</th>
+                                <th style="width: 8%;"></th>
+                              </tr>
+                            </thead>
+                            <tbody id="publishSkuRows"></tbody>
+                          </table>
+                        </div>
+                        <div class="form-text">每个“规格名:规格值”代表一个可售规格，如“颜色:红色”“容量:64G”。支持最多两级规格组合。</div>
+                      </div>
                     </div>
 
                     <div class="col-12">
@@ -5069,7 +5104,7 @@
           </div>
           <div id="qrCodeImage" style="display: none;">
             <div class="qr-code-wrapper p-3 bg-light rounded-3 d-inline-block mb-3">
-              <img id="qrCodeImg" src="" alt="登录二维码" class="img-fluid" style="max-width: 280px;">
+              <img id="qrCodeImg" src="" alt="登录二维码" class="img-fluid qr-code-img" style="max-width: 280px; transition: opacity 200ms ease-out;">
             </div>
             <h6 class="text-success mb-2">
               <i class="bi bi-phone me-2"></i>请使用闲鱼APP扫描二维码

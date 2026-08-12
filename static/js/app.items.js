@@ -109,6 +109,154 @@ function handlePublishDeliveryChoiceChange() {
     }
 }
 
+function togglePublishMultiSku() {
+    const checkbox = document.getElementById('publishMultiSkuEnabled');
+    const editor = document.getElementById('publishMultiSkuEditor');
+    if (!editor) {
+        return;
+    }
+    const enabled = Boolean(checkbox && checkbox.checked);
+    editor.classList.toggle('d-none', !enabled);
+    if (enabled) {
+        const rowsBody = document.getElementById('publishSkuRows');
+        if (rowsBody && rowsBody.children.length === 0) {
+            addPublishSkuRow();
+        }
+    }
+}
+
+function addPublishSkuRow() {
+    const rowsBody = document.getElementById('publishSkuRows');
+    if (!rowsBody) {
+        return;
+    }
+    const index = rowsBody.children.length;
+    const row = document.createElement('tr');
+    row.dataset.index = String(index);
+    row.innerHTML = `
+        <td><input type="text" class="form-control form-control-sm publish-sku-property" maxlength="30" placeholder="如：颜色" list="publishSkuPropertySuggestions"></td>
+        <td><input type="text" class="form-control form-control-sm publish-sku-value" maxlength="30" placeholder="如：红色"></td>
+        <td><input type="number" class="form-control form-control-sm publish-sku-price" min="0" step="0.01" placeholder="价格"></td>
+        <td><input type="number" class="form-control form-control-sm publish-sku-quantity" min="1" step="1" value="1"></td>
+        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="removePublishSkuRow(this)" title="删除该规格"><i class="bi bi-trash"></i></button></td>
+    `;
+    rowsBody.appendChild(row);
+}
+
+function removePublishSkuRow(button) {
+    const rowsBody = document.getElementById('publishSkuRows');
+    if (!rowsBody) {
+        return;
+    }
+    const row = button.closest('tr');
+    if (row) {
+        row.remove();
+    }
+}
+
+function clearPublishSkuRows() {
+    const rowsBody = document.getElementById('publishSkuRows');
+    if (rowsBody) {
+        rowsBody.innerHTML = '';
+    }
+    const editor = document.getElementById('publishMultiSkuEditor');
+    if (editor) {
+        editor.classList.add('d-none');
+    }
+}
+
+function collectPublishSkus() {
+    const checkbox = document.getElementById('publishMultiSkuEnabled');
+    if (!checkbox || !checkbox.checked) {
+        return [];
+    }
+    const rowsBody = document.getElementById('publishSkuRows');
+    if (!rowsBody) {
+        return [];
+    }
+    const skus = [];
+    rowsBody.querySelectorAll('tr').forEach(row => {
+        const propertyText = row.querySelector('.publish-sku-property')?.value.trim() || '';
+        const valueText = row.querySelector('.publish-sku-value')?.value.trim() || '';
+        const price = row.querySelector('.publish-sku-price')?.value.trim() || '';
+        const quantity = row.querySelector('.publish-sku-quantity')?.value.trim() || '1';
+        if (!propertyText || !valueText) {
+            return;
+        }
+        skus.push({
+            propertyText,
+            valueText,
+            price: price ? Number(price) : undefined,
+            quantity: Number(quantity) || 1,
+        });
+    });
+    return skus;
+}
+
+function buildItemPublishSkuPayload(skus) {
+    if (!Array.isArray(skus) || skus.length === 0) {
+        return [];
+    }
+    return skus.map(sku => ({
+        propertyList: [{ propertyText: sku.propertyText, valueText: sku.valueText }],
+        price: sku.price,
+        quantity: sku.quantity,
+    }));
+}
+
+function fillPublishSkuRows(skus) {
+    const checkbox = document.getElementById('publishMultiSkuEnabled');
+    const editor = document.getElementById('publishMultiSkuEditor');
+    const rowsBody = document.getElementById('publishSkuRows');
+    if (!checkbox || !editor || !rowsBody) {
+        return;
+    }
+    clearPublishSkuRows();
+    const validSkus = Array.isArray(skus) ? skus : [];
+    if (validSkus.length === 0) {
+        checkbox.checked = false;
+        editor.classList.add('d-none');
+        return;
+    }
+    checkbox.checked = true;
+    editor.classList.remove('d-none');
+    validSkus.forEach(sku => {
+        const propertyList = Array.isArray(sku.propertyList) ? sku.propertyList : [];
+        const first = propertyList[0] || {};
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="text" class="form-control form-control-sm publish-sku-property" maxlength="30" value="${escapeHtml(String(first.propertyText || first.property_text || ''))}"></td>
+            <td><input type="text" class="form-control form-control-sm publish-sku-value" maxlength="30" value="${escapeHtml(String(first.valueText || first.value_text || ''))}"></td>
+            <td><input type="number" class="form-control form-control-sm publish-sku-price" min="0" step="0.01" value="${sku.price !== null && sku.price !== undefined ? escapeHtml(String(sku.price)) : ''}"></td>
+            <td><input type="number" class="form-control form-control-sm publish-sku-quantity" min="1" step="1" value="${escapeHtml(String(sku.quantity || 1))}"></td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="removePublishSkuRow(this)" title="删除该规格"><i class="bi bi-trash"></i></button></td>
+        `;
+        rowsBody.appendChild(row);
+    });
+}
+
+function validateItemPublishSkus() {
+    const checkbox = document.getElementById('publishMultiSkuEnabled');
+    if (!checkbox || !checkbox.checked) {
+        return;
+    }
+    const skus = collectPublishSkus();
+    if (skus.length === 0) {
+        throw new Error('开启多规格后请至少填写一条规格');
+    }
+    const seen = new Set();
+    for (const sku of skus) {
+        const key = `${sku.propertyText}:${sku.valueText}`;
+        if (seen.has(key)) {
+            throw new Error(`规格组合“${key}”重复，请修改`);
+        }
+        seen.add(key);
+        if (sku.price === undefined || sku.price === '' || isNaN(sku.price)) {
+            throw new Error(`规格“${key}”请填写价格`);
+        }
+    }
+}
+
 function handlePublishImagesChange() {
     const input = document.getElementById('publishImages');
     if (!input) {
@@ -188,6 +336,12 @@ function clearItemPublishForm(clearResult = true) {
     itemPublishLoadedMaterialImages = [];
     updateItemPublishMaterialModeBadge();
     handlePublishDeliveryChoiceChange();
+
+    const multiSkuEnabled = document.getElementById('publishMultiSkuEnabled');
+    if (multiSkuEnabled) {
+        multiSkuEnabled.checked = false;
+    }
+    clearPublishSkuRows();
 
     const imagesInput = document.getElementById('publishImages');
     if (imagesInput) {
@@ -325,6 +479,7 @@ function getItemPublishFormValues() {
         canSelfPickup: document.getElementById('publishCanSelfPickup')?.checked || false,
         condition: document.getElementById('publishCondition')?.value || '全新',
         quantity: parseInt(document.getElementById('publishQuantity')?.value, 10) || 1,
+        skus: collectPublishSkus(),
         files: Array.from(document.getElementById('publishImages')?.files || [])
     };
 }
@@ -351,6 +506,7 @@ function validateItemPublishValues(values, { requireAccount = true, requireImage
     parseOptionalPublishNumber(values.currentPrice, '现价');
     parseOptionalPublishNumber(values.originalPrice, '原价');
     parseOptionalPublishNumber(values.postPrice, '邮费');
+    validateItemPublishSkus();
 
     const imageCount = values.files.length || itemPublishLoadedMaterialImages.length;
     if (requireImages && imageCount === 0) {
@@ -398,7 +554,30 @@ function buildItemPublishJsonPayload(values, images) {
         can_self_pickup: values.canSelfPickup,
         condition: values.condition,
         quantity: values.quantity,
+        skus: buildItemPublishSkuPayload(values.skus),
+        specs: buildItemPublishSpecs(values.skus),
     };
+}
+
+function buildItemPublishSpecs(skus) {
+    if (!Array.isArray(skus) || skus.length === 0) {
+        return [];
+    }
+    const propertyMap = {};
+    skus.forEach(sku => {
+        if (!sku.propertyText) {
+            return;
+        }
+        const values = propertyMap[sku.propertyText] || (propertyMap[sku.propertyText] = []);
+        if (sku.valueText && values.indexOf(sku.valueText) === -1) {
+            values.push(sku.valueText);
+        }
+    });
+    return Object.keys(propertyMap).map(propertyName => ({
+        propertyName,
+        supportImage: false,
+        propertyValues: propertyMap[propertyName].map(propertyValue => ({ propertyValue })),
+    }));
 }
 
 function buildItemPublishMaterialPayload(values, images) {
@@ -559,13 +738,15 @@ function renderItemPublishMaterials() {
         const imageSrc = getItemPublishImageSrc(image);
         const priceText = material.price !== null && material.price !== undefined ? `¥${material.price}` : '默认价';
         const categoryText = material.category ? ` · ${material.category}` : '';
+        const skuCount = Array.isArray(material.skus) ? material.skus.length : 0;
+        const skuBadge = skuCount > 0 ? ` · <span class="badge bg-info text-dark">${skuCount} 规格</span>` : '';
         const imageCount = Array.isArray(material.images) ? material.images.length : 0;
         return `
             <div class="item-publish-side-item ${itemPublishLoadedMaterialId === material.id ? 'is-active' : ''}">
                 ${imageSrc ? `<img class="item-publish-side-thumb" src="${escapeHtml(imageSrc)}" alt="素材图">` : '<div class="item-publish-side-thumb is-empty"><i class="bi bi-image"></i></div>'}
                 <div class="item-publish-side-main">
                     <div class="item-publish-side-title" title="${escapeHtml(material.title || '')}">${escapeHtml(material.title || '未命名素材')}</div>
-                    <div class="item-publish-side-meta">${escapeHtml(priceText)} · ${imageCount} 张图${escapeHtml(categoryText)}</div>
+                    <div class="item-publish-side-meta">${escapeHtml(priceText)} · ${imageCount} 张图${escapeHtml(categoryText)}${skuBadge}</div>
                     <div class="item-publish-side-actions">
                         <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadItemPublishMaterialToForm(${material.id})">载入</button>
                         <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteItemPublishMaterial(${material.id})">删除</button>
@@ -592,6 +773,7 @@ function loadItemPublishMaterialToForm(materialId) {
     document.getElementById('publishDeliveryChoice').value = material.delivery_method || '包邮';
     document.getElementById('publishPostPrice').value = material.postage ?? '';
     document.getElementById('publishCanSelfPickup').checked = Boolean(material.can_self_pickup);
+    fillPublishSkuRows(material.skus || []);
     const imageInput = document.getElementById('publishImages');
     if (imageInput) {
         imageInput.value = '';
@@ -772,11 +954,13 @@ async function loadBatchPublishMaterials() {
         container.innerHTML = materials.map(m => {
             const image = Array.isArray(m.images) && m.images.length ? m.images[0] : null;
             const imageSrc = getItemPublishImageSrc(image);
+            const skuCount = Array.isArray(m.skus) ? m.skus.length : 0;
+            const skuBadge = skuCount > 0 ? ` <span class="badge bg-info text-dark" style="font-size:0.65rem;">${skuCount} 规格</span>` : '';
             return `
                 <label class="batch-publish-check-item d-flex align-items-center gap-2 p-2 border rounded mb-1">
                     <input type="checkbox" class="form-check-input m-0 batch-publish-material-check" value="${m.id}">
                     ${imageSrc ? `<img class="batch-publish-thumb" src="${escapeHtml(imageSrc)}" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:6px;">` : ''}
-                    <span class="small text-truncate" title="${escapeHtml(m.title || '未命名素材')}">${escapeHtml(m.title || '未命名素材')}</span>
+                    <span class="small text-truncate" title="${escapeHtml(m.title || '未命名素材')}">${escapeHtml(m.title || '未命名素材')}${skuBadge}</span>
                 </label>
             `;
         }).join('');
@@ -1352,6 +1536,10 @@ async function submitItemPublishForm() {
             formData.append('can_self_pickup', values.canSelfPickup ? 'true' : 'false');
             formData.append('condition', values.condition);
             formData.append('quantity', String(values.quantity));
+            if (values.skus && values.skus.length > 0) {
+                formData.append('skus', JSON.stringify(buildItemPublishSkuPayload(values.skus)));
+                formData.append('specs', JSON.stringify(buildItemPublishSpecs(values.skus)));
+            }
             const longitude = document.getElementById('publishLocationLongitude')?.value?.trim();
             const latitude = document.getElementById('publishLocationLatitude')?.value?.trim();
             if (longitude && latitude) {

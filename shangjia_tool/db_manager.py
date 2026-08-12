@@ -1376,6 +1376,14 @@ Cookie数量: {cookie_count}
         ''')
         self._execute_sql(cursor, "CREATE INDEX IF NOT EXISTS idx_product_materials_user_time ON product_materials(user_id, created_at DESC)")
 
+        # 为product_materials表添加多规格字段（如果不存在）
+        try:
+            self._execute_sql(cursor, "SELECT skus FROM product_materials LIMIT 1")
+        except sqlite3.OperationalError:
+            self._execute_sql(cursor, "ALTER TABLE product_materials ADD COLUMN skus TEXT")
+            self._execute_sql(cursor, "ALTER TABLE product_materials ADD COLUMN specs TEXT")
+            logger.info("为product_materials表添加多规格字段(skus, specs)")
+
         self._execute_sql(cursor, '''
         CREATE TABLE IF NOT EXISTS publish_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -10634,11 +10642,13 @@ Cookie数量: {cookie_count}
             try:
                 cursor = self.conn.cursor()
                 images_text = self._json_dumps_safe(data.get('images') or [])
+                skus_text = self._json_dumps_safe(data.get('skus') or [])
+                specs_text = self._json_dumps_safe(data.get('specs') or [])
                 cursor.execute('''
                     INSERT INTO product_materials (
                         user_id, title, description, price, original_price, category, images,
-                        delivery_method, postage, can_self_pickup, brand, condition, remark
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        delivery_method, postage, can_self_pickup, brand, condition, remark, skus, specs
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     user_id,
                     str(data.get('title') or '').strip(),
@@ -10653,6 +10663,8 @@ Cookie数量: {cookie_count}
                     data.get('brand'),
                     data.get('condition') or '全新',
                     data.get('remark'),
+                    skus_text,
+                    specs_text,
                 ))
                 material_id = cursor.lastrowid
                 self.conn.commit()
@@ -10678,8 +10690,10 @@ Cookie数量: {cookie_count}
             'brand': row[11],
             'condition': row[12],
             'remark': row[13],
-            'created_at': row[14],
-            'updated_at': row[15],
+            'skus': self._json_loads_safe(row[14], []),
+            'specs': self._json_loads_safe(row[15], []),
+            'created_at': row[16],
+            'updated_at': row[17],
         }
 
     def get_product_material(self, material_id: int, user_id: int = None) -> Optional[Dict[str, Any]]:
@@ -10691,7 +10705,7 @@ Cookie数量: {cookie_count}
                 sql = '''
                     SELECT id, user_id, title, description, price, original_price, category, images,
                            delivery_method, postage, can_self_pickup, brand, condition, remark,
-                           created_at, updated_at
+                           skus, specs, created_at, updated_at
                     FROM product_materials
                     WHERE id = ?
                 '''
@@ -10724,7 +10738,7 @@ Cookie数量: {cookie_count}
                 cursor.execute(f'''
                     SELECT id, user_id, title, description, price, original_price, category, images,
                            delivery_method, postage, can_self_pickup, brand, condition, remark,
-                           created_at, updated_at
+                           skus, specs, created_at, updated_at
                     FROM product_materials
                     {where_sql}
                     ORDER BY datetime(created_at) DESC, id DESC
@@ -10762,7 +10776,7 @@ Cookie数量: {cookie_count}
                 sql = f'''
                     SELECT id, user_id, title, description, price, original_price, category, images,
                            delivery_method, postage, can_self_pickup, brand, condition, remark,
-                           created_at, updated_at
+                           skus, specs, created_at, updated_at
                     FROM product_materials
                     WHERE id IN ({placeholders})
                 '''
@@ -10780,7 +10794,8 @@ Cookie数量: {cookie_count}
         """更新商品发布素材。"""
         allowed_fields = {
             'title', 'description', 'price', 'original_price', 'category', 'images',
-            'delivery_method', 'postage', 'can_self_pickup', 'brand', 'condition', 'remark'
+            'delivery_method', 'postage', 'can_self_pickup', 'brand', 'condition', 'remark',
+            'skus', 'specs'
         }
         update_fields = []
         params = []
@@ -10788,6 +10803,10 @@ Cookie数量: {cookie_count}
             if key not in allowed_fields:
                 continue
             if key == 'images':
+                value = self._json_dumps_safe(value or [])
+            elif key == 'skus':
+                value = self._json_dumps_safe(value or [])
+            elif key == 'specs':
                 value = self._json_dumps_safe(value or [])
             elif key == 'can_self_pickup':
                 value = 1 if value else 0

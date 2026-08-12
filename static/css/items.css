@@ -267,3 +267,23 @@
   background: rgba(239, 246, 255, 0.92);
   border-color: rgba(59, 130, 246, 0.4);
 }
+
+/* 多规格发布 */
+.item-publish-sku-editor {
+  padding: 14px;
+  border: 1px dashed rgba(59, 130, 246, 0.4);
+  border-radius: 14px;
+  background: rgba(239, 246, 255, 0.5);
+}
+
+.item-publish-sku-table th {
+  font-size: 0.78rem;
+  color: #64748b;
+  background: rgba(248, 250, 252, 0.95);
+  white-space: nowrap;
+}
+
+.item-publish-sku-table td {
+  vertical-align: middle;
+  padding: 6px 8px;
+}

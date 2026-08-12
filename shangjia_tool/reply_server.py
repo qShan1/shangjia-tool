@@ -7746,6 +7746,74 @@ async def delete_account_face_verification_screenshot(
         }
 
 
+@app.post("/face-verification/stop/{account_id}")
+async def stop_account_face_verification(
+    account_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """停止指定账号的验证，解除卡保护状态并恢复启用"""
+    try:
+        # 检查账号是否属于当前用户
+        user_id = current_user['user_id']
+        cookie_info = db_manager.get_cookie_details(account_id)
+        if not cookie_info or cookie_info.get('user_id') != user_id:
+            log_with_user('warning', f"用户 {user_id} 尝试停止账号 {account_id} 验证（归属用户: {(cookie_info or {}).get('user_id')}）", current_user)
+            return {
+                'success': False,
+                'message': '无权访问该账号'
+            }
+
+        # 清空卡保护状态
+        try:
+            db_manager.update_cookie_status_note(account_id, '')
+        except Exception as note_e:
+            log_with_user('error', f"清理账号 {account_id} 状态文案失败: {str(note_e)}", current_user)
+
+        # 恢复账号启用
+        try:
+            db_manager.save_cookie_status(account_id, True)
+        except Exception as status_e:
+            log_with_user('error', f"恢复账号 {account_id} 启用状态失败: {str(status_e)}", current_user)
+
+        # 更新内存状态
+        try:
+            from cookie_manager import manager as cookie_manager_manager
+            if cookie_manager_manager and account_id in getattr(cookie_manager_manager, 'cookie_status', {}):
+                cookie_manager_manager.cookie_status[account_id] = True
+        except Exception as cm_e:
+            log_with_user('error', f"更新账号 {account_id} 内存状态失败: {str(cm_e)}", current_user)
+
+        # 删除该账号的所有验证截图（失败不影响整体返回）
+        try:
+            import glob
+            screenshots_dir = os.path.join(static_dir, 'uploads', 'images')
+            pattern = os.path.join(screenshots_dir, f'face_verify_{account_id}_*.jpg')
+            screenshot_files = glob.glob(pattern)
+            for file_path in screenshot_files:
+                try:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        log_with_user('info', f"删除账号 {account_id} 的验证截图: {os.path.basename(file_path)}", current_user)
+                except Exception as e:
+                    log_with_user('error', f"删除截图失败 {file_path}: {str(e)}", current_user)
+        except Exception as del_e:
+            log_with_user('error', f"删除账号 {account_id} 验证截图异常: {str(del_e)}", current_user)
+
+        log_with_user('info', f"用户 {user_id} 已停止账号 {account_id} 验证并解除账号保护", current_user)
+
+        return {
+            'success': True,
+            'message': '已停止验证并解除账号保护'
+        }
+
+    except Exception as e:
+        log_with_user('error', f"停止账号 {account_id} 验证失败: {str(e)}", current_user)
+        return {
+            'success': False,
+            'message': str(e)
+        }
+
+
 # ========================= 扫码登录相关接口 =========================
 
 @app.post("/qr-login/generate")
@@ -7892,6 +7960,45 @@ async def check_qr_code_status(session_id: str, current_user: Dict[str, Any] = D
     except Exception as e:
         log_with_user('error', f"检查扫码登录状态异常: {str(e)}", current_user)
         return {'status': 'error', 'message': str(e)}
+
+
+@app.post("/qr-login/cancel/{session_id}")
+async def cancel_qr_code_session(session_id: str, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """取消扫码登录会话，终止后台监控与验证任务"""
+    try:
+        cancelled = qr_login_manager.cancel_session(session_id)
+        if session_id in qr_check_processed:
+            qr_check_processed[session_id] = {
+                'processed': True,
+                'processing': False,
+                'timestamp': time.time(),
+                'cancelled': True,
+            }
+        log_with_user('info', f"取消扫码登录会话: {session_id}, 结果: {cancelled}", current_user)
+        return {'success': cancelled, 'message': '会话已取消' if cancelled else '会话不存在或已完成'}
+    except Exception as e:
+        log_with_user('error', f"取消扫码登录会话异常: {str(e)}", current_user)
+        return {'success': False, 'message': f'取消失败: {str(e)}'}
+
+
+@app.post("/qr-login-lite/cancel/{session_id}")
+async def cancel_qr_code_session_lite(session_id: str, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """取消轻量扫码登录会话"""
+    try:
+        st = qr_lite_sessions.get(session_id)
+        if not st:
+            return {'success': False, 'message': '会话不存在或已过期'}
+        if st.get('user_id') and st['user_id'] != current_user.get('user_id'):
+            return {'success': False, 'message': '无权访问该会话'}
+        if st.get('state') not in ('success', 'expired', 'error'):
+            st['state'] = 'cancelled'
+            st['finished'] = True
+            st['error_message'] = '用户取消登录'
+        log_with_user('info', f"取消轻量扫码登录会话: {session_id}", current_user)
+        return {'success': True, 'message': '会话已取消'}
+    except Exception as e:
+        log_with_user('error', f"取消轻量扫码登录会话异常: {str(e)}", current_user)
+        return {'success': False, 'message': f'取消失败: {str(e)}'}
 
 
 # ========================= 轻量扫码登录(qr_login_lite) =========================
@@ -11264,6 +11371,8 @@ class ProductMaterialRequest(BaseModel):
     brand: Optional[str] = None
     condition: Optional[str] = "全新"
     remark: Optional[str] = None
+    skus: List[Any] = []
+    specs: List[Any] = []
 
 
 class ProductMaterialUpdateRequest(BaseModel):
@@ -11279,6 +11388,8 @@ class ProductMaterialUpdateRequest(BaseModel):
     brand: Optional[str] = None
     condition: Optional[str] = None
     remark: Optional[str] = None
+    skus: Optional[List[Any]] = None
+    specs: Optional[List[Any]] = None
 
 
 class ProductBatchPublishRequest(BaseModel):
@@ -11302,6 +11413,8 @@ class ProductSinglePublishRequest(BaseModel):
     condition: Optional[str] = "全新"
     quantity: Optional[int] = 1
     location: Optional[Dict[str, Any]] = None
+    skus: Optional[List[Any]] = None
+    specs: Optional[List[Any]] = None
 
 
 def _parse_optional_non_negative_float(value: Any, field_label: str) -> Optional[float]:
@@ -11329,6 +11442,24 @@ def _parse_form_bool(value: Any) -> bool:
 
     normalized = str(value or "").strip().lower()
     return normalized in {"1", "true", "yes", "on", "y"}
+
+
+def _parse_form_json_list(value: Any, field_label: str) -> List[Any]:
+    """解析表单提交的 JSON 数组字段（如多规格数据），返回空列表表示未提供。"""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    raw_text = str(value).strip()
+    if not raw_text:
+        return []
+    try:
+        parsed = json.loads(raw_text)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"{field_label}格式无效") from exc
+    if not isinstance(parsed, list):
+        raise HTTPException(status_code=400, detail=f"{field_label}必须是数组")
+    return parsed
 
 
 def _persist_cookie_value_for_account(
@@ -11509,6 +11640,18 @@ def _normalize_product_publish_data(data: Dict[str, Any], *, partial: bool = Fal
         except (TypeError, ValueError):
             normalized['quantity'] = 1
 
+    if 'skus' in data or not partial:
+        skus = data.get('skus') or []
+        if not isinstance(skus, list):
+            raise HTTPException(status_code=400, detail="规格数据必须是数组")
+        normalized['skus'] = skus
+
+    if 'specs' in data or not partial:
+        specs = data.get('specs') or []
+        if not isinstance(specs, list):
+            raise HTTPException(status_code=400, detail="规格属性必须是数组")
+        normalized['specs'] = specs
+
     return normalized
 
 
@@ -11571,6 +11714,8 @@ async def _publish_product_to_account(
     log_id: Optional[int] = None,
     brand: Optional[str] = None,
     location: Optional[Dict[str, Any]] = None,
+    skus: Optional[List[Any]] = None,
+    specs: Optional[List[Any]] = None,
 ) -> Dict[str, Any]:
     from utils.item_publisher import ItemPublisher
 
@@ -11588,6 +11733,16 @@ async def _publish_product_to_account(
         raise HTTPException(status_code=400, detail="商品标题不能为空")
     if not cleaned_description:
         raise HTTPException(status_code=400, detail="商品描述不能为空")
+
+    normalized_skus = []
+    if skus:
+        try:
+            normalized_skus = ItemPublisher.normalize_sku_list(skus)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        if len(normalized_skus) > 1500:
+            raise HTTPException(status_code=400, detail="规格组合数量超过 1500，请减少规格值")
+    normalized_specs = ItemPublisher.normalize_spec_list(specs, normalized_skus)
 
     compliance = check_product({
         'title': cleaned_title,
@@ -11664,6 +11819,8 @@ async def _publish_product_to_account(
                 quantity=quantity,
                 brand=brand,
                 location_override=effective_location,
+                skus=normalized_skus,
+                specs=normalized_specs,
             )
             latest_cookies_str = publisher.cookies_str
             published_item_id = publisher.extract_published_item_id(publish_result)
@@ -11791,6 +11948,8 @@ async def _run_product_batch_publish(batch_id: str, jobs: List[Dict[str, Any]], 
                 log_id=log_id,
                 brand=material.get('brand'),
                 location=job.get('location'),
+                skus=material.get('skus') or [],
+                specs=material.get('specs') or [],
             )
         except HTTPException as exc:
             logger.warning(
@@ -12004,6 +12163,8 @@ async def publish_product_json(
         "brand": request.brand,
         "condition": request.condition,
         "quantity": request.quantity,
+        "skus": request.skus,
+        "specs": request.specs,
     }, partial=False)
     return await _publish_product_to_account(
         current_user=current_user,
@@ -12021,6 +12182,8 @@ async def publish_product_json(
         quantity=data.get('quantity'),
         brand=data.get('brand'),
         location=request.location,
+        skus=data.get('skus') or [],
+        specs=data.get('specs') or [],
     )
 
 
@@ -12248,6 +12411,8 @@ async def publish_item(
     brand: str = Form(default=""),
     location_longitude: str = Form(default=""),
     location_latitude: str = Form(default=""),
+    skus: str = Form(default=""),
+    specs: str = Form(default=""),
     images: List[UploadFile] = File(...),
     current_user: Dict[str, Any] = Depends(get_current_user),
 ):
@@ -12265,6 +12430,9 @@ async def publish_item(
             "filename": image.filename or f"publish-image-{index}.jpg",
             "content": image_content,
         })
+
+    skus_payload = _parse_form_json_list(skus, "规格数据")
+    specs_payload = _parse_form_json_list(specs, "规格属性")
 
     location_override = None
     if str(location_longitude).strip() and str(location_latitude).strip():
@@ -12292,6 +12460,8 @@ async def publish_item(
         quantity=int(quantity) if str(quantity).isdigit() else 1,
         brand=str(brand).strip() or None,
         location=location_override,
+        skus=skus_payload,
+        specs=specs_payload,
     )
 
 

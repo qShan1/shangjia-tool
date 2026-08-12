@@ -71,7 +71,16 @@
   - 失败原因可视化增强：提取平台错误码（`FAIL::` → `平台错误码：...`）+ sync 错误合并展示
   - 失败记录支持"载入素材编辑"（material_id 存在时）与"重试发布"（载入失败素材到表单并滚动定位）
   - 发布记录从 10 条扩到 20 条；64 passed；25 菜单巡检零错误
-- [ ] 打包新 dist（用户指示本次不打包）
+- [x] 第九轮 商品发布重构（第四批·多规格 multiSKU 发布）：
+  - 后端 `utils/item_publisher.py`：新增 `normalize_sku_list` / `normalize_spec_list` / `_apply_sku_settings` / `_derive_item_properties`；多规格时写 `itemSkuList`（价格转分）+ `itemProperties`，`itemPriceDTO={}` 且 `defaultPrice=False`；`get_public_channel` 支持 `multiSKU=true`
+  - DB `shangjia_tool/db_manager.py`：`product_materials` 表幂等新增 `skus`/`specs` 列，素材增/查/列/改全链路读写（`_json_dumps_safe`/`_json_loads_safe`）
+  - API `shangjia_tool/reply_server.py`：`ProductMaterialRequest/UpdateRequest/ProductSinglePublishRequest` 加 `skus/specs`；表单新增 `_parse_form_json_list`（multipart 的 skus/specs JSON 解析）；`_normalize_product_publish_data` 透传；`_publish_product_to_account` 校验（规格缺名/值→400、组合>1500→400）；单发 JSON / multipart / 批量发布全透传
+  - 前端：`static/index.html` 发布页新增"多规格发布"开关 + 规格编辑器表格（规格名/值/价格/库存）；`static/js/app.items.js` 新增 `togglePublishMultiSku/addPublishSkuRow/collectPublishSkus/buildItemPublishSkuPayload/buildItemPublishSpecs/fillPublishSkuRows/validateItemPublishSkus`（载入素材回填、表单提交携带 skus/specs、素材列表" N 规格"徽标）；`static/css/items.css` 新增 `.item-publish-sku-editor/.item-publish-sku-table`
+  - 测试：新增 `tests/test_product_publish_multisku.py`（14 个用例，覆盖 normalize/apply_sku_settings/DB 素材 skus 存取/API 透传）
+  - 测试基建排障：app 绑定模块级 `db_manager` 单例（`from db_manager import db_manager` 与 `shangjia_tool.db_manager` 是两个独立模块对象），新增 `_install_temp_db()` 把临时库接入两个模块引用；登录需 `init_db` 自动创建的 admin（随机密码）+ 验证码关闭，`_bootstrap` 设固定密码并关闭验证码/注册
+  - 本轮全量 78 passed；已按官方 `scripts/build_desktop.ps1` 两步（ShangjiaService onefile + ShangjiaTool onedir）构建新 dist 供手工测试（pip 升级行在 PowerShell 下被 stderr 误判中断，依赖已装故跳过）
+- [ ] 用户手工测试桌面版多规格功能（dist\ShangjiaTool\ShangjiaTool.exe），测完确认后再提交工作区改动
+- [ ] 提交第九轮工作区改动（6 修改 + 1 新增；测试基建的模块级 db_manager 替换记入待办，建议后续加 fixture 还原）
 
 ## 注意事项 / 教训
 - 真正业务源码在 `E:\AXianYu\shangjia-tool`；`E:\Agent\OpenCode\XianyyuShangjia` 只是 opencode 技能配置目录（grill-me/grilling），不要混淆。

@@ -2132,6 +2132,7 @@ function showAccountFaceVerificationModal(accountId, screenshot) {
         modal = document.getElementById('passwordLoginQRModal');
     }
     modal.dataset.accountFaceVerification = 'true';
+    modal.dataset.accountVerifyAccountId = accountId;
     
     // 更新模态框标题
     const modalTitle = document.getElementById('passwordLoginQRModalLabel');
@@ -2155,9 +2156,15 @@ function showAccountFaceVerificationModal(accountId, screenshot) {
         linkButton.style.display = 'none';
     }
     
+    // 显示停止验证按钮
+    const stopBtn = document.getElementById('passwordLoginStopVerifyBtn');
+    if (stopBtn) {
+        stopBtn.style.display = 'block';
+    }
+    
     // 更新状态文本
     if (statusText) {
-        statusText.innerHTML = `请根据下方验证截图在手机闲鱼APP中完成验证<br><small class="text-muted">创建时间: ${screenshot.created_time_str}</small>`;
+        statusText.innerHTML = `请根据下方验证截图在手机闲鱼APP中完成验证<br><small class="text-muted">创建时间: ${screenshot.created_time_str}</small><br><small class="text-muted">若验证超时，可点击下方"停止验证"解除账号保护</small>`;
     }
     
     // 获取或创建模态框实例
@@ -2173,6 +2180,57 @@ function showAccountFaceVerificationModal(accountId, screenshot) {
 }
 
 // 注：人脸验证弹窗已复用密码登录的 passwordLoginQRModal，不再需要单独的弹窗
+
+let accountFaceVerificationStopInFlight = false;
+
+// 停止账号验证并解除账号保护
+async function stopAccountFaceVerification() {
+    if (accountFaceVerificationStopInFlight) return;
+    accountFaceVerificationStopInFlight = true;
+    try {
+        const modal = document.getElementById('passwordLoginQRModal');
+        const accountId = modal ? modal.dataset.accountVerifyAccountId : '';
+        if (!accountId) {
+            if (modal) {
+                const modalInstance = bootstrap.Modal.getInstance(modal);
+                if (modalInstance) modalInstance.hide();
+            }
+            return;
+        }
+
+        const response = await fetch(`${apiBase}/face-verification/stop/${encodeURIComponent(accountId)}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        let data = {};
+        try {
+            data = await response.json();
+        } catch (e) {
+            // 忽略解析失败，仅使用 HTTP 状态判断
+        }
+
+        if (response.ok && data.success) {
+            showToast('已停止验证并解除账号保护', 'success');
+            if (modal) {
+                const modalInstance = bootstrap.Modal.getInstance(modal);
+                if (modalInstance) modalInstance.hide();
+                delete modal.dataset.accountFaceVerification;
+                delete modal.dataset.accountVerifyAccountId;
+            }
+            loadCookies();
+        } else {
+            showToast(data.message || '停止验证失败', 'danger');
+        }
+    } catch (error) {
+        console.error('停止验证失败:', error);
+        showToast('停止验证失败: ' + error.message, 'danger');
+    } finally {
+        accountFaceVerificationStopInFlight = false;
+    }
+}
 
 /**
  * 显示版本信息弹窗

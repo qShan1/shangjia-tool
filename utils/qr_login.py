@@ -604,6 +604,9 @@ class QRLoginManager:
                     if session.status == 'success':
                         logger.info(f"扫码登录API轮询检测到会话已成功: {session_id}")
                         break
+                    if session.status == 'cancelled':
+                        logger.info(f"扫码登录会话已取消，终止监控: {session_id}")
+                        break
 
                     # 轮询二维码状态
                     resp = await self._poll_qrcode_status(session)
@@ -716,6 +719,17 @@ class QRLoginManager:
             result['unb'] = session.unb
 
         return result
+
+    def cancel_session(self, session_id: str) -> bool:
+        """取消扫码登录会话，终止后台任务并清理资源"""
+        session = self.sessions.get(session_id)
+        if not session:
+            return False
+
+        if session.status not in ('success', 'cancelled', 'expired'):
+            session.status = 'cancelled'
+        self._cleanup_session_assets(session)
+        return True
 
     def cleanup_expired_sessions(self):
         """清理过期会话"""

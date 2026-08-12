@@ -164,13 +164,23 @@ textarea {
   border-radius: 12px;
   font-size: 0.91rem;
   font-weight: 500;
+  line-height: 1.35;
+  min-height: 40px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.nav-link > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nav-link:hover {
   color: var(--ui-ink);
   background: rgba(118, 118, 128, 0.1);
   border-left-color: transparent;
-  transform: translateX(2px);
 }
 
 .nav-link.active {

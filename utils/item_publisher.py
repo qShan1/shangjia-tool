@@ -359,12 +359,17 @@ class ItemPublisher:
         quantity: int = 1,
         brand: Optional[str] = None,
         location_override: Optional[Dict[str, Any]] = None,
+        skus: Optional[List[Dict[str, Any]]] = None,
+        specs: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         if delivery_choice not in self.ALLOWED_DELIVERY_CHOICES:
             raise ValueError("不支持的运费方式")
 
         if delivery_choice == "一口价" and (post_price is None or post_price < 0):
             raise ValueError("运费方式为一口价时，邮费必须大于等于 0")
+
+        normalized_skus = self.normalize_sku_list(skus)
+        normalized_specs = self.normalize_spec_list(specs, normalized_skus)
 
         uploaded_images = []
         for image in images:
@@ -382,7 +387,13 @@ class ItemPublisher:
             if clean_brand:
                 category_hint = f"{clean_brand} {category_hint}".strip() if category_hint else clean_brand
 
-        channel_res = await self.get_public_channel(publish_title, publish_desc, uploaded_images, category_hint=category_hint)
+        channel_res = await self.get_public_channel(
+            publish_title,
+            publish_desc,
+            uploaded_images,
+            category_hint=category_hint,
+            multi_sku=bool(normalized_skus),
+        )
         if not self.is_success_response(channel_res):
             raise RuntimeError(f"获取发布类目失败: {self.extract_error_message(channel_res)}")
 
@@ -405,6 +416,8 @@ class ItemPublisher:
             category_result=category_result,
             condition=condition,
             quantity=quantity,
+            skus=normalized_skus,
+            specs=normalized_specs,
         )
 
         publish_res = await self._post_mtop(
@@ -561,12 +574,13 @@ class ItemPublisher:
         description: str,
         images_info: List[Dict[str, Any]],
         category_hint: Optional[str] = None,
+        multi_sku: bool = False,
     ) -> Dict[str, Any]:
         recommend_title, recommend_description = self._build_recommend_text(title, description, category_hint)
         payload = {
             "title": recommend_title,
             "lockCpv": False,
-            "multiSKU": False,
+            "multiSKU": bool(multi_sku),
             "publishScene": "mainPublish",
             "scene": "newPublishChoice",
             "description": recommend_description,
@@ -671,6 +685,8 @@ class ItemPublisher:
         category_result: Optional[Dict[str, Any]] = None,
         condition: Optional[str] = "全新",
         quantity: int = 1,
+        skus: Optional[List[Dict[str, Any]]] = None,
+        specs: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         category_result = category_result or self._normalize_category_result(
             channel_res.get("data", {}).get("categoryPredictResult", {})
@@ -751,7 +767,147 @@ class ItemPublisher:
             original_price=original_price,
         )
 
+        if skus:
+            self._apply_sku_settings(
+                payload=payload,
+                skus=skus,
+                specs=specs,
+            )
+
         return payload
+
+    @staticmethod
+    def normalize_sku_list(skus: Optional[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+        """规范化多规格数据，返回可发布的 SKU 列表（空列表表示单规格发布）。"""
+        if not skus:
+            return []
+        normalized = []
+        for index, sku in enumerate(skus, start=1):
+            if not isinstance(sku, dict):
+                raise ValueError(f"第 {index} 条规格数据格式无效")
+            property_list = sku.get("propertyList") or sku.get("property_list") or []
+            if not isinstance(property_list, list):
+                raise ValueError(f"第 {index} 条规格缺少规格属性列表")
+            clean_properties = []
+            for prop in property_list:
+                if not isinstance(prop, dict):
+                    continue
+                property_text = str(prop.get("propertyText") or prop.get("property_text") or "").strip()
+                value_text = str(prop.get("valueText") or prop.get("value_text") or "").strip()
+                if property_text and value_text:
+                    clean_properties.append({
+                        "propertyText": property_text,
+                        "valueText": value_text,
+                    })
+            if not clean_properties:
+                raise ValueError(f"第 {index} 条规格缺少规格名称或规格值")
+            price = sku.get("price")
+            if price is None:
+                price = sku.get("priceInCent")
+                if price is not None:
+                    try:
+                        price = float(price) / 100
+                    except (TypeError, ValueError):
+                        raise ValueError(f"第 {index} 条规格价格无效")
+            try:
+                price_value = float(price)
+            except (TypeError, ValueError):
+                raise ValueError(f"第 {index} 条规格价格必须是数字")
+            if price_value < 0:
+                raise ValueError(f"第 {index} 条规格价格必须大于等于 0")
+            try:
+                quantity_value = int(sku.get("quantity") or 1)
+            except (TypeError, ValueError):
+                raise ValueError(f"第 {index} 条规格库存必须是数字")
+            quantity_value = max(1, quantity_value)
+            normalized.append({
+                "propertyList": clean_properties,
+                "price": price_value,
+                "quantity": quantity_value,
+            })
+        return normalized
+
+    @staticmethod
+    def normalize_spec_list(specs: Optional[List[Dict[str, Any]]], skus: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """规范化规格属性（itemProperties），从 SKU 属性自动推导可缺省的项。"""
+        derived = []
+        if not specs:
+            return derived
+        for spec in specs:
+            if not isinstance(spec, dict):
+                continue
+            property_name = str(spec.get("propertyName") or spec.get("property_name") or "").strip()
+            if not property_name:
+                continue
+            property_values = spec.get("propertyValues") or spec.get("property_values") or []
+            if not isinstance(property_values, list):
+                continue
+            clean_values = []
+            for value in property_values:
+                if not isinstance(value, dict):
+                    continue
+                property_value = str(value.get("propertyValue") or value.get("property_value") or "").strip()
+                if not property_value:
+                    continue
+                clean_values.append({"propertyValue": property_value})
+            if clean_values:
+                derived.append({
+                    "propertyName": property_name,
+                    "supportImage": False,
+                    "propertyValues": clean_values,
+                })
+        return derived
+
+    @classmethod
+    def _apply_sku_settings(cls, *, payload: Dict[str, Any], skus: List[Dict[str, Any]], specs: Optional[List[Dict[str, Any]]] = None):
+        """将多规格数据写入发布 payload：itemSkuList + itemProperties。"""
+        item_sku_list = []
+        for sku in skus:
+            property_list = sku.get("propertyList") or []
+            if len(property_list) > 2:
+                property_list = property_list[:2]
+            item_sku_list.append({
+                "priceInCent": str(int(round(float(sku.get("price") or 0) * 100))),
+                "quantity": int(sku.get("quantity") or 1),
+                "propertyList": property_list,
+            })
+
+        if item_sku_list:
+            payload["itemSkuList"] = item_sku_list
+            # 多规格发布时价格由各 SKU 决定，不设商品级默认价
+            payload["itemPriceDTO"] = {}
+            payload["defaultPrice"] = False
+
+        property_items = []
+        if specs:
+            property_items = cls.normalize_spec_list(specs, skus)
+        elif skus:
+            property_items = cls._derive_item_properties(skus)
+
+        if property_items:
+            payload["itemProperties"] = property_items
+
+    @staticmethod
+    def _derive_item_properties(skus: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """从 SKU 列表推导 itemProperties（规格名 → 规格值列表，保持出现顺序）。"""
+        property_map: Dict[str, List[Any]] = {}
+        for sku in skus:
+            for prop in sku.get("propertyList") or []:
+                property_name = str(prop.get("propertyText") or "").strip()
+                property_value = str(prop.get("valueText") or "").strip()
+                if not property_name or not property_value:
+                    continue
+                values = property_map.setdefault(property_name, [])
+                if property_value not in values:
+                    values.append(property_value)
+        return [
+            {
+                "propertyName": property_name,
+                "supportImage": False,
+                "propertyValues": [{"propertyValue": value} for value in values],
+            }
+            for property_name, values in property_map.items()
+        ]
 
     def _apply_delivery_settings(
         self,

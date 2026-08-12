@@ -1251,6 +1251,13 @@ function closePasswordLoginQRModal() {
         statusText.textContent = '需要闲鱼身份验证，请等待验证信息...';
     }
 
+    const stopBtn = document.getElementById('passwordLoginStopVerifyBtn');
+    if (stopBtn) {
+        stopBtn.style.display = 'none';
+    }
+
+    delete modalElement.dataset.accountVerifyAccountId;
+
     const modalInstance = bootstrap.Modal.getInstance(modalElement);
     if (modalInstance && modalElement.classList.contains('show')) {
         passwordLoginQRModalState.systemClosing = true;
@@ -1303,6 +1310,10 @@ function createPasswordLoginQRModal() {
                             <i class="bi bi-info-circle me-2"></i>
                             <small>验证完成后，系统将自动检测并继续登录流程</small>
                         </div>
+
+                        <button type="button" id="passwordLoginStopVerifyBtn" class="btn btn-outline-danger mt-3" style="display:none;" onclick="stopAccountFaceVerification()">
+                            <i class="bi bi-stop-circle me-1"></i>停止验证，解除保护
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1391,11 +1402,13 @@ function getQRLoginEndpoints() {
         return {
             generate: `${apiBase}/qr-login-lite/generate`,
             checkPrefix: `${apiBase}/qr-login-lite/check/`,
+            cancelPrefix: `${apiBase}/qr-login-lite/cancel/`,
         };
     }
     return {
         generate: `${apiBase}/qr-login/generate`,
         checkPrefix: `${apiBase}/qr-login/check/`,
+        cancelPrefix: `${apiBase}/qr-login/cancel/`,
     };
 }
 
@@ -1438,6 +1451,28 @@ function closeQRCodeLoginModal(delay = 3000) {
     }, delay);
 }
 
+// 取消扫码登录：通知服务端终止会话后关闭弹窗
+async function cancelQRCodeLogin() {
+    const sessionId = qrCodeSessionId || qrCodeVerificationState.activeSessionId;
+    if (sessionId) {
+        try {
+            const endpoints = getQRLoginEndpoints();
+            await fetch(`${endpoints.cancelPrefix}${sessionId}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+        } catch (error) {
+            console.error('取消扫码登录失败:', error);
+        }
+    }
+    qrCodeVerificationState.completed = true;
+    clearQRCodeCheck();
+    closeQRCodeLoginModal(0);
+    showToast('已取消扫码登录', 'secondary');
+}
+
 function initializeQRCodeLoginModal() {
     const modalElement = document.getElementById('qrCodeLoginModal');
     if (!modalElement || qrCodeModalEventsBound) {
@@ -1449,6 +1484,20 @@ function initializeQRCodeLoginModal() {
     });
 
     modalElement.addEventListener('hidden.bs.modal', function () {
+        const sessionId = qrCodeSessionId || qrCodeVerificationState.activeSessionId;
+        if (sessionId && !qrCodeVerificationState.completed) {
+            try {
+                const endpoints = getQRLoginEndpoints();
+                fetch(`${endpoints.cancelPrefix}${sessionId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                }).catch(() => {});
+            } catch (error) {
+                console.error('关闭弹窗时取消扫码登录失败:', error);
+            }
+        }
         clearQRCodeCheck();
     });
 
@@ -1477,13 +1526,16 @@ async function generateQRCode() {
     showQRCodeLoading();
 
     const endpoints = getQRLoginEndpoints();
+    const controller = new AbortController();
+    const timeoutTimer = setTimeout(() => controller.abort(), 45000);
     const response = await fetch(endpoints.generate, {
         method: 'POST',
         headers: {
         'Authorization': `Bearer ${authToken}`,
         'Content-Type': 'application/json'
-        }
-    });
+        },
+        signal: controller.signal
+    }).finally(() => clearTimeout(timeoutTimer));
 
     if (response.ok) {
         const data = await response.json();
@@ -1500,7 +1552,7 @@ async function generateQRCode() {
     }
     } catch (error) {
     console.error('生成二维码失败:', error);
-    showQRCodeError('网络错误，请重试');
+    showQRCodeError(error && error.name === 'AbortError' ? '生成二维码超时，请重试' : '网络错误，请重试');
     }
 }
 
@@ -1523,9 +1575,23 @@ function showQRCodeLoading() {
 function showQRCodeImage(qrCodeUrl) {
     document.getElementById('qrCodeContainer').style.display = 'none';
     document.getElementById('qrCodeImage').style.display = 'block';
-    document.getElementById('qrCodeImg').src = qrCodeUrl;
     document.getElementById('statusText').textContent = '等待扫码...';
     document.getElementById('statusSpinner').style.display = 'none';
+
+    // 图片加载兜底：src 为空或加载失败时给出可重试的错误提示，避免只留占位文字
+    const qrImg = document.getElementById('qrCodeImg');
+    if (!qrCodeUrl) {
+        showQRCodeError('未获取到二维码数据，请点击下方重新生成');
+        return;
+    }
+    qrImg.onload = () => {
+        qrImg.style.opacity = '1';
+    };
+    qrImg.onerror = () => {
+        showQRCodeError('二维码图片加载失败，请点击下方重新生成');
+    };
+    qrImg.style.opacity = '0.3';
+    qrImg.src = qrCodeUrl;
 }
 
 // 显示二维码错误
@@ -1688,7 +1754,19 @@ function showVerificationRequired(data) {
         </div>
         <div class="mb-4">
             <p class="text-muted mb-3">请使用手机闲鱼 APP 扫描下方二维码完成验证：</p>
-            <img src="${normalizeStaticAssetPath(screenshotPath)}?t=${Date.now()}" alt="闲鱼验证二维码" class="img-fluid rounded border" style="max-width: 360px; width: 100%; height: auto;">
+            <div class="qr-verify-loading d-inline-block">
+                <span class="spinner-border spinner-border-sm text-success me-2" role="status" aria-hidden="true"></span>
+                <small class="text-muted">二维码加载中...</small>
+            </div>
+            <img src="${normalizeStaticAssetPath(screenshotPath)}?t=${Date.now()}" alt="闲鱼验证二维码" class="img-fluid rounded border qr-verify-img" style="max-width: 360px; width: 100%; height: auto; display: none;" onload="this.style.display='block'; this.previousElementSibling.style.display='none';" onerror="this.parentNode.querySelector('.qr-verify-loading').innerHTML='<small class=&quot;text-danger&quot;>二维码加载失败，请点击下方重新加载</small>'; this.parentNode.querySelector('.qr-verify-img').style.display='none';">
+        </div>
+        <div class="d-flex justify-content-center gap-2 flex-wrap mb-3">
+            <button type="button" class="btn btn-outline-success btn-sm" onclick="refreshVerificationQR()">
+            <i class="bi bi-arrow-clockwise me-1"></i>重新加载二维码
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="cancelQRCodeLogin()">
+            <i class="bi bi-x-circle me-1"></i>取消登录
+            </button>
         </div>
         <div class="alert alert-info border-0">
             <i class="bi bi-lightbulb me-2"></i>
@@ -1696,7 +1774,7 @@ function showVerificationRequired(data) {
             <strong>验证步骤：</strong><br>
             1. 使用手机闲鱼 APP 扫描上方二维码并完成验证<br>
             2. 保持当前弹窗打开，系统会自动继续登录流程<br>
-            3. 如果二维码失效，请关闭弹窗后重新发起扫码登录
+            3. 如果二维码失效，可点击"重新加载二维码"刷新
             </small>
         </div>
         </div>
@@ -1718,6 +1796,11 @@ function showVerificationRequired(data) {
             <i class="bi bi-box-arrow-up-right me-2"></i>
             打开兜底验证页面
             </a>
+        </div>
+        <div class="d-flex justify-content-center gap-2 flex-wrap mb-3">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="cancelQRCodeLogin()">
+            <i class="bi bi-x-circle me-1"></i>取消登录
+            </button>
         </div>
         <div class="alert alert-info border-0">
             <i class="bi bi-lightbulb me-2"></i>
@@ -1745,6 +1828,20 @@ function showVerificationRequired(data) {
     showToast('账号需要闲鱼验证，请使用当前页面展示的二维码完成验证', 'warning');
     qrCodeVerificationState.toastShown = true;
     }
+}
+
+// 刷新验证二维码（截图场景：带缓存戳重新加载图片）
+function refreshVerificationQR() {
+    const verifyImg = document.querySelector('#verificationContainer .qr-verify-img');
+    const loadingEl = document.querySelector('#verificationContainer .qr-verify-loading');
+    if (!verifyImg) return;
+    if (loadingEl) {
+        loadingEl.style.display = 'inline-block';
+        loadingEl.innerHTML = '<span class="spinner-border spinner-border-sm text-success me-2" role="status" aria-hidden="true"></span><small class="text-muted">二维码加载中...</small>';
+    }
+    verifyImg.style.display = 'none';
+    const base = verifyImg.src.split('?')[0];
+    verifyImg.src = `${base}?t=${Date.now()}`;
 }
 
 // 处理扫码成功
@@ -1828,7 +1925,21 @@ function clearQRCodeCheck() {
 }
 
 // 刷新二维码
-function refreshQRCode() {
+async function refreshQRCode() {
+    const oldSessionId = qrCodeSessionId || qrCodeVerificationState.activeSessionId;
+    if (oldSessionId) {
+        try {
+            const endpoints = getQRLoginEndpoints();
+            await fetch(`${endpoints.cancelPrefix}${oldSessionId}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+        } catch (error) {
+            console.error('刷新前取消旧会话失败:', error);
+        }
+    }
     clearQRCodeCheck();
     generateQRCode();
 }
