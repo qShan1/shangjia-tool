@@ -1038,8 +1038,14 @@
 
                     <div class="col-12">
                       <label for="publishCategory" class="form-label">类目提示 <span class="text-muted small">（可选）</span></label>
-                      <input type="text" class="form-control" id="publishCategory" maxlength="80" placeholder="例如：手机、数码配件、图书、服饰、游戏账号">
-                      <div class="form-text">发布失败提示“闲鱼渠道类目路径查询失败”时，可填写更明确的类目词帮助闲鱼识别。</div>
+                      <div class="input-group">
+                        <input type="text" class="form-control" id="publishCategory" maxlength="80" placeholder="例如：手机、数码配件、图书、服饰、游戏账号">
+                        <button type="button" class="btn btn-outline-info" id="itemPublishCategoryRecommendBtn" onclick="recommendItemPublishCategory()">
+                          <i class="bi bi-tags me-1"></i>识别类目
+                        </button>
+                      </div>
+                      <div class="form-text">发布失败提示“闲鱼渠道类目路径查询失败”时，可填写更明确的类目词帮助闲鱼识别。也可点“识别类目”预览推荐结果。</div>
+                      <div id="itemPublishCategoryRecommendResult" class="mt-2" aria-live="polite"></div>
                     </div>
 
                     <div class="col-md-6">

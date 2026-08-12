@@ -993,6 +993,90 @@ async function precheckItemPublishForm() {
     }
 }
 
+// 发布前识别类目：调用闲鱼类目推荐接口预览候选类目
+async function recommendItemPublishCategory() {
+    const values = getItemPublishFormValues();
+    const resultContainer = document.getElementById('itemPublishCategoryRecommendResult');
+    const button = document.getElementById('itemPublishCategoryRecommendBtn');
+    if (!values.accountId) {
+        showToast('请先选择发布账号', 'warning');
+        return;
+    }
+    if (!values.title) {
+        showToast('请先填写商品标题', 'warning');
+        return;
+    }
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>识别中...';
+    }
+    if (resultContainer) resultContainer.innerHTML = '<div class="text-muted small"><i class="bi bi-hourglass-split me-1"></i>正在识别类目，请稍候...</div>';
+    try {
+        let images = [];
+        if (values.files.length > 0) {
+            images = await convertPublishFilesToImages(values.files);
+        } else {
+            images = [...itemPublishLoadedMaterialImages];
+        }
+        const response = await requestItemPublishJson('/product-publish/category-recommend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                account_id: values.accountId,
+                title: values.title,
+                description: values.description,
+                category: values.category,
+                images,
+            }),
+        });
+        if (!response.success) {
+            throw new Error(response.message || '类目识别失败');
+        }
+        const candidates = Array.isArray(response.candidates) ? response.candidates : [];
+        const catInput = document.getElementById('publishCategory');
+        if (!candidates.length) {
+            if (resultContainer) resultContainer.innerHTML = '<div class="text-muted small">未识别到候选类目，可手动填写类目提示。</div>';
+            return;
+        }
+        const recommended = candidates.filter(c => c.recommended);
+        const others = candidates.filter(c => !c.recommended);
+        const ordered = [...recommended, ...others].slice(0, 12);
+        if (resultContainer) {
+            resultContainer.innerHTML = `
+                <div class="small">
+                    <div class="text-muted mb-1"><i class="bi bi-tags me-1"></i>识别到 ${candidates.length} 个候选类目${recommended.length ? '（★ 为自动推荐）' : ''}，点击填入类目提示：</div>
+                    <div class="d-flex flex-wrap gap-1">
+                        ${ordered.map(c => `
+                            <button type="button" class="btn btn-sm ${c.recommended ? 'btn-primary' : 'btn-outline-secondary'}"
+                                onclick="applyItemPublishCategory('${escapeHtml(c.catName)}', '${escapeHtml(String(c.catId))}')"
+                                title="类目ID ${escapeHtml(c.catId)}${c.path ? ' · ' + escapeHtml(c.path) : ''}">
+                                ${c.recommended ? '★ ' : ''}${escapeHtml(c.catName || '未命名类目')}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>`;
+        }
+        if (catInput && recommended.length && !catInput.value) {
+            catInput.value = recommended[0].catName || '';
+        }
+    } catch (error) {
+        console.error('类目识别失败:', error);
+        if (resultContainer) resultContainer.innerHTML = `<div class="text-danger small">类目识别失败：${escapeHtml(error.message || '请稍后重试')}</div>`;
+        showToast(error.message || '类目识别失败', 'danger');
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<i class="bi bi-tags me-1"></i>识别类目';
+        }
+    }
+}
+
+function applyItemPublishCategory(catName, catId) {
+    const catInput = document.getElementById('publishCategory');
+    if (catInput && catName) catInput.value = catName;
+    showToast(`已填入类目：${catName || '未命名'}` + (catId ? `（ID ${catId}）` : ''), 'info');
+}
+
 // AI 从零生成商品文案（输入卖点/关键词），仅生成建议，不限制发布
 async function generateItemCopyWithAI() {
     const values = getItemPublishFormValues();
@@ -1033,9 +1117,20 @@ async function generateItemCopyWithAI() {
         const titleInput = document.getElementById('publishTitle');
         const descInput = document.getElementById('publishDescription');
         const catInput = document.getElementById('publishCategory');
+        const priceInput = document.getElementById('publishCurrentPrice');
         if (titleInput) titleInput.value = data.title || '';
         if (descInput) descInput.value = data.description || '';
         if (catInput && data.category) catInput.value = data.category;
+        const priceRange = data.price_min || data.price_max;
+        if (priceInput && priceRange && !priceInput.value) {
+            if (data.price_min && data.price_max) {
+                priceInput.value = String(Math.round((Number(data.price_min) + Number(data.price_max)) / 2));
+            } else if (data.price_max) {
+                priceInput.value = String(Math.round(Number(data.price_max)));
+            } else if (data.price_min) {
+                priceInput.value = String(Math.round(Number(data.price_min)));
+            }
+        }
         if (resultContainer) {
             resultContainer.innerHTML = `
                 <div class="alert alert-success mb-0">
@@ -1044,6 +1139,7 @@ async function generateItemCopyWithAI() {
                         <div>标题：${escapeHtml(data.title || '—')}</div>
                         <div class="mt-1">描述：${escapeHtml(String(data.description || '').slice(0, 200))}${data.description && data.description.length > 200 ? '…' : ''}</div>
                         ${data.category ? `<div class="mt-1">类目：${escapeHtml(data.category)}</div>` : ''}
+                        ${data.price_min || data.price_max ? `<div class="mt-1">建议价：${data.price_min ? '¥' + escapeHtml(String(data.price_min)) : ''}${data.price_min && data.price_max ? ' ~ ' : ''}${data.price_max ? '¥' + escapeHtml(String(data.price_max)) : ''}（已按区间取中间值填入现价）</div>` : ''}
                     </div>
                 </div>`;
         }

@@ -231,6 +231,68 @@ class ItemPublisher:
             "cardList": data.get("cardList") or [],
         }
 
+    @classmethod
+    def extract_category_candidates(cls, channel_res: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """从类目推荐结果中提取候选类目列表（用于发布前预览/选择）。"""
+        if not isinstance(channel_res, dict):
+            return []
+        data = channel_res.get("data") if isinstance(channel_res, dict) else None
+        data = data if isinstance(data, dict) else {}
+
+        candidates: List[Dict[str, Any]] = []
+        seen: set = set()
+
+        def add_candidate(cat_id: Any, cat_name: Any, channel_cat_id: Any = None, tb_cat_id: Any = None, recommended: bool = False, path: str = ""):
+            cat_id_text = str(cls._first_present_value(cat_id, "") if not isinstance(cat_id, str) else cat_id or "").strip()
+            if not cat_id_text:
+                return
+            key = cat_id_text
+            if key in seen:
+                return
+            seen.add(key)
+            candidates.append({
+                "catId": str(cat_id_text),
+                "catName": str(cat_name or "").strip(),
+                "channelCatId": str(channel_cat_id or "").strip(),
+                "tbCatId": str(tb_cat_id or "").strip(),
+                "recommended": bool(recommended),
+                "path": str(path or "").strip(),
+            })
+
+        # 1) 自动识别结果
+        predict = data.get("categoryPredictResult") or {}
+        if isinstance(predict, dict):
+            add_candidate(
+                predict.get("catId") or predict.get("cat_id"),
+                predict.get("catName") or predict.get("cat_name"),
+                predict.get("channelCatId") or predict.get("channel_cat_id"),
+                predict.get("tbCatId") or predict.get("tb_cat_id"),
+                recommended=True,
+            )
+
+        # 2) cardList 中类目卡片的候选值
+        for card in data.get("cardList") or []:
+            if not isinstance(card, dict):
+                continue
+            card_data = card.get("cardData") or {}
+            property_name = str(card_data.get("propertyName") or "")
+            if not any(keyword in property_name for keyword in ("类目", "分类", "品类")):
+                continue
+            card_path = property_name
+            for value in (card_data.get("valuesList") or []):
+                if not isinstance(value, dict):
+                    continue
+                add_candidate(
+                    cls._first_present_value(value, "catId", "cat_id", "categoryId", "category_id"),
+                    cls._first_present_value(value, "catName", "cat_name", "channelCatName", "channel_cat_name", "name"),
+                    cls._first_present_value(value, "channelCatId", "channel_cat_id"),
+                    cls._first_present_value(value, "tbCatId", "tb_cat_id"),
+                    recommended=bool(value.get("isClicked")),
+                    path=card_path,
+                )
+
+        return candidates
+
     @staticmethod
     def _build_recommend_text(title: str, description: str, category_hint: Optional[str] = None) -> Tuple[str, str]:
         clean_title = str(title or "").strip()
@@ -356,6 +418,40 @@ class ItemPublisher:
         publish_res["_uploaded_images"] = uploaded_images
         publish_res["_category_debug"] = category_debug
         return publish_res
+
+    async def preview_category_recommendation(
+        self,
+        *,
+        title: str,
+        description: str,
+        images: List[Dict[str, Any]],
+        category_hint: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """发布前预览类目推荐：上传图片 → 调类目推荐接口 → 返回候选类目列表。"""
+        uploaded_images = []
+        for image in images:
+            uploaded_images.append(await self.prepare_image_for_publish(image))
+
+        publish_title = str(title or "").strip()
+        publish_desc = str(description or title or "").strip()
+        if not publish_title:
+            raise ValueError("商品标题不能为空")
+
+        channel_res = await self.get_public_channel(publish_title, publish_desc, uploaded_images, category_hint=category_hint)
+        if not self.is_success_response(channel_res):
+            return {
+                "success": False,
+                "message": f"类目推荐失败: {self.extract_error_message(channel_res)}",
+                "candidates": [],
+            }
+
+        candidates = self.extract_category_candidates(channel_res)
+        return {
+            "success": True,
+            "message": "类目推荐完成",
+            "candidates": candidates,
+            "category_debug": self._build_category_debug(channel_res, category_hint=category_hint),
+        }
 
     async def prepare_image_for_publish(self, image: Dict[str, Any]) -> Dict[str, Any]:
         """将前端/素材中的图片描述统一转换为发布接口可用的图片信息。"""

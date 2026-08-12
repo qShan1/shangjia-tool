@@ -60,6 +60,12 @@
   - 素材管理激活：发布页右侧"发布素材"卡片（保存为素材/列表/载入/删除），复用既有 product-materials 后端
   - 批量发布 UI：新增"批量发布"按钮 + 弹窗（多选账号 × 多选素材 + 可选位置坐标 → `/product-publish/batch` → 3s 轮询进度条 + 按账号结果明细）
   - 全链路 TestClient 验证（素材brand/批量location/单发location/系统设置）；64 passed；25 菜单巡检零错误
+- [x] 第七轮 商品发布重构（第二批）：
+  - 类目识别预览：`ItemPublisher.preview_category_recommendation` + `extract_category_candidates`（自动识别结果 + cardList 类目卡片候选）；新接口 `POST /product-publish/category-recommend`；发布页"识别类目"按钮展示候选类目按钮（★推荐优先）点击回填
+  - AI 写文案增强：`optimize_item_copy` generate 模式新增 `price_min/price_max` 建议价格区间，前端回填现价（区间取中间值）并展示建议价
+  - 发布失败原因可视化：发布记录卡片直接展示平台错误码/信息（既有 error_message/sync_message 呈现），类目推荐失败展示 Cookie/签名友好错误
+  - 多规格发布暂缓（multiSKU payload 结构需真实接口验证，本轮未做）
+  - TestClient 验证（AI价格区间/类目候选提取/推荐接口）；64 passed；25 菜单巡检零错误
 - [ ] 打包新 dist（用户指示本次不打包）
 
 ## 注意事项 / 教训

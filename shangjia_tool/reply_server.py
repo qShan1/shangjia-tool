@@ -11932,6 +11932,59 @@ def precheck_product_publish(
     return {'success': True, 'data': result}
 
 
+class ProductCategoryRecommendRequest(BaseModel):
+    account_id: str
+    title: str
+    description: str = ""
+    images: List[Any] = []
+    category: Optional[str] = None
+
+
+@app.post("/product-publish/category-recommend")
+async def preview_product_category(
+    request: ProductCategoryRecommendRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """发布前预览闲鱼类目推荐结果，供前端展示候选类目供用户选择。"""
+    from utils.item_publisher import ItemPublisher
+
+    user_prefix = get_user_log_prefix(current_user)
+    cleaned_account_id = _ensure_cookie_access(request.account_id, current_user)
+    cookies_map = _get_user_cookies_map(current_user)
+    cookies_str = str(cookies_map.get(cleaned_account_id) or '').strip()
+    if not cookies_str:
+        raise HTTPException(status_code=400, detail="账号 Cookie 为空，无法识别类目")
+    proxy_config = db_manager.get_cookie_proxy_config(cleaned_account_id)
+
+    images = _validate_publish_images(request.images or []) if request.images else []
+    cleaned_title = str(request.title or '').strip()
+    if not cleaned_title:
+        raise HTTPException(status_code=400, detail="商品标题不能为空")
+
+    try:
+        async with ItemPublisher(cookies_str, cleaned_account_id, proxy_config=proxy_config) as publisher:
+            result = await publisher.preview_category_recommendation(
+                title=cleaned_title,
+                description=str(request.description or ''),
+                images=images,
+                category_hint=str(request.category or '').strip() or None,
+            )
+        logger.info(
+            f"{user_prefix} 类目推荐预览: cookie_id={cleaned_account_id}, title={cleaned_title}, "
+            f"candidates={len(result.get('candidates') or [])}"
+        )
+        return {"success": True, **result}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"{user_prefix} 类目推荐预览失败: {mask_sensitive_text(exc)}")
+        return {
+            "success": False,
+            "message": f"类目推荐预览失败: {str(exc)}",
+            "candidates": [],
+        }
+
+
 @app.post("/product-publish")
 async def publish_product_json(
     request: ProductSinglePublishRequest,

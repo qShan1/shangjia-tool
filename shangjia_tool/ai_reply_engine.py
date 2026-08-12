@@ -753,8 +753,10 @@ class AIReplyEngine:
                 "2. 标题简洁有吸引力（不超过 30 字），描述分段清晰、自然口语化、突出卖点与交付说明。\n"
                 "3. 不虚构不夸大，如实描述。\n"
                 "4. 根据卖点给出更规范的类目建议；信息不足时类目留空字符串。\n"
+                "5. 结合商品类型给出合理的建议售价区间（数字，单位元）。\n"
                 "只输出一个 JSON 对象，不要输出任何其他内容，格式：\n"
-                '{"title": "生成的新标题", "description": "生成的新描述", "category": "建议类目"}'
+                '{"title": "生成的新标题", "description": "生成的新描述", "category": "建议类目", '
+                '"price_min": 建议最低价数字, "price_max": 建议最高价数字}'
             )
             user_prompt = (
                 f"## 关键词/卖点\n{keywords or title or '（未提供，请给出通用模板）'}\n\n"
@@ -780,7 +782,7 @@ class AIReplyEngine:
                 "请按系统要求输出优化后的 JSON。"
             )
 
-        reply = self._chat_once(settings, system_prompt, user_prompt, max_tokens=700, temperature=0.5)
+        reply = self._chat_once(settings, system_prompt, user_prompt, max_tokens=800, temperature=0.5)
         if not reply:
             return None
         try:
@@ -794,6 +796,21 @@ class AIReplyEngine:
                 'description': str(data.get('description') or '').strip() or description,
                 'category': str(data.get('category') or '').strip() or category,
             }
+            if mode == 'generate':
+                price_min = data.get('price_min')
+                price_max = data.get('price_max')
+                try:
+                    price_min_value = float(price_min) if price_min is not None and str(price_min).strip() != '' else None
+                except (TypeError, ValueError):
+                    price_min_value = None
+                try:
+                    price_max_value = float(price_max) if price_max is not None and str(price_max).strip() != '' else None
+                except (TypeError, ValueError):
+                    price_max_value = None
+                if price_min_value is not None and price_min_value > 0:
+                    result['price_min'] = price_min_value
+                if price_max_value is not None and price_max_value > 0:
+                    result['price_max'] = price_max_value
             return result
         except Exception as e:
             logger.error(f"解析 AI 文案处理结果失败: {e}")
