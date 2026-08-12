@@ -1244,6 +1244,12 @@
                 </button>
               </div>
               <div class="card-body">
+                <div class="btn-group btn-group-sm mb-2 w-100" role="group" aria-label="发布记录筛选">
+                  <button type="button" class="btn btn-outline-secondary publish-log-filter active" data-filter="" onclick="setPublishLogFilter('')">全部</button>
+                  <button type="button" class="btn btn-outline-success publish-log-filter" data-filter="success" onclick="setPublishLogFilter('success')">成功</button>
+                  <button type="button" class="btn btn-outline-danger publish-log-filter" data-filter="failed" onclick="setPublishLogFilter('failed')">失败</button>
+                  <button type="button" class="btn btn-outline-primary publish-log-filter" data-filter="publishing" onclick="setPublishLogFilter('publishing')">发布中</button>
+                </div>
                 <div id="publishLogList" class="item-publish-side-list">
                   <div class="item-publish-preview-empty">暂无发布记录</div>
                 </div>

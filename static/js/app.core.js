@@ -49,6 +49,7 @@ let itemPublishLoadedMaterialId = null;
 let itemPublishLoadedMaterialImages = [];
 let itemPublishMaterials = [];
 let itemPublishLogs = [];
+let itemPublishLogFilter = '';
 
 // 订单列表搜索和分页相关变量
 let allOrdersData = []; // 存储所有订单数据

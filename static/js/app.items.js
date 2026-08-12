@@ -916,13 +916,41 @@ async function loadItemPublishLogs() {
     }
     container.innerHTML = '<div class="text-muted small">正在加载发布记录...</div>';
     try {
-        const data = await requestItemPublishJson('/publish-logs?page=1&page_size=10');
+        const filter = itemPublishLogFilter || '';
+        const query = filter ? `/publish-logs?page=1&page_size=20&status=${encodeURIComponent(filter)}` : '/publish-logs?page=1&page_size=20';
+        const data = await requestItemPublishJson(query);
         itemPublishLogs = data.list || [];
         renderItemPublishLogs();
     } catch (error) {
         console.error('加载发布记录失败:', error);
         container.innerHTML = '<div class="item-publish-preview-empty">加载发布记录失败</div>';
     }
+}
+
+function setPublishLogFilter(filter) {
+    itemPublishLogFilter = filter || '';
+    document.querySelectorAll('.publish-log-filter').forEach(btn => {
+        const isActive = (btn.getAttribute('data-filter') || '') === itemPublishLogFilter;
+        btn.classList.toggle('active', isActive);
+    });
+    loadItemPublishLogs();
+}
+
+function getPublishFailureSummary(log) {
+    const messages = [];
+    if (log.error_message) messages.push(log.error_message);
+    if (log.sync_message && log.sync_message !== log.error_message) messages.push(log.sync_message);
+    const raw = log.raw_response;
+    if (raw && typeof raw === 'object') {
+        const retValues = Array.isArray(raw.ret) ? raw.ret : [];
+        if (retValues.length) {
+            retValues.forEach(item => {
+                if (String(item).startsWith('FAIL::')) messages.push(`平台错误码：${String(item).replace('FAIL::', '')}`);
+            });
+        }
+        if (!messages.length && raw.detail) messages.push(String(raw.detail));
+    }
+    return messages.filter(Boolean).join('；');
 }
 
 function renderItemPublishLogs() {
@@ -940,7 +968,9 @@ function renderItemPublishLogs() {
         const itemLink = log.item_url
             ? `<a href="${escapeHtml(log.item_url)}" target="_blank" rel="noopener">查看商品</a>`
             : (log.item_id ? `商品ID: ${escapeHtml(log.item_id)}` : '暂无商品链接');
-        const detail = log.error_message || log.sync_message || '';
+        const failureSummary = getPublishFailureSummary(log);
+        const canRetry = log.material_id && log.status === 'failed';
+        const canLoad = Boolean(log.material_id);
         return `
             <div class="item-publish-log-item">
                 <div class="d-flex justify-content-between align-items-start gap-2">
@@ -949,10 +979,57 @@ function renderItemPublishLogs() {
                 </div>
                 <div class="item-publish-side-meta">账号 ${escapeHtml(log.account_id || '-')} · ${escapeHtml(timeText || '-')}</div>
                 <div class="item-publish-side-meta">${itemLink}</div>
-                ${detail ? `<div class="item-publish-log-detail" title="${escapeHtml(detail)}">${escapeHtml(detail)}</div>` : ''}
+                ${failureSummary ? `<div class="item-publish-log-detail" title="${escapeHtml(failureSummary)}">${escapeHtml(failureSummary)}</div>` : ''}
+                <div class="item-publish-side-actions">
+                    ${canLoad ? `<button type="button" class="btn btn-sm btn-outline-primary" onclick="loadPublishLogMaterial(${log.material_id})"><i class="bi bi-arrow-return-left me-1"></i>载入素材编辑</button>` : ''}
+                    ${canRetry ? `<button type="button" class="btn btn-sm btn-outline-danger" onclick="retryPublishLog(${log.material_id}, '${escapeHtml(log.account_id || '')}')"><i class="bi bi-arrow-repeat me-1"></i>重试发布</button>` : ''}
+                </div>
             </div>
         `;
     }).join('');
+}
+
+async function loadPublishLogMaterial(materialId) {
+    try {
+        await loadItemPublishMaterials();
+        if (!itemPublishMaterials.length) {
+            showToast('未找到可载入的素材', 'warning');
+            return;
+        }
+        const found = itemPublishMaterials.find(m => Number(m.id) === Number(materialId));
+        if (found) {
+            loadItemPublishMaterialToForm(materialId);
+            showToast('已载入素材，可编辑后重新发布', 'info');
+        } else {
+            showToast('素材不存在或已被删除，无法载入', 'warning');
+        }
+    } catch (error) {
+        console.error('载入发布素材失败:', error);
+        showToast(error.message || '载入发布素材失败', 'danger');
+    }
+}
+
+async function retryPublishLog(materialId, accountId) {
+    try {
+        await loadItemPublishMaterials();
+        const found = itemPublishMaterials.find(m => Number(m.id) === Number(materialId));
+        if (!found) {
+            showToast('素材不存在或已被删除，无法重试', 'warning');
+            return;
+        }
+        const accountSelect = document.getElementById('publishCookieId');
+        if (accountId && accountSelect) {
+            const hasOption = Array.from(accountSelect.options).some(o => o.value === accountId);
+            if (hasOption) accountSelect.value = accountId;
+        }
+        loadItemPublishMaterialToForm(materialId);
+        showToast('已载入失败素材，请复核后重新发布', 'info');
+        const form = document.getElementById('itemPublishForm');
+        if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+        console.error('重试发布失败:', error);
+        showToast(error.message || '重试发布失败', 'danger');
+    }
 }
 
 async function precheckItemPublishForm() {
