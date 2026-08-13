@@ -286,6 +286,20 @@
   overflow: hidden;
 }
 
+/* 内层子卡片视觉轻量化：避免玻璃套玻璃、hover 各自浮起显得杂乱 */
+#ai-settings-section .ai-section-card {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(118, 118, 128, 0.12);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+#ai-settings-section .ai-section-card:hover {
+  border-color: rgba(118, 118, 128, 0.22);
+  box-shadow: none;
+  transform: none;
+}
+
 #ai-settings-section .ai-reply-header {
   display: flex;
   align-items: flex-start;
@@ -369,10 +383,10 @@
   font-size: 0.68rem;
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  border: 1px solid color-mix(in srgb, var(--text-color) 35%, transparent);
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--text-color);
 }
 
 #ai-settings-section .ai-basic-card .card-body {

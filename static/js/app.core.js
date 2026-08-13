@@ -86,7 +86,8 @@ function getOrderSortValue(order, key) {
 
 function initGlassPointerTilt() {
     if (window.matchMedia('(prefers-reduced-motion: reduce), (pointer: coarse)').matches) return;
-    const selector = '.content-section .card, #dashboard-section .card';
+    // 排除订单卡片：其含大表格 + backdrop-filter，鼠标每帧改写 transform 会触发整卡持续重绘闪烁
+    const selector = '.content-section .card:not(#orders-section .card), #dashboard-section .card';
     let activeSurface = null;
 
     const resetSurface = (surface) => {

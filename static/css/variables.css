@@ -521,31 +521,40 @@
     color: var(--text-color);
   }
 
-  /* 暗色模式下的全局滚动条 */
+  /* 暗色模式下的全局滚动条（含页面主滚动条，data-theme 在 <html> 自身需自匹配前缀） */
   [data-theme="dark"] {
     scrollbar-color: #475569 #1e293b;
   }
+  :root {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(118, 118, 128, 0.38) transparent;
+  }
 
-  [data-theme="dark"] ::-webkit-scrollbar {
+  [data-theme="dark"]::-webkit-scrollbar,
+  [data-theme="dark"] *::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
 
-  [data-theme="dark"] ::-webkit-scrollbar-track {
+  [data-theme="dark"]::-webkit-scrollbar-track,
+  [data-theme="dark"] *::-webkit-scrollbar-track {
     background: #1e293b;
     border-radius: 4px;
   }
 
-  [data-theme="dark"] ::-webkit-scrollbar-thumb {
+  [data-theme="dark"]::-webkit-scrollbar-thumb,
+  [data-theme="dark"] *::-webkit-scrollbar-thumb {
     background: #475569;
     border-radius: 4px;
   }
 
-  [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  [data-theme="dark"]::-webkit-scrollbar-thumb:hover,
+  [data-theme="dark"] *::-webkit-scrollbar-thumb:hover {
     background: #64748b;
   }
 
-  [data-theme="dark"] ::-webkit-scrollbar-corner {
+  [data-theme="dark"]::-webkit-scrollbar-corner,
+  [data-theme="dark"] *::-webkit-scrollbar-corner {
     background: #1e293b;
   }
 
@@ -561,12 +570,12 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(118, 118, 128, 0.30);
+    background: rgba(118, 118, 128, 0.38);
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(118, 118, 128, 0.45);
+    background: rgba(118, 118, 128, 0.52);
   }
 
   ::-webkit-scrollbar-corner {

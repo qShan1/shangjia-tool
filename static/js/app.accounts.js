@@ -1928,6 +1928,8 @@ async function loadAISettingsPage() {
         if (current && [...select.options].some(o => o.value === current)) {
             select.value = current;
         }
+        // 侧边栏进入时也加载预设列表，避免启用后预设下拉为空
+        try { await loadAIPresets(); } catch (e) { console.warn('加载AI预设失败:', e); }
     } catch (error) {
         console.error('加载AI设置页面失败:', error);
     }
@@ -1935,6 +1937,10 @@ async function loadAISettingsPage() {
 
 async function configAIReply(accountId) {
     try {
+    // 空账号（清空下拉）直接返回，避免请求无效路径
+    if (!accountId) {
+        return;
+    }
     // 确保账号下拉已加载（从账号行按钮进入时页面可能尚未加载过）
     const accountIdSelect = document.getElementById('aiConfigAccountIdSelect');
     if (accountIdSelect && accountIdSelect.options.length <= 1) {
@@ -2070,6 +2076,11 @@ async function saveAIReplyConfig() {
     const accountId = document.getElementById('aiConfigAccountId').value;
     const enabled = document.getElementById('aiReplyEnabled').checked;
 
+    // 未选择账号时提示，避免提交到无效路径
+    if (!accountId) {
+        showToast('请先选择要配置的账号', 'warning');
+        return;
+    }
     // 如果启用AI回复，验证必填字段
     if (enabled) {
         const apiKey = document.getElementById('aiApiKey').value.trim();

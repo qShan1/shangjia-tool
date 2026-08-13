@@ -8518,6 +8518,16 @@ async def _fallback_save_qr_cookie(account_id: str, cookies: str, user_id: int, 
                 cookie_manager.manager.update_cookie(account_id, cookies, save_to_db=False)
                 log_with_user('info', f"降级处理 - 已更新cookie_manager中的原始cookie: {account_id}", current_user)
 
+        # 与主链路一致：扫码拿到全新 cookie 后清除旧的"风控保护/滑块验证失败"禁用标记并重新启用账号，
+        # 否则降级路径下账号仍停留在风控禁用状态，用户看到"扫码成功但风控保护自动恢复已停止"。
+        try:
+            db_manager.update_cookie_status_note(account_id, '')
+            db_manager.save_cookie_status(account_id, True)
+            if hasattr(cookie_manager, 'manager') and cookie_manager.manager:
+                cookie_manager.manager.cookie_status[account_id] = True
+        except Exception as status_e:
+            logger.warning(f"降级处理清除风控禁用状态失败: {status_e}")
+
         return {
             'account_id': account_id,
             'is_new_account': is_new_account,
@@ -8612,6 +8622,16 @@ async def refresh_cookies_from_qr_login(
                     # refresh_cookies_from_qr_login 已经保存到数据库了，这里不需要再保存
                     cookie_manager.manager.update_cookie(cookie_id, updated_cookie_info['cookies_str'], save_to_db=False)
                     log_with_user('info', f"已更新cookie_manager中的cookie: {cookie_id}", current_user)
+
+            # 扫码拿到全新 cookie 后清除旧的"风控保护/滑块验证失败"禁用标记并重新启用账号，
+            # 与 process_qr_login_cookies 主链路保持一致。
+            try:
+                db_manager.update_cookie_status_note(cookie_id, '')
+                db_manager.save_cookie_status(cookie_id, True)
+                if hasattr(cookie_manager, 'manager') and cookie_manager.manager:
+                    cookie_manager.manager.cookie_status[cookie_id] = True
+            except Exception as status_e:
+                logger.warning(f"扫码刷新清除风控禁用状态失败: {status_e}")
 
             return {
                 'success': True,

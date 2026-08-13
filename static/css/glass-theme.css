@@ -149,7 +149,7 @@ textarea {
 }
 
 .sidebar-nav::-webkit-scrollbar-thumb {
-  background: rgba(60, 60, 67, 0.2);
+  background: color-mix(in srgb, var(--ui-ink) 25%, transparent);
 }
 
 .nav-item {
@@ -297,12 +297,12 @@ textarea {
   justify-content: center;
 }
 
-/* 折叠状态：隐藏菜单文字，只显示图标（用 opacity+width 平滑过渡，避免 display:none 硬切造成“卡一下”） */
+/* 折叠状态：隐藏菜单文字，只显示图标（用 opacity+max-width 平滑过渡，避免 display:none 硬切造成“卡一下”） */
 .sidebar.collapsed .nav-link span,
 .sidebar.collapsed .sidebar-collapse-btn span {
   opacity: 0;
   visibility: hidden;
-  width: 0;
+  max-width: 0;
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -311,7 +311,7 @@ textarea {
 }
 .sidebar .nav-link span,
 .sidebar .sidebar-collapse-btn span {
-  transition: opacity 180ms ease, width 180ms ease, margin 180ms ease;
+  transition: opacity 160ms ease, max-width 220ms ease, visibility 0s 220ms;
 }
 .sidebar.collapsed .nav-divider {
   opacity: 0;
@@ -371,13 +371,13 @@ textarea {
 .sidebar.collapsed .sidebar-brand-text {
   opacity: 0;
   visibility: hidden;
-  width: 0;
+  max-width: 0;
   overflow: hidden;
   white-space: nowrap;
-  transition: opacity 180ms ease, width 180ms ease;
+  transition: opacity 160ms ease 220ms, max-width 220ms ease, visibility 0s 220ms;
 }
 .sidebar .sidebar-brand-text {
-  transition: opacity 180ms ease, width 180ms ease;
+  transition: opacity 160ms ease, max-width 220ms ease, visibility 0s 220ms;
 }
 
 .sidebar.collapsed .dark-mode-toggle {
@@ -680,8 +680,8 @@ body.sidebar-collapsed .main-content {
 }
 .card-body .table-responsive::-webkit-scrollbar,
 .table-responsive::-webkit-scrollbar {
-  height: 10px;
-  width: 10px;
+  height: 8px;
+  width: 8px;
 }
 .card-body .table-responsive::-webkit-scrollbar-track,
 .table-responsive::-webkit-scrollbar-track {
@@ -1444,15 +1444,24 @@ body {
 
 .sidebar.collapsed {
   width: var(--sidebar-closed-width) !important;
+  /* 收起时文字先淡出(140ms)，侧边栏延迟 150ms 再收窄 */
+  transition: width 200ms ease 150ms, box-shadow 200ms ease 150ms !important;
 }
 
 body.sidebar-collapsed .main-content {
   margin-left: var(--sidebar-closed-width) !important;
+  transition: margin-left 200ms ease 150ms !important;
 }
 
 .sidebar::after,
 .content-section .card::before {
   animation: none !important;
+}
+
+/* 订单等含大表格的卡片 hover 时不再淡入高光层，避免与表格重绘叠加闪烁 */
+.content-section .card:hover::before {
+  opacity: 0 !important;
+  transition: none !important;
 }
 
 .sidebar-header,
@@ -2399,14 +2408,23 @@ html.has-custom-background body {
   animation: lg-fade-up 0.5s ease both;
 }
 
-/* 侧边栏折叠：隐藏文字淡出、图标保持 */
-.sidebar .sidebar-nav .nav-link span,
-.sidebar .sidebar-nav .nav-link i {
-  transition: opacity 140ms ease;
+/* 侧边栏折叠：文字先淡出再收拢（收起），先展开再淡入（展开），用 max-width 可插值 + transition-delay 错峰 */
+.sidebar .sidebar-nav .nav-link span {
+  max-width: 160px;
+  transition:
+    opacity 160ms ease 220ms,
+    max-width 220ms ease,
+    visibility 0s 220ms;
 }
 .sidebar.collapsed .sidebar-nav .nav-link span {
   opacity: 0;
+  max-width: 0;
+  visibility: hidden;
   pointer-events: none;
+  transition:
+    opacity 140ms ease,
+    max-width 200ms ease,
+    visibility 0s 140ms;
 }
 
 /* 管理员菜单显示淡入 */
@@ -2476,7 +2494,8 @@ html.has-custom-background body {
 }
 
 /* ============ 滚动条稳定性与横向滚动 ============ */
-/* 预留滚动条槽位，避免内容不足/充足切换时滚动条闪现抖动 */
+/* 预留滚动条槽位，避免内容不足/充足切换时滚动条闪现抖动。
+   注意：.table-responsive 只有横向滚动（overflow-x），加入 gutter 会在右侧留永久空槽造成错位，故不加入。 */
 .report-list,
 .keywords-list,
 .table-container,
@@ -2484,7 +2503,6 @@ html.has-custom-background body {
 .sidebar-nav,
 .dropdown-menu,
 .modal-body,
-.table-responsive,
 [class*="-list"][style*="overflow"] {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
