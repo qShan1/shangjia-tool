@@ -86,3 +86,7 @@
 - 真正业务源码在 `E:\AXianYu\shangjia-tool`；`E:\Agent\OpenCode\XianyyuShangjia` 只是 opencode 技能配置目录（grill-me/grilling），不要混淆。
 - 每次大改动要刷新本文件，避免再次"找不到代码在哪"。
 - Windows PowerShell 中 `2>/dev/null`、`ls -la` 会报错，用 `Get-ChildItem` / `git -C <path>`。
+
+## 2026-08-13 弹窗路径研究（未改源码）
+- `desktop_launcher.py` 当前关闭、桌面更新确认、信息和错误提示均使用 Win32 `MessageBoxW`；历史 `TaskDialogIndirect` 已在 `6ed6951` 移除。
+- 管理台已有 Bootstrap `uiAlert/uiConfirm`，但桌面启动器的 Python 线程不会自动使用它；pywebview 已配置 `js_api=_DesktopApi()`，可作为后续 HTML modal/JS bridge 方案基础。

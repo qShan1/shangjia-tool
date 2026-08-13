@@ -384,6 +384,7 @@ body.sidebar-collapsed .main-content {
 
 #online-im-section .content-body {
   flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -411,6 +412,7 @@ body.sidebar-collapsed .main-content {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+  scrollbar-gutter: stable;
 }
 
 .chat-account-list {
@@ -734,6 +736,7 @@ body.sidebar-collapsed .main-content {
   overflow-y: auto;
   padding: 16px;
   min-height: 0;
+  scrollbar-gutter: stable;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--primary-color) 4%, var(--bg-color)), var(--bg-color));
 }
@@ -765,6 +768,8 @@ body.sidebar-collapsed .main-content {
 .chat-reply-body {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
+  scrollbar-gutter: stable;
 }
 
 .kw-row {

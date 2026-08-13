@@ -24,6 +24,8 @@ _SERVICE_PROCESS = None
 _EXIT_REQUESTED = False
 _TRAY_ICON = None
 _WINDOW = None
+_DIALOG_EVENT = None
+_DIALOG_RESULT = None
 # 更新清单：从 GitHub 仓库 raw 文件读取，raw 直链不受 API 限流（避免 GitHub API 403 rate limit）。
 UPDATE_MANIFEST_URL = os.environ.get(
     "SHANGJIA_UPDATE_MANIFEST_URL",
@@ -128,6 +130,19 @@ class _DesktopApi:
 
     def set_autostart(self, enabled):
         return set_autostart_enabled(bool(enabled))
+
+    def resolve_desktop_dialog(self, result):
+        """接收网页弹窗的选择，供关闭/更新后台线程继续执行。"""
+        global _DIALOG_RESULT, _DIALOG_EVENT
+        _DIALOG_RESULT = str(result or "")
+        if _DIALOG_EVENT is not None:
+            _DIALOG_EVENT.set()
+        elif _WINDOW is not None:
+            if _DIALOG_RESULT == "tray":
+                minimize_to_tray(_WINDOW)
+            elif _DIALOG_RESULT == "exit":
+                request_exit(_WINDOW)
+        return {"success": True}
 
 
 def _version_key(value):
@@ -292,7 +307,9 @@ def _auto_check_updates_background():
         if update.get("force"):
             # 强制更新：不询问，直接下载安装并重启，避免旧版本继续运行造成数据/接口不兼容。
             # 安装脚本会 Wait-Process 等待本进程退出后替换 exe，因此下载完成后必须退出进程。
-            show_info(f"检测到新版本 {update['tag']}，正在自动更新...\n\n更新将安装到当前目录并自动重启，现有数据不会丢失。")
+            notice = f"检测到新版本 {update['tag']}，正在自动更新...\n\n更新将安装到当前目录并自动重启，现有数据不会丢失。"
+            if not _show_web_notice("软件更新", notice):
+                show_info(notice)
             try:
                 schedule_desktop_update(update)
             except Exception as error:
@@ -539,11 +556,14 @@ def _check_update_from_tray(window=None):
             if not update:
                 show_info("当前已是最新版本，无需更新。")
                 return
-            if not show_question(
+            message = (
                 f"发现新版本 {update['tag']}。\n\n"
-                "点击「是」将自动下载并安装到当前安装目录，"
-                "安装完成后会自动关闭窗口并重新启动软件。现有数据不会丢失。"
-            ):
+                "立即下载并安装到当前目录？安装完成后会自动重启，现有数据不会丢失。"
+            )
+            decision = _ask_web_question(message)
+            if decision is None:
+                decision = show_question(message)
+            if not decision:
                 return
             schedule_desktop_update(update)
             request_exit(window)
@@ -631,6 +651,98 @@ def desktop_remember_close_choice():
     return desktop_settings().get("remember_close_choice", False) is not False
 
 
+def _desktop_dialog_script(title, message, buttons):
+    payload = json.dumps({"title": title, "message": message, "buttons": buttons}, ensure_ascii=False)
+    return f"""(() => {{
+        const data = {payload};
+        document.getElementById('__desktopDialog')?.remove();
+        const root = document.createElement('div');
+        root.id = '__desktopDialog';
+        root.innerHTML = `<div class=\"desktop-dialog-backdrop\"><div class=\"desktop-dialog-card\" role=\"dialog\" aria-modal=\"true\"><div class=\"desktop-dialog-mark\">上架</div><h3></h3><p></p><div class=\"desktop-dialog-actions\"></div></div></div>`;
+        const card = root.querySelector('.desktop-dialog-card');
+        card.querySelector('h3').textContent = data.title;
+        card.querySelector('p').textContent = data.message;
+        const actions = card.querySelector('.desktop-dialog-actions');
+        data.buttons.forEach(item => {{
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = item.label;
+            button.className = item.primary ? 'desktop-dialog-primary' : 'desktop-dialog-secondary';
+            button.onclick = () => {{
+                window.pywebview?.api?.resolve_desktop_dialog(item.value);
+                root.remove();
+            }};
+            actions.appendChild(button);
+        }});
+        document.body.appendChild(root);
+        card.querySelector('button')?.focus();
+    }})()"""
+
+
+def _show_web_close_prompt(window):
+    if window is None:
+        return False
+    try:
+        window.evaluate_js(_desktop_dialog_script(
+            "关闭上架工具",
+            "请选择关闭后的操作。最小化会继续在右下角托盘运行，退出会完全停止本地服务。",
+            [
+                {"value": "tray", "label": "最小化到托盘", "primary": True},
+                {"value": "exit", "label": "退出软件", "primary": False},
+            ],
+        ))
+        return True
+    except Exception as error:
+        with desktop_log_path().open("a", encoding="utf-8") as output:
+            output.write(f"Web close dialog failed: {error}\n")
+        return False
+
+
+def _ask_web_question(message):
+    global _DIALOG_EVENT, _DIALOG_RESULT
+    if _WINDOW is None:
+        return None
+    event = threading.Event()
+    _DIALOG_EVENT = event
+    _DIALOG_RESULT = None
+    try:
+        _WINDOW.evaluate_js(_desktop_dialog_script(
+            "软件更新",
+            message,
+            [
+                {"value": "yes", "label": "立即更新", "primary": True},
+                {"value": "no", "label": "暂不更新", "primary": False},
+            ],
+        ))
+        event.wait(120)
+        return _DIALOG_RESULT == "yes"
+    except Exception:
+        return None
+    finally:
+        _DIALOG_EVENT = None
+
+
+def _show_web_notice(title, message):
+    global _DIALOG_EVENT, _DIALOG_RESULT
+    if _WINDOW is None:
+        return False
+    event = threading.Event()
+    _DIALOG_EVENT = event
+    _DIALOG_RESULT = None
+    try:
+        _WINDOW.evaluate_js(_desktop_dialog_script(
+            title,
+            message,
+            [{"value": "ok", "label": "知道了", "primary": True}],
+        ))
+        event.wait(60)
+        return True
+    except Exception:
+        return False
+    finally:
+        _DIALOG_EVENT = None
+
+
 def _prompt_close_choice():
     """弹出选择提示：最小化到托盘 / 直接退出。
     返回 (choice, remember)；choice 为 'tray' 或 'exit'，remember 恒为 False。
@@ -666,7 +778,9 @@ def allow_window_close():
     if behavior == "tray":
         minimize_to_tray(_WINDOW)
         return False
-    # prompt：弹出选择提示（带“记住选择”），首次无记忆时始终弹窗。
+    # prompt：使用当前页面的玻璃弹窗，避免原生 MessageBox 与应用视觉割裂。
+    if _show_web_close_prompt(_WINDOW):
+        return False
     choice, remember = _prompt_close_choice()
     if remember:
         try:
@@ -703,6 +817,20 @@ def health_url():
 def healthy():
     try:
         with urllib.request.urlopen(health_url(), timeout=2) as response:
+            if response.status != 200:
+                return False
+            payload = json.loads(response.read().decode("utf-8"))
+            return payload.get("status") == "healthy"
+    except Exception:
+        return False
+
+
+def service_ready():
+    """确认健康接口和管理台页面都由当前服务正常提供，避免首屏短暂 403。"""
+    if not healthy():
+        return False
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{PORT}/admin", timeout=2) as response:
             return response.status == 200
     except Exception:
         return False
@@ -735,7 +863,7 @@ def main():
     if not acquire_single_instance():
         # 已有实例在运行：若服务尚未就绪则稍等，随后直接打开管理台，避免误报“已在启动”。
         for _ in range(40):
-            if healthy():
+            if service_ready():
                 webbrowser.open(f"http://127.0.0.1:{PORT}/admin")
                 return
             time.sleep(0.75)
@@ -796,7 +924,7 @@ def main():
 
         def _wait_service_and_load():
             for _ in range(40):
-                if healthy():
+                if service_ready():
                     try:
                         window.load_url(f"http://127.0.0.1:{PORT}/admin")
                     except Exception as error:

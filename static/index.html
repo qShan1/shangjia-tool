@@ -190,6 +190,21 @@
       60%  { transform: translateX(220%); }
       100% { transform: translateX(220%); }
     }
+    /* 桌面关闭/更新确认：由 pywebview 注入，复用应用玻璃视觉 */
+    #__desktopDialog { position: fixed; inset: 0; z-index: 10000; }
+    .desktop-dialog-backdrop { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(15, 23, 42, .38); backdrop-filter: blur(8px); }
+    .desktop-dialog-card { width: min(420px, 100%); padding: 26px; border: 1px solid rgba(255,255,255,.65); border-radius: 22px; background: color-mix(in srgb, var(--card-bg, #fff) 94%, transparent); box-shadow: 0 24px 70px rgba(15,23,42,.24), inset 0 1px rgba(255,255,255,.85); color: var(--text-color, #1f2937); animation: desktop-dialog-in .2s ease-out both; }
+    .desktop-dialog-mark { width: 42px; height: 42px; display: grid; place-items: center; margin-bottom: 16px; border-radius: 14px; background: color-mix(in srgb, var(--primary-color, #0a7c66) 14%, transparent); color: var(--primary-color, #0a7c66); font-size: 12px; font-weight: 800; }
+    .desktop-dialog-card h3 { margin: 0 0 10px; font-size: 18px; }
+    .desktop-dialog-card p { margin: 0; white-space: pre-line; line-height: 1.7; color: var(--text-secondary, #64748b); font-size: 14px; }
+    .desktop-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+    .desktop-dialog-actions button { border: 0; border-radius: 11px; padding: 9px 16px; cursor: pointer; font: inherit; }
+    .desktop-dialog-primary { background: var(--primary-color, #0a7c66); color: #fff; }
+    .desktop-dialog-secondary { background: rgba(118,118,128,.12); color: var(--text-color, #1f2937); }
+    @keyframes desktop-dialog-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    html[data-theme="dark"] .desktop-dialog-card { border-color: rgba(255,255,255,.18); background: rgba(30,41,59,.96); color: #e2e8f0; }
+    html[data-theme="dark"] .desktop-dialog-card p { color: #94a3b8; }
+    html[data-theme="dark"] .desktop-dialog-secondary { background: rgba(255,255,255,.1); color: #e2e8f0; }
   </style>
 </head>
 <body>
@@ -3667,7 +3682,7 @@
         </h2>
         <p class="text-muted mb-0">直连闲鱼IM会话，支持实时收发、历史分页与商品回复联动</p>
       </div>
-      <div class="content-body p-0" style="flex: 1; overflow: hidden;">
+      <div class="content-body p-0">
         <div class="d-flex h-100" id="chatContainer">
           <div class="chat-account-list" id="chatAccountList">
             <div class="chat-panel-header">
