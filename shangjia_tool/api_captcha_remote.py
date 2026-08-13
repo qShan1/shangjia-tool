@@ -3,7 +3,7 @@
 提供 WebSocket 和 HTTP 接口用于远程操作滑块验证
 """
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Request
 from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
@@ -17,6 +17,39 @@ from utils.captcha_remote_control import captcha_controller
 
 # 创建路由器
 router = APIRouter(prefix="/api/captcha", tags=["captcha"])
+
+# =============================================================================
+# 远程控制认证 token
+# =============================================================================
+# 优先从环境变量 CAPTCHA_REMOTE_TOKEN 读取；未设置时尝试从配置文件读取；
+# 均未配置时跳过校验（本机自用），为后续手机远程调用铺路。
+_CAPTCHA_REMOTE_TOKEN_ENV = "CAPTCHA_REMOTE_TOKEN"
+_CAPTCHA_REMOTE_TOKEN_FILE = "config/captcha_remote_token.txt"
+
+
+def _get_captcha_remote_token() -> str:
+    """获取远程控制认证 token，未配置则返回空字符串"""
+    token = os.environ.get(_CAPTCHA_REMOTE_TOKEN_ENV, "").strip()
+    if token:
+        return token
+    token_file = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), _CAPTCHA_REMOTE_TOKEN_FILE
+    )
+    try:
+        with open(token_file, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except Exception:
+        return ""
+
+
+def _require_remote_token(request: Request) -> None:
+    """校验请求 token（支持请求头 token 或 query 参数 token）；未配置 token 时跳过校验。"""
+    configured = _get_captcha_remote_token()
+    if not configured:
+        return
+    token = request.headers.get("token") or request.query_params.get("token")
+    if token != configured:
+        raise HTTPException(status_code=401, detail="无效的 token")
 
 
 def _safe_json_for_inline_script(value: str) -> str:
@@ -122,6 +155,11 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """
     WebSocket 连接用于实时传输截图和接收鼠标事件
     """
+    # token 校验（从 query string 获取）；未配置 token 时跳过校验
+    configured = _get_captcha_remote_token()
+    if configured and websocket.query_params.get("token") != configured:
+        await websocket.close(code=4401, reason="无效的 token")
+        return
     await websocket.accept()
     logger.info(f"🔌 WebSocket 连接建立: {session_id}")
     
@@ -276,8 +314,9 @@ async def get_session_info(session_id: str):
 
 
 @router.get("/screenshot/{session_id}")
-async def get_screenshot(session_id: str):
+async def get_screenshot(request: Request, session_id: str):
     """获取最新截图"""
+    _require_remote_token(request)
     screenshot = await captcha_controller.update_screenshot(session_id)
     
     if not screenshot:
@@ -287,8 +326,9 @@ async def get_screenshot(session_id: str):
 
 
 @router.post("/mouse_event")
-async def handle_mouse_event(event: MouseEvent):
+async def handle_mouse_event(request: Request, event: MouseEvent):
     """处理鼠标事件（HTTP方式，不推荐，建议使用WebSocket）"""
+    _require_remote_token(request)
     success = await captcha_controller.handle_mouse_event(
         event.session_id,
         event.event_type,
@@ -309,12 +349,13 @@ async def handle_mouse_event(event: MouseEvent):
 
 
 @router.post("/check_completion")
-async def check_completion(request: SessionCheckRequest):
+async def check_completion(request: Request, body: SessionCheckRequest):
     """检查验证是否完成"""
+    _require_remote_token(request)
     completed = await captcha_controller.check_completion(request.session_id)
-    
+
     return {
-        'session_id': request.session_id,
+        'session_id': body.session_id,
         'completed': completed
     }
 
@@ -358,8 +399,9 @@ async def get_captcha_status(session_id: str):
 
 
 @router.get("/control", response_class=HTMLResponse)
-async def captcha_control_page():
+async def captcha_control_page(request: Request):
     """返回滑块控制页面"""
+    _require_remote_token(request)
     html_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'captcha_control.html')
     
     if os.path.exists(html_file):
@@ -382,8 +424,9 @@ async def captcha_control_page():
 
 
 @router.get("/control/{session_id}", response_class=HTMLResponse)
-async def captcha_control_page_with_session(session_id: str):
+async def captcha_control_page_with_session(request: Request, session_id: str):
     """返回带会话ID的滑块控制页面"""
+    _require_remote_token(request)
     html_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'captcha_control.html')
     
     if os.path.exists(html_file):

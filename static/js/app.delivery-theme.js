@@ -344,12 +344,12 @@ async function editCard(cardId) {
         }
 
         // 显示对应的字段
-        toggleEditCardTypeFields();
+        toggleCardTypeFields('edit');
 
         // 使用延迟调用确保DOM更新完成后再显示多规格字段
         setTimeout(() => {
-        console.log('延迟调用 toggleEditMultiSpecFields');
-        toggleEditMultiSpecFields();
+        console.log('延迟调用 toggleMultiSpecFields');
+        toggleMultiSpecFields('edit');
 
         // 验证多规格字段是否正确显示
         const multiSpecElement = document.getElementById('editMultiSpecFields');
@@ -368,43 +368,6 @@ async function editCard(cardId) {
     } catch (error) {
     console.error('获取卡券详情失败:', error);
     showToast('获取卡券详情失败', 'danger');
-    }
-}
-
-// 切换编辑卡券类型字段显示
-function toggleEditCardTypeFields() {
-    const cardType = document.getElementById('editCardType').value;
-
-    document.getElementById('editApiFields').style.display = cardType === 'api' ? 'block' : 'none';
-    document.getElementById('editYifanApiFields').style.display = cardType === 'yifan_api' ? 'block' : 'none';
-    document.getElementById('editTextFields').style.display = cardType === 'text' ? 'block' : 'none';
-    document.getElementById('editDataFields').style.display = cardType === 'data' ? 'block' : 'none';
-    document.getElementById('editImageFields').style.display = cardType === 'image' ? 'block' : 'none';
-
-    // 如果是API类型，初始化API方法监听
-    if (cardType === 'api') {
-        toggleEditApiParamsHelp();
-        // 添加API方法变化监听
-        const editApiMethodSelect = document.getElementById('editApiMethod');
-        if (editApiMethodSelect) {
-            editApiMethodSelect.removeEventListener('change', toggleEditApiParamsHelp);
-            editApiMethodSelect.addEventListener('change', toggleEditApiParamsHelp);
-        }
-    }
-}
-
-// 切换编辑API参数提示显示
-function toggleEditApiParamsHelp() {
-    const apiMethod = document.getElementById('editApiMethod').value;
-    const editPostParamsHelp = document.getElementById('editPostParamsHelp');
-
-    if (editPostParamsHelp) {
-        editPostParamsHelp.style.display = apiMethod === 'POST' ? 'block' : 'none';
-
-        // 如果显示参数提示，添加点击事件
-        if (apiMethod === 'POST') {
-            initParamClickHandlers('editApiParams', 'editPostParamsHelp');
-        }
     }
 }
 
@@ -1541,52 +1504,6 @@ document.addEventListener('DOMContentLoaded', function() {
         loadUserSettings();
     }
 });
-
-// ==================== 备份管理功能 ====================
-
-// 下载数据库备份
-async function downloadDatabaseBackup() {
-    try {
-    showToast('正在准备数据库备份，请稍候...', 'info');
-
-    const response = await fetch(`${apiBase}/admin/backup/download`, {
-        headers: {
-        'Authorization': `Bearer ${authToken}`
-        }
-    });
-
-    if (response.ok) {
-        // 获取文件名
-        const contentDisposition = response.headers.get('content-disposition');
-        let filename = 'xianyu_backup.db';
-        if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-        if (filenameMatch) {
-            filename = filenameMatch[1];
-        }
-        }
-
-        // 下载文件
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-
-        showToast(`数据库备份已开始下载：${filename}。默认保存到 Windows“下载”文件夹；若系统设置为每次询问，请在弹出的保存窗口选择位置。`, 'success');
-    } else {
-        const error = await response.text();
-        showToast(`下载失败: ${error}`, 'danger');
-    }
-    } catch (error) {
-    console.error('下载数据库备份失败:', error);
-    showToast('下载数据库备份失败', 'danger');
-    }
-}
 
 // 上传数据库备份
 async function uploadDatabaseBackup() {

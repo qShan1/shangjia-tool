@@ -2270,8 +2270,8 @@ function displayTableData(data, columns) {
 // HTML转义函数
 function escapeHtml(text) {
     const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    div.textContent = text == null ? '' : String(text);
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // 更新表格信息
@@ -3323,7 +3323,7 @@ async function downloadServerBackup(filename) {
 async function deleteServerBackup(filename, buttonEl) {
     if (!filename) return;
 
-    if (!confirm(`确定要删除服务器端备份「${filename}」吗？此操作不可恢复。`)) return;
+    if (!await uiConfirm(`确定要删除服务器端备份「${filename}」吗？此操作不可恢复。`)) return;
 
     const token = localStorage.getItem('auth_token');
 
@@ -3475,7 +3475,7 @@ function copyUploadUrl(url) {
 async function deleteUploadFile(fileName, buttonEl) {
     if (!fileName) return;
 
-    if (!confirm(`确定要删除文件「${fileName}」吗？此操作不可恢复。`)) return;
+    if (!await uiConfirm(`确定要删除文件「${fileName}」吗？此操作不可恢复。`)) return;
 
     const token = localStorage.getItem('auth_token');
 

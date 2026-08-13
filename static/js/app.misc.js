@@ -1186,29 +1186,6 @@ function stopCaptchaSessionMonitor() {
     }
 }
 
-// 手动测试会话监控（用于调试）
-async function testCaptchaSessionMonitor() {
-    try {
-        console.log('🧪 测试会话监控...');
-        const response = await fetch('/api/captcha/sessions');
-        const data = await response.json();
-        console.log('📊 API响应:', data);
-        return data;
-    } catch (error) {
-        console.error('❌ 测试失败:', error);
-        return null;
-    }
-}
-
-// 手动弹出验证窗口（用于调试）
-function testShowCaptchaModal(sessionId = 'default') {
-    console.log(`🧪 手动弹出验证窗口: ${sessionId}`);
-    showCaptchaVerificationModal(sessionId);
-}
-
-// 暴露到全局，方便调试和使用
-window.testCaptchaSessionMonitor = testCaptchaSessionMonitor;
-window.testShowCaptchaModal = testShowCaptchaModal;
 window.startCaptchaSessionMonitor = startCaptchaSessionMonitor;
 window.stopCaptchaSessionMonitor = stopCaptchaSessionMonitor;
 window.showCaptchaVerificationModal = showCaptchaVerificationModal;
@@ -1578,130 +1555,6 @@ async function stopAccountFaceVerification() {
     }
 }
 
-/**
- * 显示版本信息弹窗
- */
-async function showVersionInfo(version) {
-    // 尝试获取远程版本信息
-    const versionInfo = await getUpdateInfo();
-    
-    // 构建项目介绍
-    const intro = versionInfo?.intro || '此版本为本人利用业余时间开发，功能可能不完善，欢迎大家提出建议和bug，我会尽快修复。此版本纯粹免费，没有任何收费项目，请大家放心使用。如果大家觉得这个项目对你有帮助，可以请我喝杯咖啡，支持我继续开发。';
-    
-    // 构建版本历史
-    let versionHistoryHtml = '';
-    if (versionInfo?.versionHistory && versionInfo.versionHistory.length > 0) {
-        versionHistoryHtml = versionInfo.versionHistory.map((item, index) => {
-            const isLatest = index === 0;
-            const bgClass = isLatest ? 'background: linear-gradient(135deg, #e8f5e9, #c8e6c9);' : 'background: #f8f9fa;';
-            const borderColor = isLatest ? 'border-left: 4px solid #28a745;' : 'border-left: 4px solid #dee2e6;';
-            const badgeStyle = isLatest ? 'background: linear-gradient(135deg, #28a745, #20c997); color: #fff;' : 'background: #6c757d; color: #fff;';
-            
-            return `
-                <div class="mb-3 p-3 rounded-3" style="${bgClass} ${borderColor}">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div>
-                            <span class="badge me-2" style="${badgeStyle} font-size: 14px; padding: 6px 12px;">${item.version}</span>
-                            ${isLatest ? '<span class="badge bg-success" style="font-size: 12px;">最新</span>' : ''}
-                        </div>
-                        ${item.date ? `<small style="color: #888; font-size: 13px;"><i class="bi bi-calendar3 me-1"></i>${item.date}</small>` : ''}
-                    </div>
-                    <ul class="mb-0 ps-3" style="font-size: 14px; line-height: 1.8; color: #444;">
-                        ${item.updates.map(u => `<li>${u}</li>`).join('')}
-                    </ul>
-                </div>
-            `;
-        }).join('');
-    } else {
-        // 兜底：使用默认的版本历史
-        versionHistoryHtml = `
-            <div class="mb-3 p-3 rounded-3" style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-left: 4px solid #28a745;">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <div>
-                        <span class="badge me-2" style="background: linear-gradient(135deg, #28a745, #20c997); color: #fff; font-size: 14px; padding: 6px 12px;">${version}</span>
-                        <span class="badge bg-success" style="font-size: 12px;">当前</span>
-                    </div>
-                </div>
-                <ul class="mb-0 ps-3" style="font-size: 14px; line-height: 1.8; color: #444;">
-                    <li>当前使用的版本</li>
-                </ul>
-            </div>
-        `;
-    }
-    
-    const modalHtml = `
-        <div class="modal fade" id="versionInfoModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-                <div class="modal-content" style="border: none; border-radius: 14px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.15);">
-                    <div class="modal-header py-3" style="background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%); border: none;">
-                        <h5 class="modal-title" style="color: #fff; font-weight: 600; font-size: 18px;">
-                            <i class="bi bi-info-circle me-2"></i>版本信息
-                        </h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body py-4" style="background: linear-gradient(180deg, #f0f4ff 0%, #f8fafc 100%); max-height: 70vh;">
-                        <!-- 当前版本 -->
-                        <div class="mb-4">
-                            <h6 style="color: #444; font-size: 16px; font-weight: 600;"><i class="bi bi-tag me-2"></i>当前版本</h6>
-                            <div class="p-3 rounded-3" style="background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-                                <h4 class="mb-0" style="color: #5a67d8; font-size: 24px;">${version}</h4>
-                            </div>
-                        </div>
-                        
-                        <!-- 版本介绍 -->
-                        <div class="mb-4">
-                            <h6 style="color: #444; font-size: 16px; font-weight: 600;"><i class="bi bi-star me-2"></i>版本介绍</h6>
-                            <div class="p-3 rounded-3" style="background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-                                <div style="font-size: 15px; line-height: 1.7; color: #555;">
-                                    <i class="bi bi-check-circle-fill text-success me-2"></i>
-                                    <strong>说明</strong>：${intro}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 更新日志 -->
-                        <div class="mb-3">
-                            <h6 style="color: #444; font-size: 16px; font-weight: 600;"><i class="bi bi-clock-history me-2"></i>更新日志</h6>
-                            <div class="rounded-3 p-3" style="background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.06); max-height: 350px; overflow-y: auto;">
-                                ${versionHistoryHtml}
-                            </div>
-                        </div>
-                        
-                        <!-- 页脚 -->
-                        <div class="text-center mt-4">
-                            <small style="color: #888; font-size: 14px;">
-                                <i class="bi bi-github me-1"></i>
-                                上架 | 让店铺管理更清晰
-                            </small>
-                        </div>
-                    </div>
-                    <div class="modal-footer py-3" style="background: #fff; border-top: 1px solid #e8ecf0;">
-                        <button type="button" class="btn" style="background: #6c757d; color: #fff; font-size: 15px; padding: 8px 24px;" data-bs-dismiss="modal">关闭</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // 移除旧的弹窗（如果存在）
-    const oldModal = document.getElementById('versionInfoModal');
-    if (oldModal) {
-        oldModal.remove();
-    }
-
-    // 添加新弹窗到页面
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-    // 显示弹窗
-    const modal = document.getElementById('versionInfoModal');
-    const modalInstance = new bootstrap.Modal(modal);
-    modalInstance.show();
-
-    // 弹窗关闭后删除DOM元素
-    modal.addEventListener('hidden.bs.modal', function () {
-        modal.remove();
-    });
-}
 
 // =============================================================================
 // 热更新功能
@@ -3557,23 +3410,6 @@ function stopChatSessionsAutoRefresh() {
     }
 }
 
-function loadImAccountList() {
-    refreshChatAccounts();
-}
-
-function onImAccountChange() {}
-
-function refreshImIframe() {
-    refreshChatSessions();
-}
-
-function openGoofishImNewWindow() {
-    window.open('https://www.goofish.com/im', '_blank');
-}
-
-function openGoofishIm() {
-    openGoofishImNewWindow();
-}
 
 // ==================== 定时擦亮任务管理 ====================
 
@@ -4174,7 +4010,6 @@ function initUiMotion() {
     };
     document.addEventListener('wheel', handleHorizontalWheel, { passive: false });
 
-    // 记录引用以便 stopUiMotion 时清理
     window.__sgWheelHandler = handleHorizontalWheel;
 
     // ---- Toast 容器：新 toast 弹入动画（MutationObserver 注入）----
@@ -4221,18 +4056,6 @@ function initUiMotion() {
     }
 }
 
-function stopUiMotion() {
-    if (lenisInstance) {
-        lenisInstance.destroy && lenisInstance.destroy();
-        lenisInstance = null;
-        if (typeof window.__sgWheelHandler === 'function') {
-            document.removeEventListener('wheel', window.__sgWheelHandler);
-            window.__sgWheelHandler = null;
-        }
-        uiMotionInitialized = false; // 允许重新 init（Toast/hover 观察会再挂）
-        initUiMotion();
-    }
-}
 
 // 若 Lenis 生效时切换页面前先 scroll to top
 function scrollTopSmooth() {

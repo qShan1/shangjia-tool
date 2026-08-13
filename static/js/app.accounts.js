@@ -1658,7 +1658,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initCardImageFileSelector();
 
     // 初始化编辑卡券图片文件选择器
-    initEditCardImageFileSelector();
+    initCardImageFileSelector('edit');
 
     // 初始化工具提示
     initTooltips();

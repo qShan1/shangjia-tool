@@ -189,7 +189,14 @@ class ImageManager:
                 full_path = os.path.join(os.getcwd(), image_path)
             else:
                 full_path = image_path
-            
+
+            # 路径校验：解析真实路径后必须位于上传目录内，防止路径穿越删除任意文件
+            upload_root = os.path.realpath(self.upload_dir)
+            real_path = os.path.realpath(full_path)
+            if not (real_path == upload_root or real_path.startswith(upload_root + os.sep)):
+                logger.warning(f"拒绝删除上传目录外的文件: {image_path}")
+                return False
+
             if os.path.exists(full_path):
                 os.remove(full_path)
                 logger.info(f"图片删除成功: {image_path}")

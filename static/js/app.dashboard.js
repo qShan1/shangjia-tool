@@ -989,41 +989,38 @@ async function loadDashboard() {
     loadDashboardAnnouncement();
     startAnnouncementRefreshTimer();
 
-    // 获取账号列表
-    const cookiesResponse = await fetch(`${apiBase}/cookies/details`, {
-        headers: {
-        'Authorization': `Bearer ${authToken}`
-        }
-    });
+    // 并发请求互不依赖的数据：账号、商品数、订单指标、销售额摘要、图表、发货日志
+    const [cookiesResponse, totalItems, orderMetrics, deliveryLogsResult] = await Promise.all([
+        fetch(`${apiBase}/cookies/details`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        }),
+        loadItemsCount(),
+        loadOrderDashboardMetrics(),
+        loadDashboardDeliveryLogs()
+    ]);
+    await Promise.all([
+        loadSalesSummary(),
+        loadSalesChart('week')
+    ]);
 
     if (cookiesResponse.ok) {
         const cookiesData = await cookiesResponse.json();
 
+        // 富化依赖 cookies 结果，保持串行
         const accountsWithKeywords = await enrichDashboardAccounts(cookiesData);
 
         dashboardData.accounts = accountsWithKeywords;
+        dashboardData.totalItems = totalItems;
         dashboardData.totalKeywords = accountsWithKeywords.reduce((sum, account) => {
         const isEnabled = account.enabled === undefined ? true : account.enabled;
         return sum + (isEnabled ? (account.keywordCount || 0) : 0);
         }, 0);
 
-        // 加载商品总数
-        const totalItems = await loadItemsCount();
-        dashboardData.totalItems = totalItems;
-
-        // 加载订单看板数据
-        const orderMetrics = await loadOrderDashboardMetrics();
-
-        // 加载销售额摘要数据
-        await loadSalesSummary();
-
-        // 加载销售额图表数据（默认显示最近1周）
-        await loadSalesChart('week');
-
         // 更新仪表盘显示
         renderDashboardAccountOverview(accountsWithKeywords, totalItems);
         scheduleDashboardRuntimeAutoRetry(accountsWithKeywords);
-        await loadDashboardDeliveryLogs();
     }
     } catch (error) {
     console.error('加载仪表盘数据失败:', error);

@@ -8,6 +8,7 @@ from pathlib import Path
 from urllib.parse import unquote
 from urllib import request as urllib_request, error as urllib_error
 import hashlib
+import hmac
 import secrets
 import time
 import json
@@ -97,6 +98,10 @@ ip_blacklist = set()
 captcha_storage = {}
 CAPTCHA_EXPIRE_SECONDS = 300  # 验证码5分钟过期
 CAPTCHA_REQUIRE_AFTER_FAILURES = 2  # 失败2次后要求验证码
+
+# 验证码发送限流: {email: 最近发送时间戳}，同一邮箱60秒内仅允许发送一次
+_CODE_SEND_THROTTLE = {}
+_CODE_SEND_THROTTLE_SECONDS = 60
 
 # 防暴力破解参数
 BRUTE_FORCE_CONFIG = {
@@ -1241,6 +1246,7 @@ class RequestModel(BaseModel):
     item_id: str
     send_message: str
     chat_id: str
+    api_key: str = ""
 
 
 class ResponseData(BaseModel):
@@ -1396,6 +1402,14 @@ if not os.path.exists(static_dir):
     os.makedirs(static_dir, exist_ok=True)
 
 app.mount('/static', StaticFiles(directory=static_dir), name='static')
+
+# 初始化自动热更新器，显式固定 app_dir，避免 frozen 后热更新写错位置
+try:
+    from auto_updater import init_updater
+    init_updater(app_dir=str(_RESOURCE_BASE))
+    logger.info(f"自动更新器已初始化，app_dir={_RESOURCE_BASE}")
+except Exception as e:
+    logger.error(f"自动更新器初始化失败: {e}")
 
 # 确保图片上传目录存在
 uploads_dir = os.path.join(static_dir, 'uploads', 'images')
@@ -3236,19 +3250,14 @@ async def send_verification_code(request: SendCodeRequest):
     from db_manager import db_manager
 
     try:
-        # 检查是否已验证图形验证码
-        # 通过检查数据库中是否存在已验证的图形验证码记录
-        with db_manager.lock:
-            cursor = db_manager.conn.cursor()
-            current_time = time.time()
-
-            # 查找最近5分钟内该session_id的验证记录
-            # 由于验证成功后验证码会被删除，我们需要另一种方式来跟踪验证状态
-            # 这里我们检查该session_id是否在最近验证过（通过检查是否有已删除的记录）
-
-            # 为了简化，我们要求前端在验证图形验证码成功后立即发送邮件验证码
-            # 或者我们可以在验证成功后设置一个临时标记
-            pass
+        # 单用户场景图形验证码校验暂未启用（前端未传图形验证码数据），重点做发送限流防刷
+        current_time = time.time()
+        last_send_time = _CODE_SEND_THROTTLE.get(request.email, 0)
+        if current_time - last_send_time < _CODE_SEND_THROTTLE_SECONDS:
+            return SendCodeResponse(
+                success=False,
+                message="验证码发送过于频繁，请稍后再试"
+            )
 
         # 根据验证码类型进行不同的检查
         if request.type == 'register':
@@ -3280,6 +3289,7 @@ async def send_verification_code(request: SendCodeRequest):
 
         # 发送验证码邮件
         if await db_manager.send_verification_email(request.email, code):
+            _CODE_SEND_THROTTLE[request.email] = time.time()
             return SendCodeResponse(
                 success=True,
                 message="验证码已发送到您的邮箱，请查收"
@@ -3393,7 +3403,10 @@ def verify_api_key(api_key: str) -> bool:
         if not qq_secret_key:
             logger.warning("QQ回复秘钥未配置，拒绝 /send-message 请求")
             return False
-        return api_key == qq_secret_key
+        # 恒定时间比较，避免时序侧信道；空值直接拒绝
+        if not api_key:
+            return False
+        return hmac.compare_digest(api_key, qq_secret_key)
     except Exception as e:
         logger.error(f"验证API秘钥时发生异常: {e}")
         # 异常情况下拒绝请求，不再回退
@@ -3524,7 +3537,18 @@ async def send_message_api(request: SendMessageRequest):
 
 
 @app.post("/xianyu/reply", response_model=ResponseModel)
-async def xianyu_reply(req: RequestModel):
+async def xianyu_reply(req: RequestModel, request: Request):
+    # 秘钥校验：本机请求直接放行（前端/本地服务调用），远程请求必须携带有效 api_key
+    client_host = request.client.host if request.client else ""
+    if client_host not in ("127.0.0.1", "::1", "localhost") and (
+        not req.api_key or not verify_api_key(req.api_key)
+    ):
+        logger.warning(f"/xianyu/reply 秘钥验证失败: {mask_sensitive_text(req.api_key)}")
+        return JSONResponse(
+            status_code=401,
+            content={'success': False, 'message': "API秘钥验证失败，请检查系统设置中的QQ回复秘钥配置"},
+        )
+
     blacklist_hit = _get_blacklist_block_by_cookie(req.cookie_id, req.send_user_id, req.item_id)
     if blacklist_hit:
         logger.warning(
@@ -13911,7 +13935,9 @@ def get_system_storage_paths(admin_user: Dict[str, Any] = Depends(require_admin)
 def download_database_backup(admin_user: Dict[str, Any] = Depends(require_admin)):
     """下载数据库备份文件（管理员专用）"""
     import os
+    import sqlite3
     from fastapi.responses import FileResponse
+    from starlette.background import BackgroundTask
     from datetime import datetime
 
     try:
@@ -13926,16 +13952,36 @@ def download_database_backup(admin_user: Dict[str, Any] = Depends(require_admin)
             log_with_user('error', f"数据库文件不存在: {db_file_path}", admin_user)
             raise HTTPException(status_code=404, detail="数据库文件不存在")
 
-        # 生成带时间戳的文件名
+        # 生成带时间戳的文件名和同目录临时备份文件
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         download_filename = f"xianyu_backup_{timestamp}.db"
+        db_dir = os.path.dirname(db_file_path)
+        temp_path = os.path.join(db_dir, f"xianyu_backup_temp_{timestamp}.db")
 
         log_with_user('info', f"开始下载数据库备份: {download_filename}", admin_user)
 
+        # 使用sqlite3在线备份生成一致性快照，避免直接返回运行中的库文件导致并发损坏
+        source_conn = getattr(db_manager, 'conn', None)
+        with db_manager.lock:
+            target_conn = sqlite3.connect(temp_path)
+            try:
+                if source_conn is not None:
+                    source_conn.backup(target_conn)
+                else:
+                    # db_manager尚未初始化连接，退化为只读连接做备份
+                    ro_conn = sqlite3.connect(f"file:{db_file_path}?mode=ro", uri=True)
+                    try:
+                        ro_conn.backup(target_conn)
+                    finally:
+                        ro_conn.close()
+            finally:
+                target_conn.close()
+
         return FileResponse(
-            path=db_file_path,
+            path=temp_path,
             filename=download_filename,
-            media_type='application/octet-stream'
+            media_type='application/octet-stream',
+            background=BackgroundTask(os.remove, temp_path)
         )
 
     except HTTPException:
@@ -14008,22 +14054,34 @@ async def upload_database_backup(admin_user: Dict[str, Any] = Depends(require_ad
         backup_filename = f"xianyu_data_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
         backup_current_path = os.path.join(db_dir, backup_filename)
 
-        if os.path.exists(current_db_path):
-            shutil.copy2(current_db_path, backup_current_path)
-            log_with_user('info', f"当前数据库已备份为: {backup_current_path}", admin_user)
+        # 在全局锁内原子替换：关闭旧连接 -> rename成带时间戳备份 -> move新库 -> 重新初始化
+        with db_manager.lock:
+            try:
+                # 关闭当前数据库连接，避免连接仍占用文件句柄
+                if hasattr(db_manager, 'conn') and db_manager.conn:
+                    db_manager.conn.close()
+                    log_with_user('info', "已关闭当前数据库连接", admin_user)
 
-        # 关闭当前数据库连接
-        if hasattr(db_manager, 'conn') and db_manager.conn:
-            db_manager.conn.close()
-            log_with_user('info', "已关闭当前数据库连接", admin_user)
+                # 把当前库原子 rename 成带时间戳的备份（替代原 copy2 复制）
+                if os.path.exists(current_db_path):
+                    os.replace(current_db_path, backup_current_path)
+                    log_with_user('info', f"当前数据库已备份为: {backup_current_path}", admin_user)
 
-        # 替换数据库文件
-        shutil.move(temp_file_path, current_db_path)
-        log_with_user('info', f"数据库文件已替换: {current_db_path}", admin_user)
+                # 替换数据库文件
+                shutil.move(temp_file_path, current_db_path)
+                log_with_user('info', f"数据库文件已替换: {current_db_path}", admin_user)
 
-        # 重新初始化数据库连接（使用原有的db_path）
-        db_manager.__init__(db_manager.db_path)
-        log_with_user('info', "数据库连接已重新初始化", admin_user)
+                # 重新初始化数据库连接（使用原有的db_path）
+                db_manager.__init__(db_manager.db_path)
+                log_with_user('info', "数据库连接已重新初始化", admin_user)
+            except Exception as e:
+                log_with_user('error', f"替换数据库过程中出错: {str(e)}", admin_user)
+                # 若rename后、move前出错导致正式库缺失，立即从备份恢复
+                if os.path.exists(backup_current_path) and not os.path.exists(current_db_path):
+                    os.replace(backup_current_path, current_db_path)
+                    db_manager.__init__(db_manager.db_path)
+                    log_with_user('info', "已从备份恢复原数据库", admin_user)
+                raise
 
         # 验证新数据库
         try:
@@ -17808,10 +17866,26 @@ async def toggle_scheduled_task(task_id: int, current_user: Dict[str, Any] = Dep
 
 # ==================== 定时任务调度器 ====================
 
+# 模块级：记录正在执行的任务ID，防止60s轮询周期内任务执行超时被下一轮重复调度
+_RUNNING_TASK_IDS = set()
+
+
 async def scheduled_task_checker():
     """每60秒检查并执行到期的定时任务"""
     while True:
         try:
+            # 清理已过期的会话token（普通token按timestamp+TOKEN_EXPIRE_TIME，记住我会话按remember_expires_at）
+            try:
+                now = time.time()
+                for token, token_data in list(SESSION_TOKENS.items()):
+                    if token_data.get('remembered'):
+                        if now > (token_data.get('remember_expires_at') or 0):
+                            del SESSION_TOKENS[token]
+                    elif now - token_data.get('timestamp', now) > TOKEN_EXPIRE_TIME:
+                        del SESSION_TOKENS[token]
+            except Exception as e:
+                logger.warning(f"清理过期会话token异常: {e}")
+
             due_tasks = db_manager.get_due_tasks()
             for task in due_tasks:
                 try:
@@ -17819,52 +17893,69 @@ async def scheduled_task_checker():
                     task_id = task['id']
                     task_type = task['task_type']
 
+                    # 重入保护：上一轮尚未执行完的任务本轮直接跳过
+                    if task_id in _RUNNING_TASK_IDS:
+                        logger.warning(f"定时任务 {task_id} 仍在执行中，本轮跳过")
+                        continue
+
                     logger.info(f"执行定时任务: {task['name']} (ID: {task_id}, 账号: {account_id})")
 
-                    if task_type == 'item_polish':
-                        cookie_info = db_manager.get_cookie_by_id(account_id)
-                        if not cookie_info:
-                            logger.warning(f"定时任务 {task_id} 账号 {account_id} 不存在，跳过")
-                            result = {"success": False, "message": "账号不存在"}
-                        else:
-                            cookies_str = cookie_info.get('cookies_str', '')
-                            if not cookies_str:
-                                result = {"success": False, "message": "账号cookie为空"}
-                            else:
-                                from XianyuAutoAsync import XianyuLive
-                                xianyu_instance = XianyuLive(cookies_str, account_id, register_instance=False)
-                                result = await xianyu_instance.polish_all_items()
-                                await xianyu_instance.close_session()
-                    else:
-                        result = {"success": False, "message": f"未知任务类型: {task_type}"}
-
-                    run_hour = task.get('delay_minutes', 8)  # delay_minutes 复用为每日运行小时
-                    random_max = task.get('random_delay_max', 10)
-                    next_run_str = db_manager.calculate_next_daily_run(
-                        run_hour,
-                        random_max,
-                        include_today=False
-                    )
-
-                    db_manager.update_task_run_result(task_id, result, next_run_str)
+                    _RUNNING_TASK_IDS.add(task_id)
                     try:
-                        total = int(result.get('total') or 0) if isinstance(result, dict) else 0
-                        polished = int(result.get('polished') or 0) if isinstance(result, dict) else 0
-                        failed = int(result.get('failed') or 0) if isinstance(result, dict) else 0
-                        status = 'success' if result.get('success') and failed == 0 else ('partial_success' if result.get('success') and polished > 0 else 'failed')
-                        message = result.get('message') or f"定时任务执行完成：总计 {total}，成功 {polished}，失败 {failed}"
-                        db_manager.add_scheduled_task_log(
-                            batch_id=f"scheduled_task_{task_id}_{uuid.uuid4()}",
-                            task_type=task_type if task_type in TASK_LOG_TYPE_LABELS else 'other_task',
-                            cookie_id=account_id,
-                            object_id=f"scheduled_task:{task_id}",
-                            status=status,
-                            message=message,
-                            raw_response=result,
+                        if task_type == 'item_polish':
+                            cookie_info = db_manager.get_cookie_by_id(account_id)
+                            if not cookie_info:
+                                logger.warning(f"定时任务 {task_id} 账号 {account_id} 不存在，跳过")
+                                result = {"success": False, "message": "账号不存在"}
+                            else:
+                                cookies_str = cookie_info.get('cookies_str', '')
+                                if not cookies_str:
+                                    result = {"success": False, "message": "账号cookie为空"}
+                                else:
+                                    from XianyuAutoAsync import XianyuLive
+                                    # 优先复用已注册实例，避免每次都新建完整实例
+                                    xianyu_instance = XianyuLive.get_instance(account_id)
+                                    instance_reused = xianyu_instance is not None
+                                    if not instance_reused:
+                                        xianyu_instance = XianyuLive(cookies_str, account_id, register_instance=False)
+                                    try:
+                                        result = await xianyu_instance.polish_all_items()
+                                    finally:
+                                        # 仅自建实例需要关闭会话，复用的实例由外部生命周期管理
+                                        if not instance_reused:
+                                            await xianyu_instance.close_session()
+                        else:
+                            result = {"success": False, "message": f"未知任务类型: {task_type}"}
+
+                        run_hour = task.get('delay_minutes', 8)  # delay_minutes 复用为每日运行小时
+                        random_max = task.get('random_delay_max', 10)
+                        next_run_str = db_manager.calculate_next_daily_run(
+                            run_hour,
+                            random_max,
+                            include_today=False
                         )
-                    except Exception as log_error:
-                        logger.warning(f"记录定时任务日志失败: task_id={task_id}, error={log_error}")
-                    logger.info(f"定时任务 {task_id} 执行完毕，下次运行: {next_run_str}")
+
+                        db_manager.update_task_run_result(task_id, result, next_run_str)
+                        try:
+                            total = int(result.get('total') or 0) if isinstance(result, dict) else 0
+                            polished = int(result.get('polished') or 0) if isinstance(result, dict) else 0
+                            failed = int(result.get('failed') or 0) if isinstance(result, dict) else 0
+                            status = 'success' if result.get('success') and failed == 0 else ('partial_success' if result.get('success') and polished > 0 else 'failed')
+                            message = result.get('message') or f"定时任务执行完成：总计 {total}，成功 {polished}，失败 {failed}"
+                            db_manager.add_scheduled_task_log(
+                                batch_id=f"scheduled_task_{task_id}_{uuid.uuid4()}",
+                                task_type=task_type if task_type in TASK_LOG_TYPE_LABELS else 'other_task',
+                                cookie_id=account_id,
+                                object_id=f"scheduled_task:{task_id}",
+                                status=status,
+                                message=message,
+                                raw_response=result,
+                            )
+                        except Exception as log_error:
+                            logger.warning(f"记录定时任务日志失败: task_id={task_id}, error={log_error}")
+                        logger.info(f"定时任务 {task_id} 执行完毕，下次运行: {next_run_str}")
+                    finally:
+                        _RUNNING_TASK_IDS.discard(task_id)
 
                 except Exception as e:
                     logger.error(f"执行定时任务 {task.get('id')} 异常: {str(e)}")

@@ -9,6 +9,7 @@ import shutil
 import atexit
 import hashlib
 import json
+import re
 import threading
 from pathlib import Path
 
@@ -201,7 +202,11 @@ def release_update():
 def _download_update(update):
     staging = DATA_ROOT / "updates" / "staging"
     staging.mkdir(parents=True, exist_ok=True)
-    archive = staging / update["name"]
+    # 远程可控文件名：只允许 [A-Za-z0-9._-]，拦截 / \ 与 . .. 等路径成分，防路径穿越。
+    name = str(update.get("name") or "").strip()
+    if not name or re.fullmatch(r"[A-Za-z0-9._-]+", name) is None or name in (".", ".."):
+        raise RuntimeError(f"Invalid update archive name: {name!r}")
+    archive = staging / name
     # 下载源优先级：镜像列表 → 原始 zip_url → 兜底失败
     sources = list(update.get("mirrors") or [])
     if update.get("url"):
@@ -283,7 +288,11 @@ def _schedule_install_script(archive, update):
         "    Log 'Previous desktop bundle restored'\n"
         "  }\n"
         "  if (Test-Path (Join-Path $InstallDir 'ShangjiaTool.exe')) { Start-Process -FilePath (Join-Path $InstallDir 'ShangjiaTool.exe') }\n"
-        "} finally { if (Test-Path $incoming) { Remove-Item -LiteralPath $incoming -Recurse -Force -ErrorAction SilentlyContinue } }\n",
+        "} finally {\n"
+        "  if (Test-Path $incoming) { Remove-Item -LiteralPath $incoming -Recurse -Force -ErrorAction SilentlyContinue }\n"
+        "  $stagingDir = Split-Path -Parent $Archive\n"
+        "  if (Test-Path $stagingDir) { Get-ChildItem -LiteralPath $stagingDir -Filter '*.zip' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue }\n"
+        "}\n",
         encoding="utf-8",
     )
     subprocess.Popen([
@@ -296,6 +305,23 @@ def _schedule_install_script(archive, update):
 def schedule_desktop_update(update):
     """旧入口：直接同步下载并应用（保留，供手动/测试路径）。"""
     _apply_update_in_background(update)
+
+
+def _stop_service_and_exit():
+    """停服务并等端口释放后退出进程。
+
+    更新安装脚本通过 Wait-Process 等待本进程退出后才替换安装目录，
+    下载完成后必须先清掉服务子进程（否则 Move-Item 会因 exe 被占用而失败），再 os._exit。
+    stop_service 内部已处理终止进程树并等待端口真正释放。
+    """
+    try:
+        stop_service()
+    except Exception:
+        pass
+    try:
+        os._exit(0)
+    except Exception:
+        pass
 
 
 def _auto_check_updates_background():
@@ -315,17 +341,16 @@ def _auto_check_updates_background():
             except Exception as error:
                 show_error(f"更新下载失败：{error}\n当前版本将继续运行。")
                 return
-            try:
-                os._exit(0)
-            except Exception:
-                pass
+            _stop_service_and_exit()
             return
-        if not show_question(f"A new version {update['tag']} is available.\n\nDownload, install, and restart now? Existing data will not be modified."):
+        if not show_question(f"检测到新版本 {update['tag']}。\n\n是否立即下载并自动重启更新？现有数据不会丢失。"):
             return
         try:
             schedule_desktop_update(update)
         except Exception as error:
-            show_error(f"Update download failed: {error}\n\nThe current version will continue to start.")
+            show_error(f"更新下载失败：{error}\n当前版本将继续运行。")
+            return
+        _stop_service_and_exit()
     except Exception:
         pass
 

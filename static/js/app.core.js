@@ -342,6 +342,18 @@ function showSection(sectionName) {
     }
     }
 
+    // 停止新版日志页自动刷新定时器（app.orders.js 定义 logAutoRefreshInterval）
+    if (sectionName !== 'logs' && typeof logAutoRefreshInterval !== 'undefined' && logAutoRefreshInterval) {
+        clearInterval(logAutoRefreshInterval);
+        logAutoRefreshInterval = null;
+    }
+
+    // 离开仪表盘时停止页面级定时刷新
+    if (sectionName !== 'dashboard') {
+        if (typeof stopAnnouncementRefreshTimer === 'function') stopAnnouncementRefreshTimer();
+        if (typeof stopSalesSummaryRefreshTimer === 'function') stopSalesSummaryRefreshTimer();
+    }
+
     if (sectionName !== 'dashboard' && dashboardRuntimeRetryTimer) {
         clearTimeout(dashboardRuntimeRetryTimer);
         dashboardRuntimeRetryTimer = null;

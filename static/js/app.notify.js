@@ -1419,9 +1419,14 @@ function showAddCardModal() {
     modal.show();
 }
 
+// 卡券表单元素 id：带 edit 前缀时对应编辑卡券表单（editCardType/editApiFields...），否则对应新增卡券表单
+function cardElId(base, prefix) {
+    return prefix ? prefix + base.charAt(0).toUpperCase() + base.slice(1) : base;
+}
+
 // 切换卡券类型字段显示
-function toggleCardTypeFields() {
-    const cardType = document.getElementById('cardType')?.value || 'text';
+function toggleCardTypeFields(prefix = '') {
+    const cardType = document.getElementById(cardElId('cardType', prefix))?.value || 'text';
 
     // 安全地设置元素显示状态
     const setDisplay = (id, condition) => {
@@ -1431,38 +1436,41 @@ function toggleCardTypeFields() {
         }
     };
 
-    setDisplay('apiFields', cardType === 'api');
-    setDisplay('yifanApiFields', cardType === 'yifan_api');
-    setDisplay('textFields', cardType === 'text');
-    setDisplay('dataFields', cardType === 'data');
-    setDisplay('imageFields', cardType === 'image');
+    setDisplay(cardElId('apiFields', prefix), cardType === 'api');
+    setDisplay(cardElId('yifanApiFields', prefix), cardType === 'yifan_api');
+    setDisplay(cardElId('textFields', prefix), cardType === 'text');
+    setDisplay(cardElId('dataFields', prefix), cardType === 'data');
+    setDisplay(cardElId('imageFields', prefix), cardType === 'image');
 
     // 如果是API类型，初始化API方法监听
     if (cardType === 'api') {
-        toggleApiParamsHelp();
+        toggleApiParamsHelp(prefix);
         // 添加API方法变化监听
-        const apiMethodSelect = document.getElementById('apiMethod');
+        const apiMethodSelect = document.getElementById(cardElId('apiMethod', prefix));
         if (apiMethodSelect) {
-            apiMethodSelect.removeEventListener('change', toggleApiParamsHelp);
-            apiMethodSelect.addEventListener('change', toggleApiParamsHelp);
+            if (!apiMethodSelect.__sgApiParamsHelpHandler) {
+                apiMethodSelect.__sgApiParamsHelpHandler = () => toggleApiParamsHelp(prefix);
+            }
+            apiMethodSelect.removeEventListener('change', apiMethodSelect.__sgApiParamsHelpHandler);
+            apiMethodSelect.addEventListener('change', apiMethodSelect.__sgApiParamsHelpHandler);
         }
     }
 }
 
 // 切换API参数提示显示
-function toggleApiParamsHelp() {
-    const apiMethodElement = document.getElementById('apiMethod');
+function toggleApiParamsHelp(prefix = '') {
+    const apiMethodElement = document.getElementById(cardElId('apiMethod', prefix));
     if (!apiMethodElement) return;
-    
+
     const apiMethod = apiMethodElement.value;
-    const postParamsHelp = document.getElementById('postParamsHelp');
+    const postParamsHelp = document.getElementById(cardElId('postParamsHelp', prefix));
 
     if (postParamsHelp) {
         postParamsHelp.style.display = apiMethod === 'POST' ? 'block' : 'none';
 
         // 如果显示参数提示，添加点击事件
         if (apiMethod === 'POST') {
-            initParamClickHandlers('apiParams', 'postParamsHelp');
+            initParamClickHandlers(cardElId('apiParams', prefix), cardElId('postParamsHelp', prefix));
         }
     }
 }
@@ -1532,14 +1540,16 @@ function handleParamClick(paramElement, textarea) {
 }
 
 // 切换多规格字段显示
-function toggleMultiSpecFields() {
-    const isMultiSpec = document.getElementById('isMultiSpec').checked;
-    document.getElementById('multiSpecFields').style.display = isMultiSpec ? 'block' : 'none';
+function toggleMultiSpecFields(prefix = '') {
+    const checkbox = document.getElementById(cardElId('isMultiSpec', prefix));
+    const fieldsDiv = document.getElementById(cardElId('multiSpecFields', prefix));
+    if (!checkbox || !fieldsDiv) return;
+    fieldsDiv.style.display = checkbox.checked ? 'block' : 'none';
 }
 
 // 初始化卡券图片文件选择器
-function initCardImageFileSelector() {
-    const fileInput = document.getElementById('cardImageFile');
+function initCardImageFileSelector(prefix = '') {
+    const fileInput = document.getElementById(cardElId('cardImageFile', prefix));
     if (fileInput) {
         fileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -1548,7 +1558,7 @@ function initCardImageFileSelector() {
                 if (!file.type.startsWith('image/')) {
                     showToast('❌ 请选择图片文件，当前文件类型：' + file.type, 'warning');
                     e.target.value = '';
-                    hideCardImagePreview();
+                    hideCardImagePreview(prefix);
                     return;
                 }
 
@@ -1556,21 +1566,21 @@ function initCardImageFileSelector() {
                 if (file.size > 5 * 1024 * 1024) {
                     showToast('❌ 图片文件大小不能超过 5MB，当前文件大小：' + (file.size / 1024 / 1024).toFixed(1) + 'MB', 'warning');
                     e.target.value = '';
-                    hideCardImagePreview();
+                    hideCardImagePreview(prefix);
                     return;
                 }
 
                 // 验证图片尺寸
-                validateCardImageDimensions(file, e.target);
+                validateCardImageDimensions(file, e.target, prefix);
             } else {
-                hideCardImagePreview();
+                hideCardImagePreview(prefix);
             }
         });
     }
 }
 
 // 验证卡券图片尺寸
-function validateCardImageDimensions(file, inputElement) {
+function validateCardImageDimensions(file, inputElement, prefix = '') {
     const img = new Image();
     const url = URL.createObjectURL(file);
 
@@ -1589,19 +1599,19 @@ function validateCardImageDimensions(file, inputElement) {
         if (width > maxDimension || height > maxDimension) {
             showToast(`❌ 图片尺寸过大：${width}x${height}，最大允许：${maxDimension}x${maxDimension}像素`, 'warning');
             inputElement.value = '';
-            hideCardImagePreview();
+            hideCardImagePreview(prefix);
             return;
         }
 
         if (totalPixels > maxPixels) {
             showToast(`❌ 图片像素总数过大：${(totalPixels / 1024 / 1024).toFixed(1)}M像素，最大允许：8M像素`, 'warning');
             inputElement.value = '';
-            hideCardImagePreview();
+            hideCardImagePreview(prefix);
             return;
         }
 
         // 尺寸检查通过，显示预览和提示信息
-        showCardImagePreview(file);
+        showCardImagePreview(file, prefix);
 
         // 如果图片较大，提示会被压缩
         if (width > 2048 || height > 2048) {
@@ -1615,111 +1625,18 @@ function validateCardImageDimensions(file, inputElement) {
         URL.revokeObjectURL(url);
         showToast('❌ 无法读取图片文件，请选择有效的图片', 'warning');
         inputElement.value = '';
-        hideCardImagePreview();
+        hideCardImagePreview(prefix);
     };
 
     img.src = url;
 }
 
 // 显示卡券图片预览
-function showCardImagePreview(file) {
+function showCardImagePreview(file, prefix = '') {
     const reader = new FileReader();
     reader.onload = function(e) {
-        const previewContainer = document.getElementById('cardImagePreview');
-        const previewImg = document.getElementById('cardPreviewImg');
-
-        previewImg.src = e.target.result;
-        previewContainer.style.display = 'block';
-    };
-    reader.readAsDataURL(file);
-}
-
-// 隐藏卡券图片预览
-function hideCardImagePreview() {
-    const previewContainer = document.getElementById('cardImagePreview');
-    if (previewContainer) {
-        previewContainer.style.display = 'none';
-    }
-}
-
-// 初始化编辑卡券图片文件选择器
-function initEditCardImageFileSelector() {
-    const fileInput = document.getElementById('editCardImageFile');
-    if (fileInput) {
-        fileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                // 验证文件类型
-                if (!file.type.startsWith('image/')) {
-                    showToast('❌ 请选择图片文件，当前文件类型：' + file.type, 'warning');
-                    e.target.value = '';
-                    hideEditCardImagePreview();
-                    return;
-                }
-
-                // 验证文件大小（5MB）
-                if (file.size > 5 * 1024 * 1024) {
-                    showToast('❌ 图片文件大小不能超过 5MB，当前文件大小：' + (file.size / 1024 / 1024).toFixed(1) + 'MB', 'warning');
-                    e.target.value = '';
-                    hideEditCardImagePreview();
-                    return;
-                }
-
-                // 验证图片尺寸
-                validateEditCardImageDimensions(file, e.target);
-            } else {
-                hideEditCardImagePreview();
-            }
-        });
-    }
-}
-
-// 验证编辑卡券图片尺寸
-function validateEditCardImageDimensions(file, inputElement) {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-
-    img.onload = function() {
-        const width = this.naturalWidth;
-        const height = this.naturalHeight;
-
-        URL.revokeObjectURL(url);
-
-        // 检查尺寸限制
-        if (width > 4096 || height > 4096) {
-            showToast(`❌ 图片尺寸过大（${width}x${height}），最大支持 4096x4096 像素`, 'warning');
-            inputElement.value = '';
-            hideEditCardImagePreview();
-            return;
-        }
-
-        // 显示图片预览
-        showEditCardImagePreview(file);
-
-        // 如果图片较大，提示会被压缩
-        if (width > 2048 || height > 2048) {
-            showToast(`ℹ️ 图片尺寸较大（${width}x${height}），上传时将自动压缩以优化性能`, 'info');
-        } else {
-            showToast(`✅ 图片尺寸合适（${width}x${height}），可以上传`, 'success');
-        }
-    };
-
-    img.onerror = function() {
-        URL.revokeObjectURL(url);
-        showToast('❌ 无法读取图片文件，请选择有效的图片', 'warning');
-        inputElement.value = '';
-        hideEditCardImagePreview();
-    };
-
-    img.src = url;
-}
-
-// 显示编辑卡券图片预览
-function showEditCardImagePreview(file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const previewImg = document.getElementById('editCardPreviewImg');
-        const previewContainer = document.getElementById('editCardImagePreview');
+        const previewContainer = document.getElementById(cardElId('cardImagePreview', prefix));
+        const previewImg = document.getElementById(cardElId('cardPreviewImg', prefix));
 
         if (previewImg && previewContainer) {
             previewImg.src = e.target.result;
@@ -1729,39 +1646,12 @@ function showEditCardImagePreview(file) {
     reader.readAsDataURL(file);
 }
 
-// 隐藏编辑卡券图片预览
-function hideEditCardImagePreview() {
-    const previewContainer = document.getElementById('editCardImagePreview');
+// 隐藏卡券图片预览
+function hideCardImagePreview(prefix = '') {
+    const previewContainer = document.getElementById(cardElId('cardImagePreview', prefix));
     if (previewContainer) {
         previewContainer.style.display = 'none';
     }
-}
-
-// 切换编辑多规格字段显示
-function toggleEditMultiSpecFields() {
-    const checkbox = document.getElementById('editIsMultiSpec');
-    const fieldsDiv = document.getElementById('editMultiSpecFields');
-
-    if (!checkbox) {
-    console.error('编辑多规格开关元素未找到');
-    return;
-    }
-
-    if (!fieldsDiv) {
-    console.error('编辑多规格字段容器未找到');
-    return;
-    }
-
-    const isMultiSpec = checkbox.checked;
-    const displayStyle = isMultiSpec ? 'block' : 'none';
-
-    console.log('toggleEditMultiSpecFields - 多规格状态:', isMultiSpec);
-    console.log('toggleEditMultiSpecFields - 设置显示样式:', displayStyle);
-
-    fieldsDiv.style.display = displayStyle;
-
-    // 验证设置是否生效
-    console.log('toggleEditMultiSpecFields - 实际显示样式:', fieldsDiv.style.display);
 }
 
 // 清空添加卡券表单

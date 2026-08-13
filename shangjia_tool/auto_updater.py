@@ -474,7 +474,7 @@ class AutoUpdater:
 
         return files_to_delete
     
-    # 非关键文件，MD5校验失败时可以继续更新（仅警告不报错）
+    # 非关键文件：MD5校验失败时拒绝写入并记录错误，避免写坏 version.txt 导致无限更新循环
     NON_CRITICAL_FILES = {'version.txt', 'update_log.txt', 'changelog.txt'}
     
     async def download_file(self, file_update: FileUpdate, session: aiohttp.ClientSession) -> Optional[bytes]:
@@ -500,14 +500,13 @@ class AutoUpdater:
                 if file_update.md5 and file_update.md5.strip():
                     downloaded_md5 = hashlib.md5(content).hexdigest()
                     if downloaded_md5 != file_update.md5:
-                        # 检查是否为非关键文件
+                        # 校验失败的文件一律不落盘，避免写坏版本文件
                         file_name = Path(file_update.path).name
                         if file_name in self.NON_CRITICAL_FILES:
-                            logger.warning(f"非关键文件MD5不匹配（忽略）: {file_update.path}, 期望: {file_update.md5}, 实际: {downloaded_md5}")
-                            # 非关键文件，继续更新
+                            logger.error(f"非关键文件MD5校验失败，拒绝写入: {file_update.path}, 期望: {file_update.md5}, 实际: {downloaded_md5}")
                         else:
                             logger.error(f"文件MD5校验失败: {file_update.path}, 期望: {file_update.md5}, 实际: {downloaded_md5}")
-                            return None
+                        return None
                     else:
                         logger.debug(f"文件MD5校验通过: {file_update.path}")
                 else:
@@ -1016,8 +1015,13 @@ def get_updater() -> AutoUpdater:
                 version = version_file.read_text().strip()
         except:
             pass
-        
-        _updater = AutoUpdater(current_version=version)
+        # 默认 app_dir：frozen 时用 _MEIPASS（与静态资源目录一致），否则用项目根目录
+        if getattr(sys, 'frozen', False):
+            app_dir = str(Path(sys._MEIPASS))
+        else:
+            app_dir = str(Path(__file__).resolve().parent.parent)
+
+        _updater = AutoUpdater(app_dir=app_dir, current_version=version)
     
     return _updater
 

@@ -5997,7 +5997,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">卡券类型 <span class="text-danger">*</span></label>
-              <select class="form-select" id="editCardType" onchange="toggleEditCardTypeFields()" required>
+              <select class="form-select" id="editCardType" onchange="toggleCardTypeFields('edit')" required>
                 <option value="api">API接口</option>
                 <option value="yifan_api">亦凡API</option>
                 <option value="text">固定文字</option>
@@ -6250,7 +6250,7 @@
             <!-- 多规格设置 -->
             <div class="mb-3">
               <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="editIsMultiSpec" onchange="toggleEditMultiSpecFields()">
+                <input class="form-check-input" type="checkbox" id="editIsMultiSpec" onchange="toggleMultiSpecFields('edit')">
                 <label class="form-check-label" for="editIsMultiSpec">
                   <strong>多规格卡券</strong>
                 </label>
