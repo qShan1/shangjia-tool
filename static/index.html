@@ -213,10 +213,10 @@
         }, 520);
       }
       if (document.readyState === 'complete') {
-        setTimeout(hideSplash, 900);
+        requestAnimationFrame(hideSplash);
       } else {
-        window.addEventListener('load', function () { setTimeout(hideSplash, 900); });
-        setTimeout(hideSplash, 3000); /* 兜底，防止 load 异常导致画面残留 */
+        window.addEventListener('load', hideSplash);
+        setTimeout(hideSplash, 1500); /* 兜底，防止 load 异常导致画面残留 */
       }
     })();
   </script>
@@ -2286,6 +2286,10 @@
                       <select class="form-select" id="aiConfigAccountIdSelect" onchange="configAIReply(this.value)">
                         <option value="">请选择要配置的账号</option>
                       </select>
+                      <div id="aiAccountEmptyState" class="small text-muted mt-2" style="display:none;">
+                        暂无可配置账号，请先到账号管理添加闲鱼账号。
+                        <button type="button" class="btn btn-link btn-sm p-0 align-baseline" onclick="showSection('accounts')">前往账号管理</button>
+                      </div>
                     </div>
                   </div>
                   <div class="ai-enable-panel">
@@ -2530,12 +2534,12 @@
             </div>
           </form>
         </div>
-        <div class="d-flex justify-content-between align-items-center p-3 border-top">
+        <div id="aiSettingsActions" class="ai-settings-actions d-flex justify-content-between align-items-center p-3 border-top">
           <div class="ai-footer-note">
             <i class="bi bi-shield-check me-1"></i>配置仅作用于当前账号，可随时调整
           </div>
           <div class="ai-footer-actions">
-            <button type="button" class="btn btn-primary" onclick="saveAIReplyConfig()">
+            <button type="button" class="btn btn-primary" id="aiSaveButton" onclick="saveAIReplyConfig()">
               <i class="bi bi-check-lg me-1"></i>保存配置
             </button>
           </div>
@@ -5214,7 +5218,7 @@
               <p class="mt-2 text-muted">该表暂无数据</p>
             </div>
             <div id="tableContainer" style="display: none;">
-              <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+              <div class="table-responsive">
                 <table class="table table-striped table-hover" id="dataTable">
                   <thead class="table-dark sticky-top">
                     <tr id="tableHeaders"></tr>

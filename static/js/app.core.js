@@ -86,8 +86,8 @@ function getOrderSortValue(order, key) {
 
 function initGlassPointerTilt() {
     if (window.matchMedia('(prefers-reduced-motion: reduce), (pointer: coarse)').matches) return;
-    // 排除订单卡片：其含大表格 + backdrop-filter，鼠标每帧改写 transform 会触发整卡持续重绘闪烁
-    const selector = '.content-section .card:not(#orders-section .card), #dashboard-section .card';
+    // 默认关闭逐帧 3D 倾斜；表格/表单卡片不做持续重绘，后续需启用时给目标卡片加此类名。
+    const selector = '#dashboard-section .card.glass-tilt-enabled';
     let activeSurface = null;
 
     const resetSurface = (surface) => {

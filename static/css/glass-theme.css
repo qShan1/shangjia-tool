@@ -2366,6 +2366,12 @@ html.has-custom-background body {
   border-color: rgba(255, 255, 255, 0.18) !important;
 }
 
+/* 页面卡片保持稳定，不在表格/表单上做 hover 位移；避免大面积重绘和层级抖动。 */
+.content-section .card:hover {
+  transform: none !important;
+  will-change: auto;
+}
+
 /* 表格行入场（重绘/新增时上滑淡入）
    注：频繁重绘的表格（账号/卡密列表）每次重排都会重放该动画并伴随延迟，
    在鼠标悬停时表现为行/表头闪烁抖动，故此处关闭级联入场动画以消除闪烁。 */
@@ -2490,16 +2496,10 @@ html.has-custom-background body {
 }
 
 /* ============ 滚动条稳定性与横向滚动 ============ */
-/* 预留滚动条槽位，避免内容不足/充足切换时滚动条闪现抖动。
-   注意：.table-responsive 只有横向滚动（overflow-x），加入 gutter 会在右侧留永久空槽造成错位，故不加入。 */
-.report-list,
-.keywords-list,
-.table-container,
-.log-container,
+/* 只给明确的固定纵向工作区预留滚动条槽，避免普通卡片/下拉出现永久空白槽。 */
 .sidebar-nav,
-.dropdown-menu,
-.modal-body,
-[class*="-list"][style*="overflow"] {
+.table-container,
+.log-container {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
 }

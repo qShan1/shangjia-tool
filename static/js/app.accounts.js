@@ -1920,8 +1920,15 @@ async function loadAISettingsPage() {
         const select = document.getElementById('aiConfigAccountIdSelect');
         if (!select) return;
         const cookieDetails = await fetchJSON(apiBase + '/cookies/details', { silent: true });
+        const accounts = Array.isArray(cookieDetails) ? cookieDetails : [];
+        const emptyState = document.getElementById('aiAccountEmptyState');
+        const enabled = accounts.length > 0;
+        select.disabled = !enabled;
+        document.getElementById('aiReplyEnabled').disabled = !enabled;
+        document.getElementById('aiSaveButton')?.toggleAttribute('disabled', !enabled);
+        if (emptyState) emptyState.style.display = enabled ? 'none' : 'block';
         const current = select.value;
-        select.innerHTML = '<option value="">请选择要配置的账号</option>' + cookieDetails.map(cookie => {
+        select.innerHTML = '<option value="">请选择要配置的账号</option>' + accounts.map(cookie => {
             const label = (cookie.name || cookie.id) + (cookie.id ? `（${cookie.id}）` : '');
             return `<option value="${escapeHtml(cookie.id)}">${escapeHtml(label)}</option>`;
         }).join('');
@@ -1943,6 +1950,9 @@ async function configAIReply(accountId) {
     }
     // 确保账号下拉已加载（从账号行按钮进入时页面可能尚未加载过）
     const accountIdSelect = document.getElementById('aiConfigAccountIdSelect');
+    const saveButton = document.getElementById('aiSaveButton');
+    if (accountIdSelect) accountIdSelect.disabled = true;
+    if (saveButton) saveButton.disabled = true;
     if (accountIdSelect && accountIdSelect.options.length <= 1) {
         await loadAISettingsPage();
     }
@@ -2000,8 +2010,12 @@ async function configAIReply(accountId) {
     if (typeof showSection === 'function') {
         showSection('ai-settings');
     }
+    if (accountIdSelect) accountIdSelect.disabled = false;
+    if (saveButton) saveButton.disabled = false;
 
     } catch (error) {
+    document.getElementById('aiConfigAccountIdSelect')?.removeAttribute('disabled');
+    document.getElementById('aiSaveButton')?.removeAttribute('disabled');
     console.error('获取AI回复设置失败:', error);
     showToast('获取AI回复设置失败', 'danger');
     }
@@ -2074,11 +2088,16 @@ function toggleAIReplySettings() {
 async function saveAIReplyConfig() {
     try {
     const accountId = document.getElementById('aiConfigAccountId').value;
+    const selectedAccountId = document.getElementById('aiConfigAccountIdSelect')?.value || '';
     const enabled = document.getElementById('aiReplyEnabled').checked;
 
     // 未选择账号时提示，避免提交到无效路径
-    if (!accountId) {
+    if (!accountId || !selectedAccountId) {
         showToast('请先选择要配置的账号', 'warning');
+        return;
+    }
+    if (accountId !== selectedAccountId) {
+        showToast('账号配置仍在加载，请稍候再保存', 'warning');
         return;
     }
     // 如果启用AI回复，验证必填字段
