@@ -290,12 +290,18 @@ def _auto_check_updates_background():
         if not update:
             return
         if update.get("force"):
-            # 强制更新：不询问，直接下载安装并重启，避免旧版本继续运行造成数据/接口不兼容
+            # 强制更新：不询问，直接下载安装并重启，避免旧版本继续运行造成数据/接口不兼容。
+            # 安装脚本会 Wait-Process 等待本进程退出后替换 exe，因此下载完成后必须退出进程。
             show_info(f"检测到新版本 {update['tag']}，正在自动更新...\n\n更新将安装到当前目录并自动重启，现有数据不会丢失。")
             try:
                 schedule_desktop_update(update)
             except Exception as error:
                 show_error(f"更新下载失败：{error}\n当前版本将继续运行。")
+                return
+            try:
+                os._exit(0)
+            except Exception:
+                pass
             return
         if not show_question(f"A new version {update['tag']} is available.\n\nDownload, install, and restart now? Existing data will not be modified."):
             return
@@ -326,9 +332,10 @@ def _manual_install_background():
 def offer_desktop_update():
     """启动时的更新处理。
 
-    关键：强制更新(force)必须同步执行并退出进程，否则安装脚本无法替换正在运行的
-    exe（Wait-Process 会一直等）。非强制更新才后台化，不阻塞窗口打开。
-    返回 True 表示正在更新/已进入更新流程，调用方(main)应直接返回，让进程退出以便安装。
+    强制更新(force)与非强制更新都在后台线程完成，不阻塞窗口打开。
+    force 更新在下载安装后由后台线程 os._exit 退出进程，安装脚本随即替换并重启。
+    返回 True 表示正在更新/已进入更新流程，调用方(main)应直接返回（当前恒为 False，
+    仅保留返回值契约以兼容历史调用）。
     """
     if not getattr(sys, "frozen", False):
         return False
@@ -337,30 +344,9 @@ def offer_desktop_update():
         return False
     if manually_requested:
         threading.Thread(target=_manual_install_background, name="shangjia-startup-update", daemon=True).start()
-        return False
-    # 自动检查：先同步读一次清单（超时短），判断是否强制更新
-    update = _safe_release_update()
-    if not update:
-        return False
-    if update.get("force"):
-        # 强制更新：提示后下载安装，并退出本进程让安装脚本执行
-        try:
-            _apply_update_in_background(update)
-        except Exception as error:
-            show_error(f"更新下载失败：{error}\n当前版本将继续运行。")
-            return False
-        return True
-    # 非强制更新：后台检查，提示用户确认，不阻塞窗口
-    threading.Thread(target=_auto_check_updates_background, name="shangjia-startup-update", daemon=True).start()
+    else:
+        threading.Thread(target=_auto_check_updates_background, name="shangjia-startup-update", daemon=True).start()
     return False
-
-
-def _safe_release_update():
-    """读取更新清单；网络失败时返回 None 不阻塞启动。"""
-    try:
-        return release_update()
-    except Exception:
-        return None
 
 
 def desktop_log_path():
