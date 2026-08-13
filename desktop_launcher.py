@@ -707,6 +707,26 @@ def healthy():
     except Exception:
         return False
 
+
+def loading_page() -> str:
+    """返回内联加载页（data URL），在服务就绪前显示，避免开屏白等。"""
+    html = (
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        "<style>"
+        "html,body{height:100%;margin:0;display:flex;align-items:center;justify-content:center;"
+        "background:#0f172a;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;}"
+        ".box{text-align:center;}"
+        ".spinner{width:42px;height:42px;margin:0 auto 18px;border:4px solid rgba(148,163,184,.25);"
+        "border-top-color:#38bdf8;border-radius:50%;animation:spin .9s linear infinite;}"
+        "@keyframes spin{to{transform:rotate(360deg)}}"
+        "p{margin:0;font-size:14px;color:#94a3b8}"
+        "</style></head><body><div class='box'>"
+        "<div class='spinner'></div><p>正在启动本地服务，请稍候...</p>"
+        "</div></body></html>"
+    )
+    from urllib.parse import quote
+    return "data:text/html;charset=utf-8," + quote(html)
+
 def main():
     global _SERVICE_PROCESS
     DATA_ROOT.mkdir(parents=True, exist_ok=True)
@@ -756,25 +776,15 @@ def main():
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
             _SERVICE_PROCESS = process
-        for _ in range(40):
-            if healthy():
-                break
-            time.sleep(0.75)
-        else:
-            process.terminate()
-            exit_code = process.poll()
-            raise RuntimeError(
-                "本地服务未能在 30 秒内启动。"
-                f"服务退出码: {exit_code}; 诊断日志: {desktop_log_path()}"
-            )
     # pywebview 是可选依赖；没有时仍保持一键启动体验。
     try:
         import webview
         # 窗口/任务栏图标跟随 EXE 图标（由 PyInstaller spec 的 static/ShangjiaTool.ico 指定），
         # pywebview 的 create_window 不支持 icon 参数，不要传入。
+        # 先加载内联加载页让窗口立即出现，服务就绪后由后台线程切换到管理台，避免开屏白等。
         window = webview.create_window(
             APP_NAME,
-            f"http://127.0.0.1:{PORT}/admin",
+            loading_page(),
             width=1440,
             height=900,
             js_api=_DesktopApi(),
@@ -783,6 +793,26 @@ def main():
         # 最小化按钮 → 普通任务栏最小化（不进入托盘）。仅标题栏 X 进入托盘后台。
         global _WINDOW
         _WINDOW = window
+
+        def _wait_service_and_load():
+            for _ in range(40):
+                if healthy():
+                    try:
+                        window.load_url(f"http://127.0.0.1:{PORT}/admin")
+                    except Exception as error:
+                        with desktop_log_path().open("a", encoding="utf-8") as output:
+                            output.write(f"Load admin failed: {error}\n")
+                    return
+                time.sleep(0.75)
+            try:
+                import ctypes
+                ctypes.windll.user32.MessageBoxW(
+                    None, "本地服务未能在 30 秒内启动，请查看日志后重试。", APP_NAME, 0x10)
+            except Exception:
+                pass
+
+        threading.Thread(target=_wait_service_and_load, name="shangjia-wait-service", daemon=True).start()
+
         # private_mode=False + storage_path：把 localStorage 持久化到磁盘，
         # 使“记住我/自动登录”的 token 与界面偏好（主题、折叠状态等）跨重启保留。
         webview.start(
