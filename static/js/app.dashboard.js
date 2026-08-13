@@ -1515,6 +1515,9 @@ function toggleDateRangePicker() {
     }
 
     const willShow = dateRangePicker.hidden;
+    if (willShow) {
+        ensureDateRangeDefaults();
+    }
     setDateRangePickerVisible(willShow);
 
     if (willShow) {
@@ -1523,6 +1526,23 @@ function toggleDateRangePicker() {
     }
 
     updateChartButtonState(currentChartPeriod || 'week');
+}
+
+// 打开自定义面板时，若日期为空则填充默认值（30天前 ~ 今天），保留上次已填日期
+function ensureDateRangeDefaults() {
+    const startInput = document.getElementById('startDate');
+    const endInput = document.getElementById('endDate');
+    if (!startInput || !endInput) return;
+
+    if (!startInput.value) {
+        const now = new Date();
+        const start = new Date(now);
+        start.setDate(now.getDate() - 29);
+        startInput.value = toLocalDateString(start);
+    }
+    if (!endInput.value) {
+        endInput.value = toLocalDateString(new Date());
+    }
 }
 
 // 渲染销售额图表

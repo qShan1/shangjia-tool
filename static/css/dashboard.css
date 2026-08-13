@@ -26,6 +26,56 @@
   flex: 0 1 420px;
 }
 
+/* 常驻公告栏（静态提示，区别于临时公告） */
+.dashboard-sticky-note {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 56px;
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: 100%;
+  padding: 0.7rem 0.9rem;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 118, 110, 0.2);
+  background: linear-gradient(180deg, rgba(240, 253, 250, 0.92), rgba(248, 250, 252, 0.95));
+  box-shadow: 0 14px 30px -26px rgba(15, 23, 42, 0.3);
+}
+
+.dashboard-sticky-note-icon {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 118, 110, 0.12);
+  color: var(--primary-color);
+}
+
+.dashboard-sticky-note-body {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.dashboard-sticky-note-title {
+  display: block;
+  color: var(--text-color);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.dashboard-sticky-note-message {
+  display: block;
+  margin-top: 0.18rem;
+  color: var(--secondary-color);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
 .dashboard-announcement-card {
   display: flex;
   align-items: center;
@@ -723,6 +773,11 @@
     max-width: none;
     flex-basis: 100%;
   }
+
+  .dashboard-sticky-note {
+    width: 100%;
+    flex-basis: 100%;
+  }
 }
 
 @media (max-width: 768px) {
@@ -759,6 +814,14 @@
     width: 100%;
   }
 
+  .dashboard-sticky-note {
+    align-items: flex-start;
+  }
+
+  .dashboard-sticky-note-title {
+    white-space: normal;
+  }
+
   .dashboard-hot-update-btn {
     justify-content: center;
     flex: 1 1 auto;
@@ -787,6 +850,15 @@
   border-color: rgba(45, 212, 191, 0.28);
   background: rgba(20, 184, 166, 0.14);
   color: #99f6e4 !important;
+}
+
+[data-theme="dark"] .dashboard-sticky-note {
+  border-color: rgba(45, 212, 191, 0.24);
+  background: linear-gradient(180deg, rgba(6, 30, 26, 0.9), rgba(15, 23, 42, 0.92));
+}
+
+[data-theme="dark"] .dashboard-sticky-note-icon {
+  background: rgba(45, 212, 191, 0.14);
 }
 
 /* ================================

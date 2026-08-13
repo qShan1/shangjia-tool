@@ -55,6 +55,14 @@ pytest -q
 
 `data/`、`browser_data/`、`logs/`、`output/`、`static/uploads/` 和构建产物均为本地运行内容，已由 Git 忽略。发布前请检查 `git status` 和暂存区，确认不包含用户数据或凭证。
 
+## 捐赠/支持
+
+如果这个工具对你有帮助，欢迎打赏支持，我会继续维护和更新。
+
+| 微信 | 支付宝 |
+| --- | --- |
+| ![微信](static/assets/wx.jpg) | ![支付宝](static/assets/zfb.jpg) |
+
 ## 许可证
 
 本项目使用 [GNU Affero General Public License v3.0](LICENSE)。保留上游版权和许可证声明，网络部署或再分发时请履行 AGPL-3.0 对应义务。

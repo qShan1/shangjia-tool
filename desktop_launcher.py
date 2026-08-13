@@ -24,7 +24,7 @@ _SERVICE_PROCESS = None
 _EXIT_REQUESTED = False
 _TRAY_ICON = None
 _WINDOW = None
-# 更新清单：从仓库 raw 文件读取，避免 GitHub API 速率限制(403)。raw 不受 API 限流。
+# 更新清单：从 GitHub 仓库 raw 文件读取，raw 直链不受 API 限流（避免 GitHub API 403 rate limit）。
 UPDATE_MANIFEST_URL = os.environ.get(
     "SHANGJIA_UPDATE_MANIFEST_URL",
     "https://raw.githubusercontent.com/qShan1/shangjia-tool/main/update-manifest.json",
@@ -83,6 +83,51 @@ def mark_tray_notice_seen():
     except OSError:
         return False
     return True
+
+
+AUTOSTART_REGKEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+AUTOSTART_VALUE = "ShangjiaTool"
+
+
+def autostart_enabled():
+    """Return whether the desktop launcher is registered to auto-start with Windows."""
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, AUTOSTART_REGKEY, 0, winreg.KEY_READ) as key:
+            winreg.QueryValueEx(key, AUTOSTART_VALUE)
+            return True
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return False
+
+
+def set_autostart_enabled(enabled):
+    """Write/delete the HKCU Run entry pointing at the desktop launcher exe."""
+    try:
+        import winreg
+        value = str(ROOT / "ShangjiaTool.exe")
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, AUTOSTART_REGKEY, 0, winreg.KEY_SET_VALUE) as key:
+            if enabled:
+                winreg.SetValueEx(key, AUTOSTART_VALUE, 0, winreg.REG_SZ, value)
+            else:
+                try:
+                    winreg.DeleteValue(key, AUTOSTART_VALUE)
+                except FileNotFoundError:
+                    pass
+        return {"success": True, "enabled": bool(enabled), "path": value}
+    except Exception as error:
+        return {"success": False, "error": str(error)}
+
+
+class _DesktopApi:
+    """Exposed to the webview page as window.pywebview.api (desktop-only)."""
+
+    def get_autostart(self):
+        return {"enabled": autostart_enabled()}
+
+    def set_autostart(self, enabled):
+        return set_autostart_enabled(bool(enabled))
 
 
 def _version_key(value):
@@ -230,34 +275,62 @@ def schedule_desktop_update(update):
     _apply_update_in_background(update)
 
 
+def _auto_check_updates_background():
+    """后台检测更新；有更新再提示并安装，全程不阻塞桌面窗口打开。"""
+    try:
+        update = release_update()
+        if not update:
+            return
+        if update.get("force"):
+            # 强制更新：不询问，直接下载安装并重启，避免旧版本继续运行造成数据/接口不兼容
+            show_info(f"检测到新版本 {update['tag']}，正在自动更新...\n\n更新将安装到当前目录并自动重启，现有数据不会丢失。")
+            try:
+                schedule_desktop_update(update)
+            except Exception as error:
+                show_error(f"更新下载失败：{error}\n当前版本将继续运行。")
+            return
+        if not show_question(f"A new version {update['tag']} is available.\n\nDownload, install, and restart now? Existing data will not be modified."):
+            return
+        try:
+            schedule_desktop_update(update)
+        except Exception as error:
+            show_error(f"Update download failed: {error}\n\nThe current version will continue to start.")
+    except Exception:
+        pass
+
+
+def _manual_install_background():
+    """手动请求的更新：后台下载安装（安装脚本会等本进程退出后替换并重启）。"""
+    clear_desktop_update_request()
+    try:
+        update = release_update()
+        if not update:
+            show_info("当前已是最新版本，无需更新。")
+            return
+        try:
+            schedule_desktop_update(update)
+        except Exception as error:
+            show_error(f"更新下载失败：{error}\n当前版本将继续运行。")
+    except Exception:
+        pass
+
+
 def offer_desktop_update():
+    """启动时的更新检查/安装改为后台线程执行，不阻塞桌面窗口打开。
+
+    自动更新能力不变（检测 → 提示 → 下载 → 安装 → 重启），只是网络请求与
+    下载都在独立守护线程中进行，让窗口能立即打开，避免启动慢 3~5 秒。
+    """
     if not getattr(sys, "frozen", False):
         return False
     manually_requested = desktop_update_requested()
     if not desktop_auto_update_enabled() and not manually_requested:
         return False
-    update = release_update()
     if manually_requested:
-        clear_desktop_update_request()
-    if not update:
-        return False
-    if update.get("force"):
-        # 强制更新：不询问，直接下载安装并重启，避免旧版本继续运行造成数据/接口不兼容
-        show_info(f"检测到新版本 {update['tag']}，正在自动更新...\n\n更新将安装到当前目录并自动重启，现有数据不会丢失。")
-        try:
-            schedule_desktop_update(update)
-            return True
-        except Exception as error:
-            show_error(f"更新下载失败：{error}\n当前版本将继续运行。")
-            return False
-    if not show_question(f"A new version {update['tag']} is available.\n\nDownload, install, and restart now? Existing data will not be modified."):
-        return False
-    try:
-        schedule_desktop_update(update)
-        return True
-    except Exception as error:
-        show_error(f"Update download failed: {error}\n\nThe current version will continue to start.")
-        return False
+        threading.Thread(target=_manual_install_background, name="shangjia-startup-update", daemon=True).start()
+    else:
+        threading.Thread(target=_auto_check_updates_background, name="shangjia-startup-update", daemon=True).start()
+    return False
 
 
 def desktop_log_path():
@@ -342,14 +415,8 @@ def _port_owner_pid():
     return None
 
 
-def clean_stale_services():
-    """清除上一次会话残留的服务进程。
-
-    旧版退出不干净会让 ShangjiaService.exe 长期存活并独占 8090 端口；再次启动时启动器
-    检测到端口已通就不起新服务，而旧实例所属 PyInstaller onefile 的临时解压目录(_MEI)
-    被系统清理后，其 index.html 静态资源会消失，界面报 'No front-end found'。单实例
-    应用同一时间只应有一个服务，启动前统一清扫是安全的。
-    """
+def _taskkill_all_services():
+    """kill every ShangjiaService.exe by image name (walks the whole process tree)."""
     try:
         subprocess.run(
             ["taskkill", "/IM", "ShangjiaService.exe", "/T", "/F"],
@@ -359,7 +426,19 @@ def clean_stale_services():
         )
     except Exception:
         pass
-    time.sleep(0.5)
+
+
+def clean_stale_services():
+    """清除上一次会话残留的服务进程。
+
+    旧版退出不干净会让 ShangjiaService.exe 长期存活并独占 8090 端口；再次启动时启动器
+    检测到端口已通就不起新服务，而旧实例所属 PyInstaller onefile 的临时解压目录(_MEI)
+    被系统清理后，其 index.html 静态资源会消失，界面报 'No front-end found'。单实例
+    应用同一时间只应有一个服务，启动前统一清扫是安全的。
+    """
+    _taskkill_all_services()
+    # 给刚被杀的进程一点时间释放 8090 端口，避免新服务绑定冲突。
+    time.sleep(0.2)
 
 
 def stop_service():
@@ -367,21 +446,17 @@ def stop_service():
     global _SERVICE_PROCESS
     process = _SERVICE_PROCESS
     _SERVICE_PROCESS = None
-    pid = process.pid if (process is not None and process.poll() is None) else None
 
     if process is not None and process.poll() is None:
         # TerminateProcess: graceful teardown when the process is still alive.
         try:
             process.terminate()
             process.wait(timeout=8)
-        except subprocess.TimeoutExpired:
+        except (subprocess.TimeoutExpired, OSError):
             pass
-        except OSError:
-            pass
-
-    # terminate() only kills the parent; orphan children can linger and hold the
-    # port. taskkill /T walks the whole process tree.
-    if pid is not None:
+        # terminate() only kills the parent; orphan children can linger and hold the
+        # port. taskkill /T walks the whole process tree.
+        pid = process.pid
         try:
             subprocess.run(
                 ["taskkill", "/PID", str(pid), "/T", "/F"],
@@ -392,23 +467,14 @@ def stop_service():
         except Exception:
             pass
 
-    # PyInstaller onefile 的父引导进程可能先于 Python 子进程退出，导致上面登记的
-    # pid 失效，残余服务仍挂在后台。这里统一清理本工具的全部服务进程（单实例应用，
-    # 同一时间只应存在一个 ShangjiaService.exe，退出时清扫是安全的）。
-    try:
-        subprocess.run(
-            ["taskkill", "/IM", "ShangjiaService.exe", "/T", "/F"],
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            capture_output=True,
-            timeout=15,
-        )
-    except Exception:
-        pass
+    # /IM 全量兜底：PyInstaller onefile 父引导进程可能先于 Python 子进程退出导致登记
+    # 的 pid 失效，这里统一清理本工具的全部服务进程（单实例，同一时刻只应有一个服务）。
+    _taskkill_all_services()
 
-    # 无论端口是否健康，都尝试杀掉占用端口的进程，避免卡死的孤儿进程残留。
+    # 等端口真正被释放；超时后强杀任何仍占用 8090 的残留进程，确保退出后无残留。
     deadline = time.time() + 10
-    while time.time() < deadline and healthy():
-        time.sleep(0.5)
+    while time.time() < deadline and _port_owner_pid() is not None:
+        time.sleep(0.2)
     owner = _port_owner_pid()
     if owner is not None:
         try:
@@ -754,6 +820,7 @@ def main():
             f"http://127.0.0.1:{PORT}/admin",
             width=1440,
             height=900,
+            js_api=_DesktopApi(),
         )
         window.events.closing += allow_window_close
         # 最小化按钮 → 普通任务栏最小化（不进入托盘）。仅标题栏 X 进入托盘后台。
@@ -777,22 +844,17 @@ if __name__ == "__main__":
         show_error(str(error))
         raise
     finally:
-        # 兜底：确保托盘“退出”后 launcher 自身进程真正结束、服务彻底停止，
-        # 避免出现“退出后服务仍在后台 / 进程残留”的情况。
+        # 兜底：无论 main() 以何种路径退出，都确保后台服务被彻底清掉，避免残留
+        # ShangjiaService.exe / 占用 8090 端口。os._exit 只用于托盘“退出”的硬退出链路。
+        try:
+            stop_service()
+        except Exception:
+            pass
+        # 再次确认没有残留服务进程；若有则用 taskkill 补杀，并等其真正退出。
+        try:
+            _taskkill_all_services()
+            time.sleep(0.5)
+        except Exception:
+            pass
         if _EXIT_REQUESTED:
-            try:
-                stop_service()
-            except Exception:
-                pass
-            # 再次确认没有残留服务进程；若有则用 taskkill 补杀，并等其真正退出。
-            try:
-                subprocess.run(
-                    ["taskkill", "/IM", "ShangjiaService.exe", "/T", "/F"],
-                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-                    capture_output=True,
-                    timeout=15,
-                )
-                time.sleep(1)
-            except Exception:
-                pass
             os._exit(0)

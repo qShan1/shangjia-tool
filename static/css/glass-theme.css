@@ -169,8 +169,10 @@ textarea {
   min-height: 42px;
   max-height: 42px;
   flex: 0 0 auto;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nav-link > span {
@@ -326,6 +328,20 @@ textarea {
   width: auto;
   margin: 0 auto;
   font-size: 1.15rem;
+}
+
+/* 折叠/收起过渡：锁定菜单项与图标的 transform，仅保留折叠按钮箭头旋转。
+   移动端 sticky hover + 激活态 scale 动画会在宽度过渡期间被引擎重放导致图标旋转错乱。 */
+.sidebar.collapsed .nav-link,
+.sidebar.collapsed .nav-link:hover,
+.sidebar.collapsed .nav-link.active,
+.sidebar.collapsed .nav-link i,
+.sidebar.collapsed .nav-link:hover i,
+.sidebar.collapsed .nav-link.active i {
+  transform: none !important;
+}
+.sidebar.collapsed .nav-link.active {
+  animation: none !important;
 }
 
 /* 折叠状态：品牌区只显示logo，logo与主题按钮垂直堆叠避免拥挤 */
