@@ -409,8 +409,8 @@
     },
     {
       "path": "static/index.html",
-      "md5": "28befafc987ba6d2e1c4276eb8a7c981",
-      "size": 937703,
+      "md5": "bba5db938a2ab651892645b500ac8c3a",
+      "size": 937689,
       "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/index.html",
       "requires_restart": false,
       "description": ""
