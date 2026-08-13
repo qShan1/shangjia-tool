@@ -590,9 +590,17 @@ function clearIgnoredUpdateVersion(showFeedback = true) {
 
 // 本地版本历史（远程服务禁用时使用）
 const LOCAL_VERSION_HISTORY = {
-    version: 'v1.0.1',
+    version: 'v1.0.2',
     intro: '本系统仅供个人学习研究使用，请勿用于商业用途。如有问题或建议，欢迎反馈。',
     versionHistory: [
+        {
+            version: 'v1.0.2',
+            date: '2026-08-13',
+            updates: [
+                '【修复】强制更新与启动流程冲突：更新时自动关闭当前窗口并重启，不再重复弹窗',
+                '【优化】自动更新更稳定，更新完成后自动重启到新版本'
+            ]
+        },
         {
             version: 'v1.0.1',
             date: '2026-08-13',
