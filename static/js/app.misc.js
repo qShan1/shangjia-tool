@@ -3811,14 +3811,14 @@ async function checkDesktopReleaseNow() {
     const button = document.getElementById('desktopReleaseCheckBtn');
     if (button) button.disabled = true;
     try {
-        const [releaseResponse, versionResponse] = await Promise.all([
-            fetch('https://api.github.com/repos/qShan1/shangjia-tool/releases/latest', { headers: { Accept: 'application/vnd.github+json' } }),
+        const [manifestResponse, versionResponse] = await Promise.all([
+            fetch('https://raw.githubusercontent.com/qShan1/shangjia-tool/main/update-manifest.json', { cache: 'no-store' }),
             fetch(`/static/version.txt?ts=${Date.now()}`, { cache: 'no-store' }),
         ]);
-        if (!releaseResponse.ok || !versionResponse.ok) throw new Error('release lookup failed');
-        const release = await releaseResponse.json();
+        if (!manifestResponse.ok || !versionResponse.ok) throw new Error('release lookup failed');
+        const manifest = await manifestResponse.json();
         const installed = (await versionResponse.text()).trim();
-        const latest = String(release.tag_name || '').trim();
+        const latest = String(manifest.latest || '').trim();
         const available = latest && latest !== installed;
         const status = document.getElementById('desktopReleaseStatus');
         if (status) status.textContent = available

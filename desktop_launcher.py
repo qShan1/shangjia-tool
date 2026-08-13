@@ -632,82 +632,23 @@ def desktop_remember_close_choice():
 
 
 def _prompt_close_choice():
-    """弹出选择提示：最小化到托盘 / 直接退出，附带“记住本次选择”勾选框。
-    返回 (choice, remember)；choice 为 'tray' 或 'exit'，remember 为是否勾选记住。
+    """弹出选择提示：最小化到托盘 / 直接退出。
+    返回 (choice, remember)；choice 为 'tray' 或 'exit'，remember 恒为 False。
+    使用 MessageBoxW 而非 TaskDialogIndirect——后者在 ctypes 结构体布局错误时会返回
+    0x80070057 静默失败，导致关闭直接回退到托盘而不弹窗。
     """
     try:
         import ctypes
-        from ctypes import POINTER, Structure, c_int, c_longlong, c_wchar_p
-        import ctypes.wintypes as wt
-
-        ID_TRAY = 1001
-        ID_EXIT = 1002
-
-        class TASKDIALOG_BUTTON(Structure):
-            _fields_ = [("nButtonID", c_int), ("pszButtonText", c_wchar_p)]
-
-        class TASKDIALOGCONFIG(Structure):
-            _fields_ = [
-                ("cbSize", c_int),
-                ("hwndParent", wt.HWND),
-                ("hInstance", wt.HINSTANCE),
-                ("dwFlags", c_int),
-                ("dwCommonButtons", c_int),
-                ("pszWindowTitle", c_wchar_p),
-                ("hMainIcon", c_longlong),
-                ("pszMainInstruction", c_wchar_p),
-                ("pszContent", c_wchar_p),
-                ("cButtons", c_int),
-                ("pButtons", POINTER(TASKDIALOG_BUTTON)),
-                ("nDefaultButton", c_int),
-                ("cRadioButtons", c_int),
-                ("pRadioButtons", POINTER(TASKDIALOG_BUTTON)),
-                ("nDefaultRadioButton", c_int),
-                ("pszVerificationText", c_wchar_p),
-                ("pszExpandedInformation", c_wchar_p),
-                ("pszExpandedControlText", c_wchar_p),
-                ("pszCollapsedControlText", c_wchar_p),
-                ("hFooterIcon", c_longlong),
-                ("pszFooter", c_wchar_p),
-                ("pfCallback", c_longlong),
-                ("lpCallbackData", c_longlong),
-                ("cxWidth", c_int),
-            ]
-
-        buttons = (TASKDIALOG_BUTTON * 2)(
-            TASKDIALOG_BUTTON(ID_TRAY, "最小化到系统托盘后台运行"),
-            TASKDIALOG_BUTTON(ID_EXIT, "直接退出软件"),
-        )
-        config = TASKDIALOGCONFIG()
-        config.cbSize = ctypes.sizeof(TASKDIALOGCONFIG)
-        config.pszWindowTitle = APP_NAME
-        config.pszMainInstruction = "关闭软件后希望如何操作？"
-        config.pszContent = (
-            "· 最小化到系统托盘后台运行：主窗口隐藏，软件在右下角通知区域常驻，"
-            "双击托盘图标可重新打开窗口。\n"
-            "· 直接退出软件：完全关闭后台服务与进程。"
-        )
-        config.pszVerificationText = "记住本次选择，后续不再弹窗提醒"
-        config.cButtons = 2
-        config.pButtons = buttons
-        config.nDefaultButton = ID_TRAY
-
-        pnButton = c_int(0)
-        pnRadio = c_int(0)
-        pfVerification = c_int(0)
-        comctl = ctypes.windll.comctl32.TaskDialogIndirect
-        comctl.restype = ctypes.c_long
-        hr = comctl(
-            ctypes.byref(config),
-            ctypes.byref(pnButton),
-            ctypes.byref(pnRadio),
-            ctypes.byref(pfVerification),
-        )
-        if hr != 0:
-            raise RuntimeError(f"TaskDialogIndirect hr=0x{hr & 0xFFFFFFFF:x}")
-        remember = pfVerification.value != 0
-        choice = "exit" if pnButton.value == ID_EXIT else "tray"
-        return choice, remember
+        # MB_YESNO：是 → 最小化托盘；否 → 直接退出
+        wants_tray = ctypes.windll.user32.MessageBoxW(
+            None,
+            "关闭软件后希望如何操作？\n\n"
+            "[是] 最小化到系统托盘后台运行（主窗口隐藏，右下角常驻，双击图标恢复）\n"
+            "[否] 直接退出软件（完全关闭后台服务与进程）",
+            APP_NAME,
+            0x24,
+        ) == 6
+        return ("tray" if wants_tray else "exit"), False
     except Exception as error:
         with desktop_log_path().open("a", encoding="utf-8") as output:
             output.write(f"Close-prompt dialog failed, defaulting to tray: {error}\n")
