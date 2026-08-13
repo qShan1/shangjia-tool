@@ -258,6 +258,8 @@ function showSection(sectionName) {
         break;
     case 'ai-settings':     // 【AI 设置菜单】
         loadAISettingsPage();
+        loadAiSiteAuditPanel();
+        loadAiCopyAccounts();
         break;
     case 'notification-channels':  // 【通知渠道菜单】
         loadNotificationChannels();
@@ -269,7 +271,6 @@ function showSection(sectionName) {
     case 'system-settings':    // 【系统设置菜单】
         loadSystemSettings();
         initMenuManagement();
-        loadAiSiteAuditPanel();
         sgRenderReminderList();
         break;
     case 'logs':            // 【日志管理菜单】
@@ -515,6 +516,105 @@ async function openAiSiteAuditReport(reportId) {
 function getAuthToken() {
     authToken = localStorage.getItem('auth_token');
     return authToken || '';
+}
+
+// ==================== AI 文案生成 ====================
+async function loadAiCopyAccounts() {
+    const select = document.getElementById('aiCopyAccountId');
+    if (!select) return;
+    try {
+        const accounts = await fetchJSON(apiBase + '/cookies/details', { silent: true });
+        const rows = Array.isArray(accounts) ? accounts : (accounts.data || accounts.cookies || []);
+        const current = select.value;
+        select.innerHTML = '<option value="">选择已配置AI的账号</option>';
+        rows.forEach(account => {
+            const id = account.cookie_id || account.id || account.account_id;
+            if (!id) return;
+            const option = document.createElement('option');
+            option.value = id;
+            option.textContent = account.name || account.nickname || id;
+            select.appendChild(option);
+        });
+        if (current) select.value = current;
+    } catch (error) {
+        console.error('加载AI文案账号失败:', error);
+    }
+}
+
+function toggleAiCopyMode() {
+    const mode = document.getElementById('aiCopyMode')?.value;
+    const label = document.getElementById('aiCopyKeywordsLabel');
+    const input = document.getElementById('aiCopyInput');
+    if (!label || !input) return;
+    if (mode === 'generate') {
+        label.textContent = '商品卖点 / 关键词';
+        input.placeholder = '例如：正版网盘会员 自动发货 永久更新';
+    } else {
+        label.textContent = '待优化文案（标题/描述）';
+        input.placeholder = '粘贴需要优化的商品标题或描述，AI 会去除违禁词与绝对化表述';
+    }
+}
+
+async function runAiCopyTool() {
+    const accountId = document.getElementById('aiCopyAccountId')?.value;
+    const mode = document.getElementById('aiCopyMode')?.value || 'generate';
+    const input = document.getElementById('aiCopyInput')?.value.trim();
+    const category = document.getElementById('aiCopyCategory')?.value.trim() || '';
+    const resultBox = document.getElementById('aiCopyResult');
+    const button = document.getElementById('aiCopyRunBtn');
+    if (!accountId) {
+        showToast('请先选择 AI 账号', 'warning');
+        return;
+    }
+    if (!input) {
+        showToast(mode === 'generate' ? '请输入商品卖点或关键词' : '请输入待优化文案', 'warning');
+        return;
+    }
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>AI 处理中...';
+    }
+    try {
+        const payload = { account_id: accountId, mode, category, keywords: input };
+        if (mode === 'optimize') {
+            payload.title = input;
+            payload.description = input;
+            payload.keywords = '';
+        }
+        const response = await fetchJSON(apiBase + '/api/item-copy/optimize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = response.data || {};
+        if (!data.title && !data.description) throw new Error('AI 未返回有效结果');
+        const title = document.getElementById('aiCopyResultTitle');
+        const desc = document.getElementById('aiCopyResultDesc');
+        const meta = document.getElementById('aiCopyResultMeta');
+        if (title) title.textContent = data.title ? `标题：${data.title}` : '';
+        if (desc) desc.textContent = data.description ? `描述：${data.description}` : '';
+        if (meta) {
+            const parts = [];
+            if (data.category) parts.push(`类目：${data.category}`);
+            if (data.price_min || data.price_max) {
+                const p = [];
+                if (data.price_min) p.push(`¥${data.price_min}`);
+                if (data.price_max) p.push(`¥${data.price_max}`);
+                parts.push(`建议价：${p.join(' ~ ')}`);
+            }
+            meta.textContent = parts.join('　');
+        }
+        if (resultBox) resultBox.style.display = 'block';
+        showToast('AI 文案处理完成', 'success');
+    } catch (error) {
+        const msg = error.message || 'AI 文案处理失败';
+        showToast(msg, 'danger');
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<i class="bi bi-stars me-1"></i>生成 / 优化文案';
+        }
+    }
 }
 
 // 移动端侧边栏切换

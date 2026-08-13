@@ -862,8 +862,13 @@ def service_ready():
 
 
 def loading_page() -> str:
-    """返回内联加载页（data URL），在服务就绪前显示，避免开屏白等。"""
-    html = (
+    """返回内联加载页 HTML，在服务就绪前显示，避免开屏白等。
+
+    直接返回纯 HTML 字符串（create_window 的 html= 参数走 NavigateToString），
+    不要拼成 data: URL —— pywebview 会把 data: 当本地相对路径交给内置 HTTP server
+    serve，导致双击打开时先报 404（http://127.0.0.1:PORT/html%3E），几秒后才切到管理台。
+    """
+    return (
         "<!doctype html><html><head><meta charset='utf-8'>"
         "<style>"
         "html,body{height:100%;margin:0;display:flex;align-items:center;justify-content:center;"
@@ -877,8 +882,6 @@ def loading_page() -> str:
         "<div class='spinner'></div><p>正在启动本地服务，请稍候...</p>"
         "</div></body></html>"
     )
-    from urllib.parse import quote
-    return "data:text/html;charset=utf-8," + quote(html)
 
 def main():
     global _SERVICE_PROCESS
@@ -937,7 +940,8 @@ def main():
         # 先加载内联加载页让窗口立即出现，服务就绪后由后台线程切换到管理台，避免开屏白等。
         window = webview.create_window(
             APP_NAME,
-            loading_page(),
+            None,
+            html=loading_page(),
             width=1440,
             height=900,
             js_api=_DesktopApi(),

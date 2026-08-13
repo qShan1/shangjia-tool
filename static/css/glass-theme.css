@@ -1,6 +1,8 @@
 /* Shared light glass theme for the management shell. */
 html {
   color-scheme: light;
+  /* 始终保留 body 垂直滚动槽，避免内容高度跨越视口边界时滚动条出现/消失造成跳动 */
+  scrollbar-gutter: stable;
 }
 html[data-theme="dark"] {
   color-scheme: dark;
