@@ -1064,6 +1064,7 @@ const DEFAULT_MENU_ITEMS = [
     { id: 'items-reply', name: '指定商品回复', icon: 'bi-chat-left-text', required: false },
     { id: 'cards', name: '卡券管理', icon: 'bi-credit-card', required: false },
     { id: 'auto-delivery', name: '自动发货', icon: 'bi-truck', required: false },
+    { id: 'ai-settings', name: 'AI 设置', icon: 'bi-robot', required: false },
     { id: 'notification-channels', name: '通知渠道', icon: 'bi-bell', required: false },
     { id: 'message-notifications', name: '消息通知', icon: 'bi-chat-dots', required: false },
     { id: 'online-im', name: '在线客服', icon: 'bi-headset', required: false },

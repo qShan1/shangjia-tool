@@ -1915,14 +1915,40 @@ async function clearDefaultReplyRecords(accountId) {
 // ==================== AI回复配置相关函数 ====================
 
 // 配置AI回复
+async function loadAISettingsPage() {
+    try {
+        const select = document.getElementById('aiConfigAccountIdSelect');
+        if (!select) return;
+        const cookieDetails = await fetchJSON(apiBase + '/cookies/details', { silent: true });
+        const current = select.value;
+        select.innerHTML = '<option value="">请选择要配置的账号</option>' + cookieDetails.map(cookie => {
+            const label = (cookie.name || cookie.id) + (cookie.id ? `（${cookie.id}）` : '');
+            return `<option value="${escapeHtml(cookie.id)}">${escapeHtml(label)}</option>`;
+        }).join('');
+        if (current && [...select.options].some(o => o.value === current)) {
+            select.value = current;
+        }
+    } catch (error) {
+        console.error('加载AI设置页面失败:', error);
+    }
+}
+
 async function configAIReply(accountId) {
     try {
+    // 确保账号下拉已加载（从账号行按钮进入时页面可能尚未加载过）
+    const accountIdSelect = document.getElementById('aiConfigAccountIdSelect');
+    if (accountIdSelect && accountIdSelect.options.length <= 1) {
+        await loadAISettingsPage();
+    }
+
     // 获取当前AI回复设置
     const settings = await fetchJSON(`${apiBase}/ai-reply-settings/${accountId}`);
 
     // 填充表单
     document.getElementById('aiConfigAccountId').value = accountId;
-    document.getElementById('aiConfigAccountIdDisplay').value = accountId;
+    if (accountIdSelect) {
+        accountIdSelect.value = accountId;
+    }
     document.getElementById('aiReplyEnabled').checked = settings.ai_enabled;
     // 处理模型名称
     const modelSelect = document.getElementById('aiModelName');
@@ -1964,9 +1990,10 @@ async function configAIReply(accountId) {
     updateApiUrlPreview();
     await loadAIPresets();
 
-    // 显示模态框
-    const modal = new bootstrap.Modal(document.getElementById('aiReplyConfigModal'));
-    modal.show();
+    // 切到 AI 设置页面（从账号行按钮进入时确保页面可见）
+    if (typeof showSection === 'function') {
+        showSection('ai-settings');
+    }
 
     } catch (error) {
     console.error('获取AI回复设置失败:', error);
@@ -2099,7 +2126,6 @@ async function saveAIReplyConfig() {
 
     if (response.ok) {
         showToast('AI回复配置保存成功', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('aiReplyConfigModal')).hide();
         loadCookies(); // 刷新账号列表以更新AI回复状态显示
     } else {
         const error = await response.text();

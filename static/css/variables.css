@@ -105,63 +105,63 @@
     border-color: var(--border-color);
   }
 
-  [data-theme="dark"] #aiReplyConfigModal .ai-account-panel,
-  [data-theme="dark"] #aiReplyConfigModal .ai-enable-panel,
-  [data-theme="dark"] #aiReplyConfigModal .ai-config-block,
-  [data-theme="dark"] #aiReplyConfigModal .ai-config-grid,
-  [data-theme="dark"] #aiReplyConfigModal .ai-metric-card,
-  [data-theme="dark"] #aiReplyConfigModal .ai-prompt-card {
+  [data-theme="dark"] #ai-settings-section .ai-account-panel,
+  [data-theme="dark"] #ai-settings-section .ai-enable-panel,
+  [data-theme="dark"] #ai-settings-section .ai-config-block,
+  [data-theme="dark"] #ai-settings-section .ai-config-grid,
+  [data-theme="dark"] #ai-settings-section .ai-metric-card,
+  [data-theme="dark"] #ai-settings-section .ai-prompt-card {
     background: rgba(30, 41, 59, 0.78);
     border-color: rgba(99, 102, 241, 0.32);
   }
 
-  [data-theme="dark"] #aiReplyConfigModal .ai-modal-intro {
+  [data-theme="dark"] #ai-settings-section .ai-modal-intro {
     background: linear-gradient(120deg, rgba(99, 102, 241, 0.22), rgba(6, 182, 212, 0.22));
     border-color: rgba(99, 102, 241, 0.38);
   }
 
-  [data-theme="dark"] #aiReplyConfigModal .ai-intro-icon {
+  [data-theme="dark"] #ai-settings-section .ai-intro-icon {
     background: rgba(99, 102, 241, 0.3);
     color: #c7d2fe;
   }
 
-  [data-theme="dark"] #aiReplyConfigModal .ai-intro-title {
+  [data-theme="dark"] #ai-settings-section .ai-intro-title {
     color: var(--text-color);
   }
 
-  [data-theme="dark"] #aiReplyConfigModal .ai-intro-text,
-  [data-theme="dark"] #aiReplyConfigModal .ai-footer-note {
+  [data-theme="dark"] #ai-settings-section .ai-intro-text,
+  [data-theme="dark"] #ai-settings-section .ai-footer-note {
     color: var(--text-secondary);
   }
 
-  [data-theme="dark"] #aiReplyConfigModal .ai-section-tag {
+  [data-theme="dark"] #ai-settings-section .ai-section-tag {
     border-color: rgba(255, 255, 255, 0.35);
     color: rgba(255, 255, 255, 0.9);
   }
 
-  [data-theme="dark"] #aiReplyConfigModal .ai-basic-card .card-body {
+  [data-theme="dark"] #ai-settings-section .ai-basic-card .card-body {
     background:
       radial-gradient(circle at right top, rgba(99, 102, 241, 0.2), transparent 45%),
       radial-gradient(circle at left bottom, rgba(6, 182, 212, 0.2), transparent 42%);
   }
 
-  [data-theme="dark"] #aiReplyConfigModal .ai-account-field i {
+  [data-theme="dark"] #ai-settings-section .ai-account-field i {
     box-shadow: 0 6px 18px rgba(79, 70, 229, 0.35);
   }
 
-  [data-theme="dark"] #aiReplyConfigModal .ai-endpoint-preview {
+  [data-theme="dark"] #ai-settings-section .ai-endpoint-preview {
     border-color: rgba(16, 185, 129, 0.42);
     background: rgba(16, 185, 129, 0.15);
     color: #6ee7b7;
   }
 
-  [data-theme="dark"] #aiReplyConfigModal .ai-prompt-tip {
+  [data-theme="dark"] #ai-settings-section .ai-prompt-tip {
     border-color: rgba(14, 165, 233, 0.4);
     background: rgba(14, 165, 233, 0.14);
     color: #7dd3fc;
   }
 
-  [data-theme="dark"] #aiReplyConfigModal .ai-test-result .alert {
+  [data-theme="dark"] #ai-settings-section .ai-test-result .alert {
     border-color: rgba(59, 130, 246, 0.4);
     background-color: rgba(30, 58, 138, 0.25);
     color: var(--text-color);
@@ -547,4 +547,28 @@
 
   [data-theme="dark"] ::-webkit-scrollbar-corner {
     background: #1e293b;
+  }
+
+  /* 亮色模式全局滚动条：细窄统一，避免回退到系统默认宽条导致视觉混乱 */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(118, 118, 128, 0.30);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(118, 118, 128, 0.45);
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
   }

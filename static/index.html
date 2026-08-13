@@ -310,6 +310,12 @@
           <span>自动发货</span>
         </a>
       </div>
+      <div class="nav-item" data-menu-id="ai-settings">
+        <a href="javascript:void(0)" class="nav-link" onclick="showSection('ai-settings')">
+          <i class="bi bi-robot"></i>
+          <span>AI 设置</span>
+        </a>
+      </div>
       <div class="nav-divider"><small class="text-white-50">通知</small></div>
       <div class="nav-item" data-menu-id="notification-channels">
         <a href="javascript:void(0)" class="nav-link" onclick="showSection('notification-channels')">
@@ -445,7 +451,7 @@
               <span class="dashboard-sticky-note-icon"><i class="bi bi-pin-angle-fill"></i></span>
               <span class="dashboard-sticky-note-body">
                 <span class="dashboard-sticky-note-title">欢迎使用闲鱼商家工具</span>
-                <span class="dashboard-sticky-note-message">v1.0.0 · 请使用右上角账号信息联系客服反馈问题</span>
+                <span class="dashboard-sticky-note-message" id="dashboardStickyNoteMessage">请使用右上角账号信息联系客服反馈问题</span>
               </span>
             </div>
           </div>
@@ -6273,20 +6279,17 @@
 
   
 
-  <!-- AI回复配置模态框 -->
-  <div class="modal fade" id="aiReplyConfigModal" tabindex="-1">
-    <div class="modal-dialog modal-lg ai-reply-dialog">
-      <div class="modal-content ai-reply-content">
-        <div class="modal-header ai-reply-header">
-          <div class="ai-reply-title-group">
-            <h5 class="modal-title">
-              <i class="bi bi-robot me-2"></i>AI回复配置
-            </h5>
-            <small class="ai-reply-subtitle">为当前账号统一管理模型、供应商、策略与联调测试</small>
-          </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
+  <!-- AI回复配置页面 -->
+  <div id="ai-settings-section" class="content-section">
+    <div class="content-header">
+      <div>
+        <h4 class="mb-1">AI 设置</h4>
+        <p class="text-muted mb-0">为账号统一管理模型、供应商、策略与联调测试</p>
+      </div>
+    </div>
+    <div class="content-body">
+      <div class="card mb-3">
+        <div class="card-body ai-reply-content">
           <form id="aiReplyConfigForm" class="ai-reply-form">
             <input type="hidden" id="aiConfigAccountId">
 
@@ -6310,10 +6313,12 @@
               <div class="card-body">
                 <div class="ai-basic-overview mb-3">
                   <div class="ai-account-panel">
-                    <label class="form-label mb-2">账号ID</label>
+                    <label class="form-label mb-2">选择账号</label>
                     <div class="ai-account-field">
                       <i class="bi bi-person-badge"></i>
-                      <input type="text" class="form-control" id="aiConfigAccountIdDisplay" readonly>
+                      <select class="form-select" id="aiConfigAccountIdSelect" onchange="configAIReply(this.value)">
+                        <option value="">请选择要配置的账号</option>
+                      </select>
                     </div>
                   </div>
                   <div class="ai-enable-panel">
@@ -6558,12 +6563,11 @@
             </div>
           </form>
         </div>
-        <div class="modal-footer ai-reply-footer">
+        <div class="d-flex justify-content-between align-items-center p-3 border-top">
           <div class="ai-footer-note">
             <i class="bi bi-shield-check me-1"></i>配置仅作用于当前账号，可随时调整
           </div>
           <div class="ai-footer-actions">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
             <button type="button" class="btn btn-primary" onclick="saveAIReplyConfig()">
               <i class="bi bi-check-lg me-1"></i>保存配置
             </button>

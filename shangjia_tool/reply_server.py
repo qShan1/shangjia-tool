@@ -404,6 +404,17 @@ def _get_dashboard_announcement_payload(force_refresh: bool = False) -> Dict[str
             'history': list(announcement_cache.get('history') or []),
         }
 
+    # 本地公告优先（随包分发，由开发者维护），远端兜底
+    local_snapshot = _try_load_dashboard_announcement_snapshot_from_local()
+    if local_snapshot is not None:
+        announcement_cache.update({
+            'expires_at': now_ts + ANNOUNCEMENT_CACHE_TTL_SECONDS,
+            'current': local_snapshot.get('current'),
+            'history': list(local_snapshot.get('history') or []),
+            'has_remote_success': False,
+        })
+        return local_snapshot
+
     loaded_remote, remote_snapshot = _try_load_dashboard_announcement_snapshot_from_remote()
     if loaded_remote and remote_snapshot is not None:
         announcement_cache.update({

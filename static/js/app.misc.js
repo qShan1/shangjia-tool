@@ -666,6 +666,10 @@ async function loadSystemVersion() {
         if (aboutVersionNumber) {
             aboutVersionNumber.textContent = LOCAL_VERSION;
         }
+        const stickyNoteMessage = document.getElementById('dashboardStickyNoteMessage');
+        if (stickyNoteMessage) {
+            stickyNoteMessage.textContent = `${LOCAL_VERSION} · 请使用右上角账号信息联系客服反馈问题`;
+        }
 
         // 版本仅用于标识当前本地维护包，不再触发更新检查或更新弹窗
         const systemVersionBadge = document.getElementById('systemVersion');
@@ -958,10 +962,15 @@ function showChangelogModal() {
 
     changelogContent.innerHTML = html;
 
-    // 显示模态框（z-index 提到公告弹窗之上，避免被其覆盖）
-    const changelogModalElement = document.getElementById('changelogModal');
-    changelogModalElement.style.zIndex = '2000';
-    const modal = new bootstrap.Modal(changelogModalElement);
+    // 先关闭公告摘录弹窗，避免双弹窗叠加造成内容透明重叠、ESC 无法退出
+    const announcementModal = document.getElementById('dashboardAnnouncementHistoryModal');
+    if (announcementModal) {
+        const instance = bootstrap.Modal.getInstance(announcementModal);
+        if (instance) instance.hide();
+    }
+
+    // 显示模态框
+    const modal = new bootstrap.Modal(document.getElementById('changelogModal'));
     modal.show();
 }
 

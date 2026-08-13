@@ -1375,6 +1375,12 @@ html:has(body.modal-open) {
   position: relative;
   z-index: 1;
 }
+/* 卡片头/底部需盖过卡片体（如销售额趋势自定义日期面板从 header 绝对定位落到 body 区），
+   否则同为 z-index:1 的 card-body 层叠上下文会把面板压住、点击被 canvas 吃掉 */
+.card > .card-header,
+.card > .card-footer {
+  z-index: 2;
+}
 
 /* Desktop glass surfaces use restrained depth; motion is driven by pointer position. */
 .sidebar,
@@ -2478,6 +2484,7 @@ html.has-custom-background body {
 .sidebar-nav,
 .dropdown-menu,
 .modal-body,
+.table-responsive,
 [class*="-list"][style*="overflow"] {
   scrollbar-gutter: stable;
   scrollbar-width: thin;

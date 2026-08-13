@@ -1,19 +1,18 @@
 {
   "announcements": [
     {
-      "id": "2026-08-08-v2-1-7-desktop-experience",
+      "id": "2026-08-13-v1-0-3",
       "enabled": true,
       "level": "success",
-      "title": "v2.1.7 \u684c\u9762\u4f53\u9a8c\u66f4\u65b0",
-      "summary": "\u516c\u544a\u3001\u4fa7\u680f\u3001\u6db2\u6001\u73bb\u7483\u4e3b\u9898\u3001\u6258\u76d8\u63d0\u793a\u548c\u66f4\u65b0\u5165\u53e3\u5df2\u6574\u7406\u3002",
-      "message": "\u684c\u9762\u7aef\u73b0\u5728\u533a\u5206\u6700\u5c0f\u5316\u540e\u53f0\u8fd0\u884c\u4e0e\u5f7b\u5e95\u9000\u51fa\uff1b\u7cfb\u7edf\u8bbe\u7f6e\u4e2d\u53ef\u67e5\u770b\u66f4\u65b0\u3001\u53cd\u9988\u548c\u5907\u4efd\u8bf4\u660e\u3002",
+      "title": "v1.0.3 已发布",
+      "summary": "已修复商品列表悬停闪烁、更新日志窗口遮挡、登录与账号管理优化等多项问题。",
+      "message": "本版本修复了商品列表鼠标悬停闪烁、更新日志窗口被公告遮挡、销售额自定义日期无法选择等问题，并优化了账号管理与登录界面体验。",
       "dismissible": true,
-      "published_at": "2026-08-08T11:00:00+08:00",
-      "start_at": "2026-08-08T11:00:00+08:00",
+      "published_at": "2026-08-13T12:00:00+08:00",
+      "start_at": "2026-08-13T12:00:00+08:00",
       "end_at": "",
-      "action_type": "url",
-      "action_text": "\u63d0\u4ea4\u53cd\u9988",
-      "action_url": "https://github.com/qShan1/shangjia-tool/issues/new/choose"
+      "action_type": "changelog",
+      "action_text": "查看更新日志"
     }
   ]
 }

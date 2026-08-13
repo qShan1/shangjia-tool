@@ -282,38 +282,34 @@
 /* ================================
    AI回复配置 - 全量界面视觉增强
    ================================ */
-#aiReplyConfigModal .modal-dialog {
-  max-width: 900px;
-}
-
-#aiReplyConfigModal .ai-reply-content {
+#ai-settings-section .ai-reply-content {
   overflow: hidden;
 }
 
-#aiReplyConfigModal .ai-reply-header {
+#ai-settings-section .ai-reply-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
 }
 
-#aiReplyConfigModal .ai-reply-title-group {
+#ai-settings-section .ai-reply-title-group {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-#aiReplyConfigModal .ai-reply-subtitle {
+#ai-settings-section .ai-reply-subtitle {
   font-size: 0.82rem;
   color: rgba(255, 255, 255, 0.84);
 }
 
-#aiReplyConfigModal .ai-reply-form {
+#ai-settings-section .ai-reply-form {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-#aiReplyConfigModal .ai-modal-intro {
+#ai-settings-section .ai-modal-intro {
   display: flex;
   gap: 12px;
   align-items: flex-start;
@@ -323,7 +319,7 @@
   background: linear-gradient(120deg, rgba(99, 102, 241, 0.1), rgba(6, 182, 212, 0.1));
 }
 
-#aiReplyConfigModal .ai-intro-icon {
+#ai-settings-section .ai-intro-icon {
   width: 30px;
   height: 30px;
   border-radius: 8px;
@@ -335,41 +331,41 @@
   flex-shrink: 0;
 }
 
-#aiReplyConfigModal .ai-intro-title {
+#ai-settings-section .ai-intro-title {
   font-weight: 700;
   color: var(--dark-color);
   line-height: 1.2;
 }
 
-#aiReplyConfigModal .ai-intro-text {
+#ai-settings-section .ai-intro-text {
   font-size: 0.86rem;
   color: var(--secondary-color);
   margin-top: 2px;
 }
 
-#aiReplyConfigModal .ai-section-card {
+#ai-settings-section .ai-section-card {
   border-radius: 16px;
   overflow: hidden;
 }
 
-#aiReplyConfigModal .ai-section-header {
+#ai-settings-section .ai-section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
 }
 
-#aiReplyConfigModal .ai-section-title {
+#ai-settings-section .ai-section-title {
   display: flex;
   flex-direction: column;
 }
 
-#aiReplyConfigModal .ai-section-desc {
+#ai-settings-section .ai-section-desc {
   font-size: 0.76rem;
   opacity: 0.88;
 }
 
-#aiReplyConfigModal .ai-section-tag {
+#ai-settings-section .ai-section-tag {
   font-size: 0.68rem;
   padding: 4px 10px;
   border-radius: 999px;
@@ -379,35 +375,35 @@
   color: rgba(255, 255, 255, 0.92);
 }
 
-#aiReplyConfigModal .ai-basic-card .card-body {
+#ai-settings-section .ai-basic-card .card-body {
   background:
     radial-gradient(circle at right top, rgba(79, 70, 229, 0.09), transparent 45%),
     radial-gradient(circle at left bottom, rgba(6, 182, 212, 0.09), transparent 42%);
 }
 
-#aiReplyConfigModal .ai-basic-overview {
+#ai-settings-section .ai-basic-overview {
   display: grid;
   grid-template-columns: 1.25fr 1fr;
   gap: 12px;
 }
 
-#aiReplyConfigModal .ai-account-panel,
-#aiReplyConfigModal .ai-enable-panel,
-#aiReplyConfigModal .ai-config-block,
-#aiReplyConfigModal .ai-config-grid {
+#ai-settings-section .ai-account-panel,
+#ai-settings-section .ai-enable-panel,
+#ai-settings-section .ai-config-block,
+#ai-settings-section .ai-config-grid {
   background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(79, 70, 229, 0.14);
   border-radius: 14px;
   padding: 14px;
 }
 
-#aiReplyConfigModal .ai-account-field {
+#ai-settings-section .ai-account-field {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-#aiReplyConfigModal .ai-account-field i {
+#ai-settings-section .ai-account-field i {
   width: 34px;
   height: 34px;
   border-radius: 10px;
@@ -420,62 +416,62 @@
   flex-shrink: 0;
 }
 
-#aiReplyConfigModal .ai-account-field .form-control {
+#ai-settings-section .ai-account-field .form-control {
   font-weight: 600;
 }
 
-#aiReplyConfigModal .ai-enable-panel {
+#ai-settings-section .ai-enable-panel {
   display: flex;
   align-items: center;
 }
 
-#aiReplyConfigModal .ai-enable-switch {
+#ai-settings-section .ai-enable-switch {
   margin: 0;
   width: 100%;
 }
 
-#aiReplyConfigModal .ai-enable-switch .form-check-input {
+#ai-settings-section .ai-enable-switch .form-check-input {
   width: 2.7rem;
   height: 1.4rem;
 }
 
-#aiReplyConfigModal .ai-config-stack {
+#ai-settings-section .ai-config-stack {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-#aiReplyConfigModal .ai-preset-controls {
+#ai-settings-section .ai-preset-controls {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-#aiReplyConfigModal .ai-preset-controls .form-select {
+#ai-settings-section .ai-preset-controls .form-select {
   flex: 1;
 }
 
-#aiReplyConfigModal .ai-preset-actions {
+#ai-settings-section .ai-preset-actions {
   display: flex;
   gap: 8px;
   flex-shrink: 0;
 }
 
-#aiReplyConfigModal .ai-config-grid {
+#ai-settings-section .ai-config-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
-#aiReplyConfigModal .ai-config-item {
+#ai-settings-section .ai-config-item {
   min-width: 0;
 }
 
-#aiReplyConfigModal .ai-config-item-wide {
+#ai-settings-section .ai-config-item-wide {
   grid-column: 1 / -1;
 }
 
-#aiReplyConfigModal .ai-endpoint-preview {
+#ai-settings-section .ai-endpoint-preview {
   margin-top: 8px;
   padding: 8px 10px;
   border-radius: 10px;
@@ -489,20 +485,20 @@
   min-height: 34px;
 }
 
-#aiReplyConfigModal .ai-bargain-grid {
+#ai-settings-section .ai-bargain-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-#aiReplyConfigModal .ai-metric-card {
+#ai-settings-section .ai-metric-card {
   border-radius: 12px;
   border: 1px solid rgba(79, 70, 229, 0.14);
   background: rgba(255, 255, 255, 0.76);
   padding: 12px;
 }
 
-#aiReplyConfigModal .ai-prompt-tip {
+#ai-settings-section .ai-prompt-tip {
   border-radius: 12px;
   border: 1px dashed rgba(14, 165, 233, 0.42);
   background: rgba(14, 165, 233, 0.08);
@@ -511,62 +507,62 @@
   padding: 10px 12px;
 }
 
-#aiReplyConfigModal .ai-prompt-grid {
+#ai-settings-section .ai-prompt-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
-#aiReplyConfigModal .ai-prompt-card {
+#ai-settings-section .ai-prompt-card {
   border-radius: 12px;
   border: 1px solid rgba(79, 70, 229, 0.14);
   background: rgba(255, 255, 255, 0.76);
   padding: 12px;
 }
 
-#aiReplyConfigModal .ai-prompt-card-wide {
+#ai-settings-section .ai-prompt-card-wide {
   grid-column: 1 / -1;
 }
 
-#aiReplyConfigModal .ai-prompt-head {
+#ai-settings-section .ai-prompt-head {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 2px;
 }
 
-#aiReplyConfigModal .ai-prompt-dot {
+#ai-settings-section .ai-prompt-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   display: inline-block;
 }
 
-#aiReplyConfigModal .ai-prompt-dot-price {
+#ai-settings-section .ai-prompt-dot-price {
   background: #f59e0b;
 }
 
-#aiReplyConfigModal .ai-prompt-dot-tech {
+#ai-settings-section .ai-prompt-dot-tech {
   background: #06b6d4;
 }
 
-#aiReplyConfigModal .ai-prompt-dot-default {
+#ai-settings-section .ai-prompt-dot-default {
   background: #6366f1;
 }
 
-#aiReplyConfigModal .ai-prompt-textarea {
+#ai-settings-section .ai-prompt-textarea {
   height: 132px;
   min-height: 132px;
   resize: vertical;
 }
 
-#aiReplyConfigModal .ai-test-grid {
+#ai-settings-section .ai-test-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
-#aiReplyConfigModal .ai-test-actions {
+#ai-settings-section .ai-test-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -574,69 +570,69 @@
   margin-top: 2px;
 }
 
-#aiReplyConfigModal .ai-test-btn {
+#ai-settings-section .ai-test-btn {
   min-width: 124px;
 }
 
-#aiReplyConfigModal .ai-test-result .alert {
+#ai-settings-section .ai-test-result .alert {
   border-radius: 12px;
   border: 1px solid rgba(59, 130, 246, 0.28);
 }
 
-#aiReplyConfigModal .ai-reply-footer {
+#ai-settings-section .ai-reply-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
 }
 
-#aiReplyConfigModal .ai-footer-note {
+#ai-settings-section .ai-footer-note {
   font-size: 0.82rem;
   color: var(--secondary-color);
 }
 
-#aiReplyConfigModal .ai-footer-actions {
+#ai-settings-section .ai-footer-actions {
   display: flex;
   gap: 8px;
 }
 
 @media (max-width: 768px) {
-  #aiReplyConfigModal .ai-reply-header {
+  #ai-settings-section .ai-reply-header {
     align-items: center;
   }
 
-  #aiReplyConfigModal .ai-reply-subtitle {
+  #ai-settings-section .ai-reply-subtitle {
     display: none;
   }
 
-  #aiReplyConfigModal .ai-modal-intro {
+  #ai-settings-section .ai-modal-intro {
     padding: 10px 12px;
   }
 
-  #aiReplyConfigModal .ai-bargain-grid,
-  #aiReplyConfigModal .ai-prompt-grid,
-  #aiReplyConfigModal .ai-test-grid,
-  #aiReplyConfigModal .ai-basic-overview,
-  #aiReplyConfigModal .ai-config-grid {
+  #ai-settings-section .ai-bargain-grid,
+  #ai-settings-section .ai-prompt-grid,
+  #ai-settings-section .ai-test-grid,
+  #ai-settings-section .ai-basic-overview,
+  #ai-settings-section .ai-config-grid {
     grid-template-columns: 1fr;
   }
 
-  #aiReplyConfigModal .ai-preset-controls {
+  #ai-settings-section .ai-preset-controls {
     flex-direction: column;
     align-items: stretch;
   }
 
-  #aiReplyConfigModal .ai-preset-actions {
+  #ai-settings-section .ai-preset-actions {
     justify-content: flex-end;
   }
 
-  #aiReplyConfigModal .ai-test-actions,
-  #aiReplyConfigModal .ai-reply-footer {
+  #ai-settings-section .ai-test-actions,
+  #ai-settings-section .ai-reply-footer {
     flex-direction: column;
     align-items: stretch;
   }
 
-  #aiReplyConfigModal .ai-footer-actions {
+  #ai-settings-section .ai-footer-actions {
     justify-content: flex-end;
   }
 }

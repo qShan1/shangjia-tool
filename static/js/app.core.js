@@ -255,6 +255,9 @@ function showSection(sectionName) {
     case 'auto-delivery':   // 【自动发货菜单】
         loadDeliveryRules();
         break;
+    case 'ai-settings':     // 【AI 设置菜单】
+        loadAISettingsPage();
+        break;
     case 'notification-channels':  // 【通知渠道菜单】
         loadNotificationChannels();
         break;
