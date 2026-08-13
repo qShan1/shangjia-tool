@@ -131,7 +131,15 @@ class _DesktopApi:
 
 
 def _version_key(value):
-    return tuple(int(part) for part in str(value).lstrip("vV").split(".") if part.isdigit())
+    # 防御性解析：去掉 BOM、前导空白、v/V 前缀，以及任何非数字/点字符，
+    # 避免 version.txt 意外带 BOM/空白导致解析失败误判"有更新"而反复下载。
+    s = str(value).strip().lstrip("\ufeff").lstrip("vV")
+    parts = []
+    for part in s.split("."):
+        digits = "".join(ch for ch in part if ch.isdigit())
+        if digits:
+            parts.append(int(digits))
+    return tuple(parts)
 
 
 def show_question(message):
