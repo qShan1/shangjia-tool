@@ -140,7 +140,7 @@ textarea {
 }
 
 .sidebar-nav {
-  padding: 12px 10px;
+  padding: 12px 14px;
   scrollbar-color: rgba(60, 60, 67, 0.22) transparent;
 }
 
@@ -158,14 +158,17 @@ textarea {
 
 .nav-link {
   gap: 10px;
-  padding: 10px 12px;
+  padding: 0 14px;
   color: var(--ui-muted);
   border-left: 0;
   border-radius: 12px;
   font-size: 0.91rem;
   font-weight: 500;
-  line-height: 1.35;
-  min-height: 40px;
+  line-height: 1;
+  height: 42px;
+  min-height: 42px;
+  max-height: 42px;
+  flex: 0 0 auto;
   white-space: nowrap;
   overflow: hidden;
 }
@@ -292,11 +295,30 @@ textarea {
   justify-content: center;
 }
 
-/* 折叠状态：隐藏菜单文字，只显示图标（display:none 避免 0 宽文本换行撑高行高） */
+/* 折叠状态：隐藏菜单文字，只显示图标（用 opacity+width 平滑过渡，避免 display:none 硬切造成“卡一下”） */
 .sidebar.collapsed .nav-link span,
-.sidebar.collapsed .nav-divider,
 .sidebar.collapsed .sidebar-collapse-btn span {
-  display: none !important;
+  opacity: 0;
+  visibility: hidden;
+  width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.sidebar .nav-link span,
+.sidebar .sidebar-collapse-btn span {
+  transition: opacity 180ms ease, width 180ms ease, margin 180ms ease;
+}
+.sidebar.collapsed .nav-divider {
+  opacity: 0;
+  visibility: hidden;
+  height: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  transition: opacity 180ms ease, height 180ms ease;
 }
 
 /* 折叠状态：图标居中显示 */
@@ -331,7 +353,15 @@ textarea {
 }
 
 .sidebar.collapsed .sidebar-brand-text {
-  display: none;
+  opacity: 0;
+  visibility: hidden;
+  width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: opacity 180ms ease, width 180ms ease;
+}
+.sidebar .sidebar-brand-text {
+  transition: opacity 180ms ease, width 180ms ease;
 }
 
 .sidebar.collapsed .dark-mode-toggle {
@@ -340,7 +370,12 @@ textarea {
 
 /* 折叠状态：折叠按钮只显示图标 */
 .sidebar.collapsed .sidebar-collapse-btn span {
-  display: none !important;
+  opacity: 0;
+  visibility: hidden;
+  width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .sidebar.collapsed .sidebar-collapse-btn {
@@ -561,7 +596,81 @@ body.sidebar-collapsed .main-content {
 }
 
 .table tbody tr:hover > * {
-  background: color-mix(in srgb, var(--primary-color) 5%, transparent);
+  background: transparent;
+}
+
+/* 商品管理列表行 hover：单一明确背景，避免与 Bootstrap table-hover 及通用规则叠加闪烁 */
+#itemsTableBody tbody tr:hover,
+#itemsTableBody tr:hover {
+  background-color: rgba(118, 118, 128, 0.10) !important;
+  box-shadow: none;
+  transform: none;
+}
+[data-theme="dark"] #itemsTableBody tr:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 圆角收敛：玻璃卡片内嵌的表格/表头不再以直角漏出卡片圆角 */
+.content-section .card {
+  overflow: hidden;
+}
+.content-section .card-body .table-responsive,
+.content-section .card-body > .table-responsive {
+  border-radius: 12px;
+}
+.table thead th {
+  white-space: nowrap;
+  background: rgba(118, 118, 128, 0.06);
+}
+
+/* 表格容器统一圆角 + 内容裁剪，契合系统圆角规范 */
+.card-body .table-responsive,
+.table-responsive {
+  border-radius: 14px;
+  overflow-x: auto;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.card-body .table-responsive > .table,
+.table-responsive > .table {
+  margin-bottom: 0;
+}
+.copyable-code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 0.85rem;
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.copy-code-btn {
+  color: var(--ui-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.copy-code-btn:hover {
+  color: var(--primary-color);
+}
+.card-body .table-responsive::-webkit-scrollbar,
+.table-responsive::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.card-body .table-responsive::-webkit-scrollbar-track,
+.table-responsive::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 5px;
+}
+.card-body .table-responsive::-webkit-scrollbar-thumb,
+.table-responsive::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--primary-color) 30%, transparent);
+  border-radius: 5px;
+}
+.card-body .table-responsive::-webkit-scrollbar-thumb:hover,
+.table-responsive::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--primary-color) 45%, transparent);
 }
 
 .badge {
@@ -1291,7 +1400,7 @@ body {
   width: var(--sidebar-open-width) !important;
   background: rgba(247, 250, 252, 0.56) !important;
   border-right: 1px solid var(--liquid-border) !important;
-  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.72), 12px 0 34px rgba(25, 39, 52, 0.07) !important;
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.72), 8px 0 24px rgba(25, 39, 52, 0.06) !important;
   backdrop-filter: blur(24px) saturate(1.35);
   -webkit-backdrop-filter: blur(24px) saturate(1.35);
   transition: width 220ms ease, box-shadow 220ms ease !important;
@@ -1326,7 +1435,9 @@ body.sidebar-collapsed .main-content {
 }
 
 .sidebar .nav-link {
+  height: 42px;
   min-height: 42px;
+  max-height: 42px;
   border: 1px solid transparent;
   transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease !important;
 }
@@ -1680,7 +1791,7 @@ body.sidebar-collapsed .main-content {
   /* 玻璃层级：内容区 < 导航/工具栏 < 浮层/弹窗，透明度逐级增强 */
   --lg-glass-1: rgba(255, 255, 255, 0.5);   /* 内容区卡片 */
   --lg-glass-2: rgba(250, 252, 253, 0.62);  /* 侧边栏 */
-  --lg-glass-3: rgba(255, 255, 255, 0.74);  /* 弹窗 / 下拉菜单 */
+  --lg-glass-3: rgba(255, 255, 255, 0.9);  /* 弹窗 / 下拉菜单 */
 }
 
 /* ---------- 背景：为玻璃提供可折射的柔和光场（滚动时轻微视差） ---------- */
@@ -1966,6 +2077,16 @@ html.has-custom-background body {
     0 6px 16px color-mix(in srgb, var(--primary-color) 30%, transparent) !important;
 }
 
+/* 销售构成分组按钮：active 态高亮（Bootstrap 的 is-active 无默认样式） */
+.btn[data-breakdown].is-active,
+.btn[data-breakdown].is-active:hover,
+.btn[data-breakdown].is-active:focus {
+  color: #ffffff !important;
+  background: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary-color) 35%, transparent) !important;
+}
+
 /* ---------- 浮层：弹窗 / 下拉菜单 透明度与模糊逐级增强 ---------- */
 .modal-content {
   background: var(--lg-glass-3) !important;
@@ -2205,34 +2326,18 @@ html.has-custom-background body {
   border-color: rgba(255, 255, 255, 0.18) !important;
 }
 
-/* 表格行入场（重绘/新增时上滑淡入） */
+/* 表格行入场（重绘/新增时上滑淡入）
+   注：频繁重绘的表格（账号/卡密列表）每次重排都会重放该动画并伴随延迟，
+   在鼠标悬停时表现为行/表头闪烁抖动，故此处关闭级联入场动画以消除闪烁。 */
 .table tbody tr {
-  animation: lg-row-in 0.4s cubic-bezier(0.21, 0.9, 0.3, 1) both;
+  animation: none;
 }
 @keyframes lg-row-in {
   from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
-/* 表格行级联延迟：前 12 行逐行错开，营造列表层次 */
-.table tbody tr:nth-child(1) { animation-delay: 0s; }
-.table tbody tr:nth-child(2) { animation-delay: 0.04s; }
-.table tbody tr:nth-child(3) { animation-delay: 0.08s; }
-.table tbody tr:nth-child(4) { animation-delay: 0.12s; }
-.table tbody tr:nth-child(5) { animation-delay: 0.16s; }
-.table tbody tr:nth-child(6) { animation-delay: 0.20s; }
-.table tbody tr:nth-child(7) { animation-delay: 0.24s; }
-.table tbody tr:nth-child(8) { animation-delay: 0.28s; }
-.table tbody tr:nth-child(9) { animation-delay: 0.32s; }
-.table tbody tr:nth-child(10) { animation-delay: 0.36s; }
-.table tbody tr:nth-child(11) { animation-delay: 0.40s; }
-.table tbody tr:nth-child(12) { animation-delay: 0.44s; }
-.table tbody tr:nth-child(n+13) { animation-delay: 0.48s; }
 
 /* 表格行 hover 增强（背景 + 轻微左移提示） */
-.table tbody tr {
-  transition: background-color 160ms ease;
-}
 .table tbody tr:hover {
   background-color: rgba(255, 255, 255, 0.6) !important;
 }
@@ -2337,4 +2442,69 @@ html.has-custom-background body {
 .report-rank-top {
   background: var(--primary-color, #0a7c66);
   color: #fff;
+}
+
+/* ============ 滚动条稳定性与横向滚动 ============ */
+/* 预留滚动条槽位，避免内容不足/充足切换时滚动条闪现抖动 */
+.report-list,
+.keywords-list,
+.table-container,
+.log-container,
+.sidebar-nav,
+.dropdown-menu,
+.modal-body,
+[class*="-list"][style*="overflow"] {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+.report-list,
+.keywords-list,
+.table-container,
+.log-container {
+  overflow-y: auto;
+}
+
+/* 表格容器横向滚轮（shift+滚轮 或 触控板横向 均可） */
+.table-responsive,
+.card-body .table-responsive {
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.table-responsive table {
+  min-width: 100%;
+  white-space: nowrap;
+}
+
+/* 数据中心周期选择：即使使用 form-select-sm 也保留主题化箭头与圆角 */
+#reportsRangeSelect.form-select-sm {
+  min-height: 34px;
+  padding: 5px 36px 5px 14px;
+  border-radius: 12px;
+  background-position: right 12px center;
+  background-size: 13px 13px;
+}
+
+/* ============ 引导/欢迎弹窗：实心高对比背景，避免与背景重叠 ============ */
+#welcomeModal .modal-content {
+  background: #ffffff !important;
+  border: 1px solid rgba(148, 163, 184, 0.35) !important;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22), 0 6px 18px rgba(15, 23, 42, 0.1) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+[data-theme="dark"] #welcomeModal .modal-content {
+  background: #2c2c30 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+#welcomeModal .modal-body,
+#welcomeModal .modal-footer {
+  background: transparent !important;
+}
+#welcomeModal .modal-header.bg-primary {
+  background: var(--primary-color, #0a7c66) !important;
+}
+#welcomeModal .alert-light {
+  background: rgba(148, 163, 184, 0.12) !important;
+  border-color: rgba(148, 163, 184, 0.3) !important;
+  color: var(--ui-ink) !important;
 }

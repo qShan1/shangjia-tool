@@ -368,7 +368,12 @@ async function loadActivationCodes() {
             actions.push(`<button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteActivationCode(${c.id})" title="删除"><i class="bi bi-trash"></i></button>`);
             return `
                 <tr>
-                    <td><code>${escapeHtml(c.code)}</code></td>
+                    <td>
+                        <div class="d-flex align-items-center gap-1">
+                            <code class="copyable-code">${escapeHtml(c.code)}</code>
+                            <button type="button" class="btn btn-sm btn-link p-0 lh-1 copy-code-btn" title="复制卡号" data-copy="${escapeHtml(c.code)}"><i class="bi bi-clipboard"></i></button>
+                        </div>
+                    </td>
                     <td>${escapeHtml(planText)}</td>
                     <td>${c.duration_days ? escapeHtml(c.duration_days + ' 天') : '—'}</td>
                     <td>${statusBadge}</td>
@@ -493,11 +498,41 @@ async function deleteActivationCode(codeId) {
 
 // ---------------- 初始化 ----------------
 
+function copyActivationCode(btn) {
+    const code = btn.getAttribute('data-copy') || '';
+    const copy = () => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(code);
+        }
+        const ta = document.createElement('textarea');
+        ta.value = code;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        return Promise.resolve();
+    };
+    copy().then(() => {
+        const icon = btn.querySelector('i');
+        const original = icon ? icon.className : '';
+        if (icon) icon.className = 'bi bi-check';
+        showToast('卡号已复制', 'success');
+        setTimeout(() => { if (icon && original) icon.className = original; }, 1200);
+    }).catch(() => showToast('复制失败', 'danger'));
+}
+
 function initLicenseModule() {
     // 用户已登录才启动心跳（供管理端在线列表）
     const token = getAuthToken();
     if (!token) return;
     startPresenceHeartbeat();
+    // 卡号一键复制（事件委托，覆盖动态渲染）
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.copy-code-btn');
+        if (btn) copyActivationCode(btn);
+    }, true);
     // 进入授权页时加载
     if (document.getElementById('license-section') && document.getElementById('license-section').classList.contains('active')) {
         loadMyLicense();

@@ -938,7 +938,7 @@ function updateCustomBackgroundPreview(imageData = '') {
     if (!preview.querySelector('.custom-background-preview-label')) {
         const label = document.createElement('span');
         label.className = 'custom-background-preview-label';
-        label.textContent = '使用浅灰玻璃背景';
+        label.textContent = '未设置图片时，界面启用浅灰色毛玻璃磨砂背景';
         preview.appendChild(label);
     }
 }

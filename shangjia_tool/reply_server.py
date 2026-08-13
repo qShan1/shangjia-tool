@@ -1052,8 +1052,8 @@ def verify_admin_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
     if not user_info:
         raise HTTPException(status_code=401, detail="未授权访问")
 
-    # 检查是否是管理员（优先使用is_admin字段，兼容旧的admin用户名判断）
-    is_admin = user_info.get('is_admin', False) or user_info['username'] == ADMIN_USERNAME
+    # 检查是否是管理员（以 is_admin 字段为准）
+    is_admin = user_info.get('is_admin', False)
     if not is_admin:
         raise HTTPException(status_code=403, detail="需要管理员权限")
 
@@ -1085,9 +1085,8 @@ def get_user_log_prefix(user_info: Dict[str, Any] = None) -> str:
 
 
 def require_admin(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
-    """要求管理员权限"""
-    # 优先使用is_admin字段，兼容旧的admin用户名判断
-    is_admin = current_user.get('is_admin', False) or current_user['username'] == 'admin'
+    """要求管理员权限（以 is_admin 字段为准）"""
+    is_admin = current_user.get('is_admin', False)
     if not is_admin:
         raise HTTPException(status_code=403, detail="需要管理员权限")
     return current_user
@@ -1661,6 +1660,10 @@ async def get_init_status():
                 "first_run": True,
                 "password_initialized": False,
                 "has_temp_password": has_pending,
+                "default_username": "admin",
+                # 仅在首次本地初始化时返回默认密码，便于用户看到并首次登录
+                "default_password": os.environ.get("ADMIN_PASSWORD", "").strip()
+                    or (getattr(db_manager, '_pending_init_password', None) or ""),
                 "message": "首次启动，请设置管理员密码"
             }
     except Exception as e:
@@ -2051,7 +2054,7 @@ async def verify(user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
             "authenticated": True,
             "user_id": user_info['user_id'],
             "username": user_info['username'],
-            "is_admin": user_info.get('is_admin', False) or user_info['username'] == ADMIN_USERNAME
+            "is_admin": user_info.get('is_admin', False)
         }
     return {"authenticated": False}
 
@@ -2105,7 +2108,7 @@ async def get_my_license(user_info: Optional[Dict[str, Any]] = Depends(verify_to
         return {'success': True, 'data': license_info, 'user': {
             'user_id': user_info['user_id'],
             'username': user_info['username'],
-            'is_admin': user_info.get('is_admin', False) or user_info['username'] == ADMIN_USERNAME,
+            'is_admin': user_info.get('is_admin', False),
         }}
     except HTTPException:
         raise
@@ -2451,14 +2454,39 @@ async def get_sales_data(
             f"skipped_ineligible_status={skipped_ineligible_status}"
         )
         
-        # 转换为列表格式
-        formatted_data = [
-            {
-                'date': date,
-                'amount': round(amount, 2)
-            }
-            for date, amount in sorted(sales_by_date.items())
-        ]
+        # 转换为列表格式；并按请求的日期范围填充连续日期（缺失日期补 0），
+        # 使"今日/近7天/近30天/自定义"都能呈现完整的时间轴，而非只有销量的稀疏点。
+        if start_date and end_date:
+            try:
+                from datetime import date as _date, datetime as _datetime, timedelta as _timedelta
+                _d0 = _datetime.strptime(str(start_date), '%Y-%m-%d').date()
+                _d1 = _datetime.strptime(str(end_date), '%Y-%m-%d').date()
+                if _d1 >= _d0 and (_d1 - _d0).days <= 366:
+                    _cur = _d0
+                    _range_dates = []
+                    while _cur <= _d1:
+                        _range_dates.append(_cur.strftime('%Y-%m-%d'))
+                        _cur += _timedelta(days=1)
+                    formatted_data = [
+                        {'date': d, 'amount': round(sales_by_date.get(d, 0), 2)}
+                        for d in _range_dates
+                    ]
+                else:
+                    formatted_data = [
+                        {'date': d, 'amount': round(sales_by_date.get(d, 0), 2)}
+                        for d in sorted(sales_by_date)
+                    ]
+            except Exception:
+                formatted_data = [
+                    {'date': d, 'amount': round(sales_by_date.get(d, 0), 2)}
+                    for d in sorted(sales_by_date)
+                ]
+        else:
+            formatted_data = [
+                {'date': d, 'amount': round(sales_by_date.get(d, 0), 2)}
+                for d in sorted(sales_by_date)
+            ]
+
         
         return {
             'success': True,
@@ -2727,22 +2755,26 @@ async def get_reports_overview(start_date: Optional[str] = None, end_date: Optio
 
 # 关键词触发排行（基于发货日志规则关键词）
 @app.get('/api/reports/keyword-hits')
-async def get_reports_keyword_hits(limit: int = 20,
+async def get_reports_keyword_hits(limit: int = 20, start_date: Optional[str] = None, end_date: Optional[str] = None,
                                    user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
     if not user_info:
         raise HTTPException(status_code=401, detail='未登录或登录已过期')
     try:
         from db_manager import db_manager
         limit = max(1, min(limit, 100))
+        sd, ed = _report_date_window()
+        start_date = start_date or sd
+        end_date = end_date or ed
         rows = db_manager.execute_query('''
             SELECT rule_keyword, COUNT(*) AS hits,
                    COUNT(CASE WHEN status = 'success' THEN 1 END) AS success
             FROM delivery_logs
             WHERE user_id = ? AND rule_keyword IS NOT NULL AND rule_keyword != ''
+              AND created_at >= ? AND created_at <= ?
             GROUP BY rule_keyword
             ORDER BY hits DESC
             LIMIT ?
-        ''', (user_info['user_id'], limit))
+        ''', (user_info['user_id'], start_date + ' 00:00:00', end_date + ' 23:59:59', limit))
         data = [{'keyword': r[0], 'hits': r[1], 'success': r[2]} for r in rows]
         return {'success': True, 'data': data}
     except HTTPException:
@@ -2801,12 +2833,16 @@ async def get_reports_item_heat(limit: int = 20, start_date: Optional[str] = Non
 
 # 订单状态分布
 @app.get('/api/reports/orders-distribution')
-async def get_reports_orders_distribution(user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
+async def get_reports_orders_distribution(start_date: Optional[str] = None, end_date: Optional[str] = None,
+                                          user_info: Optional[Dict[str, Any]] = Depends(verify_token)):
     if not user_info:
         raise HTTPException(status_code=401, detail='未登录或登录已过期')
     try:
         from db_manager import db_manager
-        rows = _build_user_orders_report_rows(user_info['user_id'])
+        sd, ed = _report_date_window()
+        start_date = start_date or sd
+        end_date = end_date or ed
+        rows = _build_user_orders_report_rows(user_info['user_id'], start_date, end_date)
         dist = {}
         for r in rows:
             status = r['order_status'] or 'unknown'
@@ -3076,15 +3112,16 @@ async def change_admin_password(request: ChangePasswordRequest, admin_user: Dict
     from db_manager import db_manager
 
     try:
+        target_username = admin_user.get('username', '')
         # 验证当前密码（使用用户表验证）
-        if not db_manager.verify_user_password('admin', request.current_password):
+        if not db_manager.verify_user_password(target_username, request.current_password):
             return {"success": False, "message": "当前密码错误"}
 
         # 更新密码（使用用户表更新）
-        success = db_manager.update_user_password('admin', request.new_password)
+        success = db_manager.update_user_password(target_username, request.new_password)
 
         if success:
-            logger.info(f"【admin#{admin_user['user_id']}】管理员密码修改成功")
+            logger.info(f"【{target_username}#{admin_user['user_id']}】管理员密码修改成功")
             return {"success": True, "message": "密码修改成功"}
         else:
             return {"success": False, "message": "密码修改失败"}
@@ -5521,7 +5558,15 @@ def get_cookies_details(current_user: Dict[str, Any] = Depends(get_current_user)
 @app.get('/api/desktop/preferences')
 def get_desktop_preferences(current_user: Dict[str, Any] = Depends(get_current_user)):
     settings = _load_desktop_settings()
-    return {'success': True, 'auto_check_updates': settings.get('auto_check_updates', True) is not False}
+    close_behavior = settings.get('close_behavior', 'prompt')
+    if close_behavior not in ('prompt', 'tray', 'exit'):
+        close_behavior = 'prompt'
+    return {
+        'success': True,
+        'auto_check_updates': settings.get('auto_check_updates', True) is not False,
+        'close_behavior': close_behavior,
+        'remember_close_choice': settings.get('remember_close_choice', False) is not False,
+    }
 
 
 @app.put('/api/desktop/preferences')
@@ -5529,10 +5574,23 @@ def save_desktop_preferences(payload: Dict[str, Any], current_user: Dict[str, An
     settings = _load_desktop_settings()
     if 'auto_check_updates' in payload:
         settings['auto_check_updates'] = bool(payload.get('auto_check_updates'))
+    if 'close_behavior' in payload:
+        behavior = payload.get('close_behavior')
+        settings['close_behavior'] = behavior if behavior in ('prompt', 'tray', 'exit') else 'prompt'
+    if 'remember_close_choice' in payload:
+        settings['remember_close_choice'] = bool(payload.get('remember_close_choice'))
     if payload.get('manual_update_check'):
         settings['manual_update_check'] = True
     _save_desktop_settings(settings)
-    return {'success': True, 'auto_check_updates': settings.get('auto_check_updates', True) is not False}
+    close_behavior = settings.get('close_behavior', 'prompt')
+    if close_behavior not in ('prompt', 'tray', 'exit'):
+        close_behavior = 'prompt'
+    return {
+        'success': True,
+        'auto_check_updates': settings.get('auto_check_updates', True) is not False,
+        'close_behavior': close_behavior,
+        'remember_close_choice': settings.get('remember_close_choice', False) is not False,
+    }
 
 
 @app.get("/api/announcement")
@@ -7579,7 +7637,7 @@ async def get_account_face_verification_screenshot(
         username = current_user['username']
         
         # 如果是管理员，允许访问所有账号
-        is_admin = username == 'admin'
+        is_admin = current_user.get('is_admin', False)
         
         if not is_admin:
             cookie_info = db_manager.get_cookie_details(account_id)
@@ -8257,6 +8315,16 @@ async def process_qr_login_cookies(cookies: str, unb: str, current_user: Dict[st
 
                     try:
                         if cookie_manager.manager:
+                            # 扫码拿到全新可信 cookie：先清除旧的"风控保护/滑块验证失败"禁用标记，
+                            # 并把账号恢复为启用。必须在本块 update_cookie/add_cookie 之前完成，
+                            # 因为 update_cookie 会读取启用状态来决定是否重启任务（enabled=False 时不启动实例）。
+                            try:
+                                db_manager.update_cookie_status_note(account_id, '')
+                                db_manager.save_cookie_status(account_id, True)
+                                if hasattr(cookie_manager, 'manager') and cookie_manager.manager:
+                                    cookie_manager.manager.cookie_status[account_id] = True
+                            except Exception as status_e:
+                                logger.warning(f"扫码登录前清除风控禁用状态失败: {status_e}")
                             if is_new_account:
                                 cookie_manager.manager.add_cookie(account_id, final_cookies, user_id=user_id)
                                 log_with_user('info', f"已将真实cookie添加到cookie_manager: {account_id}", current_user)
@@ -8346,7 +8414,9 @@ async def process_qr_login_cookies(cookies: str, unb: str, current_user: Dict[st
                         'cookie_length': len(final_cookies),
                         'token_prewarmed': False,
                         'task_restarted': task_restarted,
-                        'warning_message': warning_message
+                        'warning_message': warning_message,
+                        'enabled': True,
+                        'status_note': ''
                     }
                 else:
                     log_with_user('error', f"无法从数据库获取真实cookie: {account_id}", current_user)
@@ -13747,6 +13817,28 @@ def get_item_reply(cookie_id: str, item_id: str, current_user: Dict[str, Any] = 
 
 # ------------------------- 数据库备份和恢复接口 -------------------------
 
+@app.get('/api/system/storage-paths')
+def get_system_storage_paths(admin_user: Dict[str, Any] = Depends(require_admin)):
+    """获取系统各数据类别的存储位置（管理员专用，用于前端向用户说明数据存到哪里）"""
+    try:
+        import os as _os
+        from db_manager import db_manager as _dbm
+        data_root = _os.environ.get("APP_DATA_DIR") or str(_PROJECT_ROOT)
+        data_root = _os.path.abspath(data_root)
+        db_abs = _os.path.abspath(getattr(_dbm, 'db_path', '') or _os.path.join(data_root, 'data', 'xianyu_data.db'))
+        return {
+            'success': True,
+            'data_root': data_root,
+            'database': db_abs,
+            'logs': _os.path.abspath(_os.path.join(data_root, 'logs')),
+            'backups': _os.path.abspath(_os.path.join(data_root, 'data')),
+            'uploads': _os.path.abspath(_os.path.join(data_root, 'static', 'uploads', 'images')),
+        }
+    except Exception as e:
+        logger.error(f"获取存储路径失败: {mask_sensitive_text(e)}")
+        return {'success': False, 'message': '获取存储路径失败'}
+
+
 @app.get('/admin/backup/download')
 def download_database_backup(admin_user: Dict[str, Any] = Depends(require_admin)):
     """下载数据库备份文件（管理员专用）"""
@@ -17073,7 +17165,7 @@ async def apply_updates(current_user: Dict[str, Any] = Depends(get_current_user)
     """
     try:
         # 只允许管理员执行更新，兼容历史 admin 用户名判断
-        if not current_user.get('is_admin') and current_user.get('username') != 'admin':
+        if not current_user.get('is_admin'):
             raise HTTPException(status_code=403, detail="只有管理员可以执行更新")
         
         updater = get_updater()
@@ -17143,8 +17235,8 @@ async def get_local_file_hashes(current_user: Dict[str, Any] = Depends(get_curre
     用于服务端比对哪些文件需要更新
     """
     try:
-        # 只允许管理员查看（检查username是否为admin）
-        if current_user.get('username') != 'admin':
+        # 只允许管理员查看（检查 is_admin）
+        if not current_user.get('is_admin'):
             raise HTTPException(status_code=403, detail="只有管理员可以查看文件哈希")
         
         updater = get_updater()
@@ -17178,8 +17270,8 @@ async def cleanup_old_backups(days: int = 7, current_user: Dict[str, Any] = Depe
         days: 保留天数，默认7天
     """
     try:
-        # 只允许管理员执行（检查username是否为admin）
-        if current_user.get('username') != 'admin':
+        # 只允许管理员执行（检查 is_admin）
+        if not current_user.get('is_admin'):
             raise HTTPException(status_code=403, detail="只有管理员可以清理备份")
         
         updater = get_updater()
@@ -17211,7 +17303,7 @@ async def get_file_changes(current_user: Dict[str, Any] = Depends(get_current_us
     """
     try:
         # 只允许管理员查看
-        if current_user.get('username') != 'admin':
+        if not current_user.get('is_admin'):
             raise HTTPException(status_code=403, detail="只有管理员可以查看文件变化")
         
         updater = get_updater()
@@ -17241,7 +17333,7 @@ async def save_current_hashes(current_user: Dict[str, Any] = Depends(get_current
     """
     try:
         # 只允许管理员执行
-        if current_user.get('username') != 'admin':
+        if not current_user.get('is_admin'):
             raise HTTPException(status_code=403, detail="只有管理员可以保存哈希清单")
         
         updater = get_updater()
@@ -17271,7 +17363,7 @@ async def get_saved_hashes(current_user: Dict[str, Any] = Depends(get_current_us
     """
     try:
         # 只允许管理员查看
-        if current_user.get('username') != 'admin':
+        if not current_user.get('is_admin'):
             raise HTTPException(status_code=403, detail="只有管理员可以查看哈希清单")
         
         updater = get_updater()

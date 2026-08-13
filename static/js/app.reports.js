@@ -69,7 +69,8 @@ async function loadReportsKeywordHits() {
     if (!slot) return;
     try {
         const token = getAuthToken();
-        const resp = await fetch(`${apiBase}/api/reports/keyword-hits?limit=10`, {
+        const params = new URLSearchParams({ limit: '10', start_date: reportsStartDate(), end_date: reportsEndDate() });
+        const resp = await fetch(`${apiBase}/api/reports/keyword-hits?${params}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await resp.json();
@@ -142,7 +143,8 @@ async function loadReportsItemHeat() {
 async function loadReportsOrdersDistribution() {
     try {
         const token = getAuthToken();
-        const resp = await fetch(`${apiBase}/api/reports/orders-distribution`, {
+        const params = new URLSearchParams({ start_date: reportsStartDate(), end_date: reportsEndDate() });
+        const resp = await fetch(`${apiBase}/api/reports/orders-distribution?${params}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await resp.json();
@@ -217,8 +219,8 @@ async function loadReportsBreakdown(group) {
                 labels,
                 datasets: [{
                     data: values,
-                    backgroundColor: hexToRgba(primary, 0.55),
-                    hoverBackgroundColor: primary,
+                    backgroundColor: primary,
+                    hoverBackgroundColor: hexToRgba(primary, 0.55),
                     borderRadius: 6,
                     maxBarThickness: 34
                 }]
@@ -248,5 +250,29 @@ async function loadReportsBreakdown(group) {
 function exportReportCsv(type) {
     const token = getAuthToken();
     const params = new URLSearchParams({ type, start_date: reportsStartDate(), end_date: reportsEndDate() });
-    window.location.href = `${apiBase}/api/reports/export?${params}`;
+    fetch(`${apiBase}/api/reports/export?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    }).then(async (resp) => {
+        if (!resp.ok) {
+            let msg = `导出失败 (${resp.status})`;
+            try { const j = await resp.json(); msg = (j && j.detail) || msg; } catch (_) { /* ignore */ }
+            showToast(msg, 'danger');
+            return;
+        }
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const disp = resp.headers.get('Content-Disposition') || '';
+        const m = /filename="?([^";]+)"?/.exec(disp);
+        a.href = url;
+        a.download = m ? m[1] : `report-${type}-${reportsStartDate()}-${reportsEndDate()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        showToast('报表已导出', 'success');
+    }).catch((e) => {
+        console.error('导出失败:', e);
+        showToast('导出失败', 'danger');
+    });
 }

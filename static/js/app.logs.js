@@ -1591,7 +1591,14 @@ function showQRCodeImage(qrCodeUrl) {
         showQRCodeError('二维码图片加载失败，请点击下方重新生成');
     };
     qrImg.style.opacity = '0.3';
-    qrImg.src = qrCodeUrl;
+    // 追加时间戳防缓存，避免重新生成后仍加载旧/损坏的二维码图；
+    // data URL（base64 内嵌图）不含 ?= 字符，直接使用，不追加参数以免破坏数据。
+    if (qrCodeUrl.startsWith('data:')) {
+        qrImg.src = qrCodeUrl;
+    } else {
+        const sep = qrCodeUrl.includes('?') ? '&' : '?';
+        qrImg.src = `${qrCodeUrl}${sep}t=${Date.now()}`;
+    }
 }
 
 // 显示二维码错误
@@ -1906,6 +1913,15 @@ function handleQRCodeSuccess(data) {
     }
 
     closeQRCodeLoginModal(3000);
+    // 扫码拿到全新 Cookie 后刷新账号运行状态，避免账号仍显示风控禁用/实例未启动
+    try {
+        if (typeof refreshDashboardRuntimeSnapshots === 'function') {
+            setTimeout(() => { refreshDashboardRuntimeSnapshots().catch(() => {}); }, 500);
+        }
+        if (typeof refreshAccountList === 'function') {
+            setTimeout(() => { try { refreshAccountList(); } catch (_e) {} }, 300);
+        }
+    } catch (_e) {}
     return;
     }
 

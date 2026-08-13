@@ -20,6 +20,7 @@ a = Analysis(
     binaries=[],
     datas=static_datas() + [
         ('global_config.yml', '.'),
+        ('announcement.json', '.'),
     ],
     hiddenimports=[
         'shangjia_tool.reply_server',

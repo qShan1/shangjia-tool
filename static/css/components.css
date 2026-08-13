@@ -173,7 +173,9 @@
   align-items: center;
   justify-content: center;
   z-index: 1045;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: progress;
+  touch-action: none;
 }
 
 .loading-spinner {

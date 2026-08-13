@@ -590,9 +590,25 @@ function clearIgnoredUpdateVersion(showFeedback = true) {
 
 // 本地版本历史（远程服务禁用时使用）
 const LOCAL_VERSION_HISTORY = {
-    version: 'v2.3.0',
+    version: 'v2.4.0',
     intro: '本系统仅供个人学习研究使用，请勿用于商业用途。如有问题或建议，欢迎反馈。',
     versionHistory: [
+        {
+            version: 'v2.4.0',
+            date: '2026-08-12',
+            updates: [
+                '【账号】默认登录账号 admin/123456（普通用户），独立管理账号 manager/manager888（管理员，可见卡密管理/在线用户/数据管理等）',
+                '【登录】首次登录提示默认账号密码',
+                '【修复】扫码登录后账号运行状态识别，实例可正常启动',
+                '【修复】销售额趋势按所选周期显示连续日期轴',
+                '【修复】侧边栏收起/展开平滑过渡，消除“卡一下”',
+                '【修复】表格行 hover 闪烁、横向滚动、卡号可复制',
+                '【UI】统一圆角、修复弹窗/开屏与背景重叠、数据管理页显示存储位置',
+                '【桌面】托盘菜单增加“检查更新”，支持强制更新',
+                '【修复】点“退出”彻底结束后台服务，避免进程残留',
+                '【更新】支持强制更新标记（release 描述含 [FORCE] 或“强制更新”时自动更新并重启）'
+            ]
+        },
         {
             version: 'v2.3.0',
             date: '2026-08-10',
@@ -3612,6 +3628,14 @@ async function selectChatSession(session) {
         refreshChatBlacklistStatus();
     }
 
+    // 选中会话即清除其未读计数，避免红点/未读数字一直残留不消失
+    if (chatSessionsCache && Array.isArray(chatSessionsCache)) {
+        const target = chatSessionsCache.find(s => String(s.chat_id) === String(session.chat_id));
+        if (target && Number(target.unread_count || 0) > 0) {
+            target.unread_count = 0;
+        }
+    }
+
     renderChatSessions(chatSessionsCache);
     await loadChatMessages(false);
     if (chatCurrentToUserId) {
@@ -4489,7 +4513,7 @@ async function initializeDesktopExperienceControls() {
         <section class="card mb-4" id="desktopExperienceCard">
             <div class="card-header"><i class="bi bi-pc-display-horizontal me-2"></i>桌面运行与支持</div>
             <div class="card-body">
-                <div class="row g-3 align-items-center">
+                <div class="row g-3 align-items-center mb-3 pb-3 border-bottom">
                     <div class="col-lg-5">
                         <div class="form-check form-switch mb-1">
                             <input class="form-check-input" type="checkbox" id="desktopAutoUpdateToggle">
@@ -4503,17 +4527,41 @@ async function initializeDesktopExperienceControls() {
                     </div>
                     <div class="col-lg-3"><small class="text-muted" id="desktopReleaseStatus">正在读取更新偏好...</small></div>
                 </div>
+                <div class="row g-3 align-items-center">
+                    <div class="col-lg-5">
+                        <label class="form-label fw-bold mb-1" for="desktopCloseBehaviorSelect">点击窗口右上角“×”关闭按钮时的行为</label>
+                        <small class="text-muted d-block">可随时修改，立即生效。</small>
+                    </div>
+                    <div class="col-lg-4">
+                        <select class="form-select" id="desktopCloseBehaviorSelect">
+                            <option value="prompt">每次弹窗询问（推荐）</option>
+                            <option value="tray">最小化到系统托盘后台运行</option>
+                            <option value="exit">直接退出软件</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="desktopRememberCloseChoice">
+                            <label class="form-check-label" for="desktopRememberCloseChoice">记住本次选择，不再弹窗</label>
+                        </div>
+                        <small class="text-muted">仅在“每次弹窗询问”时生效。</small>
+                    </div>
+                </div>
             </div>
         </section>
     `);
     const toggle = document.getElementById('desktopAutoUpdateToggle');
     const checkButton = document.getElementById('desktopReleaseCheckBtn');
+    const closeSelect = document.getElementById('desktopCloseBehaviorSelect');
+    const rememberCheck = document.getElementById('desktopRememberCloseChoice');
     checkButton?.addEventListener('click', checkDesktopReleaseNow);
     try {
         const token = localStorage.getItem('auth_token');
         const response = await fetch('/api/desktop/preferences', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         const preferences = await response.json();
         if (toggle) toggle.checked = preferences.auto_check_updates !== false;
+        if (closeSelect) closeSelect.value = preferences.close_behavior || 'prompt';
+        if (rememberCheck) rememberCheck.checked = preferences.remember_close_choice === true;
         const status = document.getElementById('desktopReleaseStatus');
         if (status) status.textContent = toggle?.checked ? '自动检查已开启。' : '自动检查已关闭。';
     } catch (error) {
@@ -4529,6 +4577,19 @@ async function initializeDesktopExperienceControls() {
             showToast('保存更新偏好失败。', 'danger');
         }
     });
+    const saveCloseBehavior = async () => {
+        try {
+            await saveDesktopUpdatePreference({
+                close_behavior: closeSelect.value,
+                remember_close_choice: rememberCheck?.checked === true,
+            });
+            showToast('关闭按钮行为已保存。', 'success');
+        } catch (error) {
+            showToast('保存关闭按钮行为失败。', 'danger');
+        }
+    };
+    closeSelect?.addEventListener('change', saveCloseBehavior);
+    rememberCheck?.addEventListener('change', saveCloseBehavior);
     const activePreset = localStorage.getItem('liquid_glass_preset') || 'jade';
     applyLiquidPreset(activePreset, false);
 }
@@ -4566,7 +4627,33 @@ document.addEventListener('DOMContentLoaded', () => {
     hideEmptySidebarGroups();
     const nav = document.querySelector('#sidebar .sidebar-nav');
     if (nav) new MutationObserver(hideEmptySidebarGroups).observe(nav, { attributes: true, subtree: true, attributeFilter: ['style', 'class'] });
+    initTableHorizontalScroll();
 }, { once: true });
+
+/* 表格容器：支持滚轮横向滚动（触控板横向 或 Shift+滚轮） */
+function initTableHorizontalScroll() {
+    const selectors = ['.table-responsive', '.card-body .table-responsive'];
+    const handler = (e) => {
+        const wrap = e.currentTarget;
+        const canScrollX = wrap.scrollWidth > wrap.clientWidth + 1;
+        if (!canScrollX) return;
+        // 仅在“明确意图横向滚动”时接管：Shift+滚轮，或触控板横向（deltaX 主导）。
+        // 普通上下滚轮（deltaY 主导）放行给页面竖向滚动，避免与页面滚动打架。
+        const isShift = e.shiftKey;
+        const isHorizontalWheel = Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 1;
+        if (!isShift && !isHorizontalWheel) return;
+        e.preventDefault();
+        wrap.scrollLeft += e.deltaX || e.deltaY;
+    };
+    const bind = (w) => {
+        if (w.dataset.hScrollBound) return;
+        w.dataset.hScrollBound = '1';
+        w.addEventListener('wheel', handler, { passive: false });
+    };
+    document.querySelectorAll(selectors.join(',')).forEach(bind);
+    const mo = new MutationObserver(() => document.querySelectorAll(selectors.join(',')).forEach(bind));
+    mo.observe(document.body, { childList: true, subtree: true });
+}
 
 /* ============ 动效接线：Lenis / anime.js / Magic.css / Hover.css ============ */
 

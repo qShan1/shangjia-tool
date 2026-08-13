@@ -2092,6 +2092,9 @@ async function loadDataManagement() {
         return;
     }
 
+    // 加载数据存储位置说明
+    loadSystemStoragePaths();
+
     // 重置状态
     currentTable = '';
     currentData = [];
@@ -2114,6 +2117,38 @@ async function loadDataManagement() {
         document.getElementById('uploadFileGrid').innerHTML = '';
         document.getElementById('uploadFileEmpty')?.classList.remove('d-none');
         document.getElementById('uploadFileLoading')?.classList.add('d-none');
+    }
+}
+
+// 加载并显示各数据类别的存储位置
+async function loadSystemStoragePaths() {
+    const tbody = document.getElementById('storagePathsBody');
+    if (!tbody) return;
+    try {
+        const resp = await fetch(`${apiBase}/api/system/storage-paths`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const data = await resp.json();
+        if (!data || !data.success) {
+            tbody.innerHTML = '<tr><td colspan="2" class="text-muted">无法读取存储位置</td></tr>';
+            return;
+        }
+        const rows = [
+            ['数据根目录', data.data_root],
+            ['数据库文件', data.database],
+            ['日志文件', data.logs],
+            ['数据库备份', data.backups],
+            ['上传文件', data.uploads],
+        ];
+        tbody.innerHTML = rows.map(([name, path]) => `
+            <tr>
+                <td class="fw-semibold">${escapeHtml(name)}</td>
+                <td><code class="storage-path-code">${escapeHtml(path || '—')}</code></td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error('加载存储位置失败:', error);
+        tbody.innerHTML = '<tr><td colspan="2" class="text-muted">加载存储位置失败</td></tr>';
     }
 }
 

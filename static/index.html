@@ -147,9 +147,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(255, 255, 255, 0.55);
-      border: 1px solid rgba(255, 255, 255, 0.9);
-      box-shadow: 0 14px 34px rgba(25, 39, 52, 0.1), inset 0 1px rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(255, 255, 255, 1);
+      box-shadow: 0 14px 34px rgba(25, 39, 52, 0.18), inset 0 1px rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(24px) saturate(1.5);
       -webkit-backdrop-filter: blur(24px) saturate(1.5);
     }
@@ -1963,9 +1963,17 @@
           <div class="row g-3 align-items-end">
             <div class="col-md-8">
               <div class="account-select-wrapper">
-                <select class="account-select" id="accountSelect" onchange="loadAccountKeywords()">
+                <select class="account-select ar-select-native" id="accountSelect" onchange="loadAccountKeywords()" tabindex="-1" aria-hidden="true">
                   <option value="">🔍 请选择一个账号开始配置...</option>
                 </select>
+                <button type="button" class="ar-select-trigger" id="arSelectTrigger" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="ar-select-value" id="arSelectValue">🔍 请选择一个账号开始配置...</span>
+                  <i class="bi bi-chevron-down ar-select-caret"></i>
+                </button>
+                <div class="ar-select-menu" id="arSelectMenu" role="listbox">
+                  <div class="ar-select-search"><i class="bi bi-search"></i><input type="text" id="arSelectSearch" placeholder="搜索账号..."></div>
+                  <div class="ar-select-options" id="arSelectOptions"></div>
+                </div>
               </div>
             </div>
             <div class="col-md-4">
@@ -3971,7 +3979,7 @@
                       <span class="text-muted small">仅保存在当前浏览器</span>
                     </div>
                     <div class="custom-background-preview" id="customBackgroundPreview" role="img" aria-label="当前界面背景">
-                      <span class="custom-background-preview-label">使用浅灰玻璃背景</span>
+                      <span class="custom-background-preview-label">未设置图片时，界面启用浅灰色毛玻璃磨砂背景</span>
                     </div>
                     <div class="custom-background-actions d-flex align-items-center gap-2 mt-2">
                       <label class="btn btn-sm btn-outline-secondary mb-0" for="customBackgroundInput">
@@ -4781,6 +4789,31 @@
         <p class="text-muted mb-0">查看和管理数据库中的所有表数据</p>
       </div>
       <div class="content-body">
+        <!-- 数据存储位置说明 -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="bi bi-folder2-open me-2"></i> 数据存储位置
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info mb-3">
+              <i class="bi bi-info-circle me-1"></i>
+              以下数据默认保存在本机本地，不会上传到互联网。如需迁移或备份，可前往对应目录。
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                  <tr><th style="width:140px;">数据类别</th><th>存储位置</th></tr>
+                </thead>
+                <tbody id="storagePathsBody">
+                  <tr><td colspan="2" class="text-muted">正在读取存储位置...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <!-- 表选择器 -->
         <div class="card mb-4">
           <div class="card-header">

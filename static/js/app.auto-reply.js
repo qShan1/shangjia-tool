@@ -17,7 +17,11 @@ async function refreshAccountList() {
     if (response.ok) {
         const accounts = await response.json();
         const select = document.getElementById('accountSelect');
-        select.innerHTML = '<option value="">🔍 请选择一个账号开始配置...</option>';
+        const previousValue = select ? select.value : '';
+        const optionsBox = document.getElementById('arSelectOptions');
+        const valueEl = document.getElementById('arSelectValue');
+        const placeholder = '🔍 请选择一个账号开始配置...';
+        select.innerHTML = `<option value="">${placeholder}</option>`;
 
         // 为每个账号获取关键词数量
         const accountsWithKeywords = await Promise.all(
@@ -55,13 +59,14 @@ async function refreshAccountList() {
         // 渲染账号选项（显示所有账号，但标识禁用状态）
         if (accountsWithKeywords.length === 0) {
         select.innerHTML = '<option value="">❌ 暂无账号，请先添加账号</option>';
+        if (optionsBox) optionsBox.innerHTML = '<div class="ar-select-empty">❌ 暂无账号，请先添加账号</div>';
+        if (valueEl) valueEl.textContent = '❌ 暂无账号，请先添加账号';
         return;
         }
 
         // 分组显示：先显示启用的账号，再显示禁用的账号
         const enabledAccounts = accountsWithKeywords.filter(account => {
         const enabled = account.enabled === undefined ? true : account.enabled;
-        console.log(`账号 ${account.id} 过滤状态: enabled=${account.enabled}, 判断为启用=${enabled}`); // 调试信息
         return enabled;
         });
         const disabledAccounts = accountsWithKeywords.filter(account => {
@@ -69,12 +74,10 @@ async function refreshAccountList() {
         return !enabled;
         });
 
-        // 渲染启用的账号
+        // 渲染启用账号到原生 select（保持兼容）
         enabledAccounts.forEach(account => {
         const option = document.createElement('option');
         option.value = account.id;
-
-        // 根据关键词数量显示不同的图标和样式
         let icon = '📝';
         let status = '';
         if (account.keywordCount === 0) {
@@ -87,39 +90,62 @@ async function refreshAccountList() {
             icon = '🟡';
             status = ` (${account.keywordCount} 个关键词)`;
         }
-
         option.textContent = `${icon} ${account.id}${status}`;
         select.appendChild(option);
         });
-
-        // 如果有禁用的账号，添加分隔线和禁用账号
         if (disabledAccounts.length > 0) {
-        // 添加分隔线
         const separatorOption = document.createElement('option');
         separatorOption.disabled = true;
         separatorOption.textContent = `--- 禁用账号 (${disabledAccounts.length} 个) ---`;
         select.appendChild(separatorOption);
-
-        // 渲染禁用的账号
         disabledAccounts.forEach(account => {
             const option = document.createElement('option');
             option.value = account.id;
-
-            // 禁用账号使用特殊图标和样式
-            let icon = '🔴';
-            let status = '';
-            if (account.keywordCount === 0) {
-            status = ' (未配置) [已禁用]';
-            } else {
-            status = ` (${account.keywordCount} 个关键词) [已禁用]`;
-            }
-
-            option.textContent = `${icon} ${account.id}${status}`;
+            option.textContent = `🔴 ${account.id} [已禁用]`;
             option.style.color = '#6b7280';
             option.style.fontStyle = 'italic';
             select.appendChild(option);
         });
         }
+
+        // 渲染自定义下拉选项（带精致状态标签）
+        if (optionsBox) {
+        let html = '';
+        if (enabledAccounts.length) {
+            html += '<div class="ar-select-group">启用账号</div>';
+            html += enabledAccounts.map(account => {
+            let icon = '⚪', label = '未配置', tone = 'muted';
+            if (account.keywordCount === 0) { icon = '⚪'; label = '未配置'; tone = 'muted'; }
+            else if (account.keywordCount >= 5) { icon = '🟢'; label = `${account.keywordCount} 个关键词`; tone = 'success'; }
+            else { icon = '🟡'; label = `${account.keywordCount} 个关键词`; tone = 'warn'; }
+            return `<div class="ar-select-option" data-value="${account.id}" role="option">
+                <span class="ar-opt-icon">${icon}</span>
+                <span class="ar-opt-label">${account.id}</span>
+                <span class="ar-opt-badge ar-opt-badge-${tone}">${label}</span>
+            </div>`;
+            }).join('');
+        }
+        if (disabledAccounts.length) {
+            html += '<div class="ar-select-group ar-select-group-disabled">禁用账号</div>';
+            html += disabledAccounts.map(account => {
+            const label = account.keywordCount ? `${account.keywordCount} 个关键词` : '未配置';
+            return `<div class="ar-select-option ar-select-option-disabled" data-value="${account.id}" role="option">
+                <span class="ar-opt-icon">🔴</span>
+                <span class="ar-opt-label">${account.id}</span>
+                <span class="ar-opt-badge ar-opt-badge-disabled">已禁用</span>
+                <span class="ar-opt-count">${label}</span>
+            </div>`;
+            }).join('');
+        }
+        optionsBox.innerHTML = html;
+        }
+
+        // 恢复刷新前的选中项
+        if (select && previousValue) {
+        const stillExists = Array.from(select.options).some(o => o.value === previousValue);
+        if (stillExists) select.value = previousValue;
+        }
+        syncArSelectDisplay();
 
         console.log('账号列表刷新完成，关键词统计:', accountsWithKeywords.map(a => ({id: a.id, keywords: a.keywordCount})));
     } else {
@@ -130,6 +156,102 @@ async function refreshAccountList() {
     showToast('刷新账号列表失败', 'danger');
     } finally {
     toggleLoading(false);
+    }
+}
+
+// 同步自定义下拉的显示值（从原生 select 读取）
+function syncArSelectDisplay() {
+    const select = document.getElementById('accountSelect');
+    const valueEl = document.getElementById('arSelectValue');
+    if (!select || !valueEl) return;
+    const val = select.value;
+    const opt = select.selectedOptions && select.selectedOptions[0];
+    const text = opt ? opt.textContent : '';
+    if (val && text) valueEl.textContent = text;
+    else valueEl.textContent = '🔍 请选择一个账号开始配置...';
+}
+
+// 自定义下拉交互
+function initArSelect() {
+    const trigger = document.getElementById('arSelectTrigger');
+    const menu = document.getElementById('arSelectMenu');
+    const search = document.getElementById('arSelectSearch');
+    const select = document.getElementById('accountSelect');
+    if (!trigger || !menu || !select) return;
+
+    const close = () => {
+        menu.classList.remove('open');
+        trigger.classList.remove('open');
+        trigger.setAttribute('aria-expanded', 'false');
+        if (search) search.value = '';
+    };
+    const open = () => {
+        menu.classList.add('open');
+        trigger.classList.add('open');
+        trigger.setAttribute('aria-expanded', 'true');
+        if (search) { search.value = ''; search.focus(); }
+        renderArFiltered('');
+    };
+
+    trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.classList.contains('open') ? close() : open();
+    });
+
+    document.addEventListener('click', (e) => {
+        const wrapper = document.querySelector('.account-select-wrapper');
+        if (wrapper && !wrapper.contains(e.target)) close();
+    });
+
+    // 选项点击
+    menu.addEventListener('click', (e) => {
+        const opt = e.target.closest('.ar-select-option');
+        if (!opt) return;
+        select.value = opt.dataset.value;
+        syncArSelectDisplay();
+        close();
+        if (select.onchange) select.onchange();
+        else select.dispatchEvent(new Event('change'));
+    });
+
+    // 搜索过滤
+    if (search) {
+        search.addEventListener('input', () => renderArFiltered(search.value));
+    }
+
+    function renderArFiltered(keyword) {
+        const optionsBox = document.getElementById('arSelectOptions');
+        if (!optionsBox) return;
+        const kw = (keyword || '').trim().toLowerCase();
+        const opts = Array.from(select.options).filter(o => o.value);
+        if (!opts.length) { optionsBox.innerHTML = '<div class="ar-select-empty">暂无账号</div>'; return; }
+        const groups = {};
+        opts.forEach(o => {
+            const disabled = /已禁用/.test(o.textContent) && o.style.fontStyle === 'italic';
+            groups[disabled ? 'disabled' : 'enabled'] = groups[disabled ? 'disabled' : 'enabled'] || [];
+            groups[disabled ? 'disabled' : 'enabled'].push(o);
+        });
+        let html = '';
+        const build = (arr, disabled) => {
+            return arr.filter(o => !kw || String(o.textContent).toLowerCase().includes(kw)).map(o => {
+                const m = /[^\s]+/.exec(o.textContent.replace(/^\S+\s/, ''));
+                const name = o.textContent.replace(/^\S+\s/, '');
+                const disabledTxt = /已禁用/.test(o.textContent);
+                return disabledTxt
+                    ? `<div class="ar-select-option ar-select-option-disabled" data-value="${o.value}" role="option">
+                         <span class="ar-opt-icon">🔴</span>
+                         <span class="ar-opt-label">${name.replace(' [已禁用]', '')}</span>
+                         <span class="ar-opt-badge ar-opt-badge-disabled">已禁用</span>
+                       </div>`
+                    : `<div class="ar-select-option" data-value="${o.value}" role="option">
+                         <span class="ar-opt-icon">${o.textContent.match(/^\S+/)?.[0] || '📝'}</span>
+                         <span class="ar-opt-label">${name}</span>
+                       </div>`;
+            }).join('');
+        };
+        if (groups.enabled && groups.enabled.length) { html += '<div class="ar-select-group">启用账号</div>' + build(groups.enabled, false); }
+        if (groups.disabled && groups.disabled.length) { html += '<div class="ar-select-group ar-select-group-disabled">禁用账号</div>' + build(groups.disabled, true); }
+        optionsBox.innerHTML = html || '<div class="ar-select-empty">无匹配账号</div>';
     }
 }
 
@@ -173,6 +295,7 @@ async function refreshKeywordsList() {
 async function loadAccountKeywords() {
     const accountId = document.getElementById('accountSelect').value;
     const keywordManagement = document.getElementById('keywordManagement');
+    syncArSelectDisplay();
 
     if (!accountId) {
     keywordManagement.style.display = 'none';
@@ -1470,3 +1593,15 @@ async function fetchJSON(url, opts = {}) {
 }
 
 // ================================
+
+// 初始化自定义账号下拉 + 监听程序化赋值（app.accounts.js 会设置 accountSelect.value）
+document.addEventListener('DOMContentLoaded', () => {
+    initArSelect();
+    const select = document.getElementById('accountSelect');
+    if (select) {
+        new MutationObserver(() => {
+            const trigger = document.querySelector('#arSelectTrigger');
+            if (trigger && !trigger.classList.contains('open')) syncArSelectDisplay();
+        }).observe(select, { attributes: true, attributeFilter: ['value'], subtree: false });
+    }
+}, { once: true });

@@ -1110,6 +1110,7 @@ Cookie数量: {cookie_count}
 
             if 'is_admin' not in user_columns:
                 self._execute_sql(cursor, "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE")
+                # 迁移旧库：历史库中 admin 已是管理员，保持其管理员身份
                 self._execute_sql(cursor, "UPDATE users SET is_admin = 1 WHERE username = 'admin'")
                 logger.info("数据库迁移完成：users 表添加 is_admin 列")
 
@@ -1666,30 +1667,19 @@ Cookie数量: {cookie_count}
             admin_exists = cursor.fetchone()[0] > 0
 
             if not admin_exists:
-                # 首次创建admin用户：优先用环境变量 ADMIN_PASSWORD，否则随机生成
-                import secrets as _secrets
-                import string as _string
-                # 优先从环境变量读取 ADMIN_PASSWORD
-                admin_password = os.environ.get("ADMIN_PASSWORD", "").strip()
-                if not admin_password:
-                    # 随机生成16位密码
-                    _alphabet = _string.ascii_letters + _string.digits
-                    admin_password = ''.join(_secrets.choice(_alphabet) for _ in range(16))
-                    logger.warning("=" * 60)
-                    logger.warning("首次启动：已为 admin 用户随机生成密码")
-                    logger.warning(f"初始密码：{admin_password}")
-                    logger.warning("请立即登录并修改密码！此密码仅显示一次。")
-                    logger.warning("如需指定密码，请设置环境变量 ADMIN_PASSWORD 后重启")
-                    logger.warning("=" * 60)
-                else:
+                # 首次创建 admin 用户（普通用户，供日常登录）：默认密码 123456
+                admin_password = os.environ.get("ADMIN_PASSWORD", "").strip() or "123456"
+                if os.environ.get("ADMIN_PASSWORD", "").strip():
                     logger.info("使用环境变量 ADMIN_PASSWORD 创建 admin 用户")
+                else:
+                    logger.info("使用默认密码 123456 创建 admin 用户")
                 default_password_hash = hashlib.sha256(admin_password.encode()).hexdigest()
                 # 检查is_admin列是否存在
                 try:
                     cursor.execute('SELECT is_admin FROM users LIMIT 1')
                     cursor.execute('''
                     INSERT INTO users (username, email, password_hash, is_admin) VALUES
-                    ('admin', 'admin@localhost', ?, 1)
+                    ('admin', 'admin@localhost', ?, 0)
                     ''', (default_password_hash,))
                 except sqlite3.OperationalError:
                     # is_admin列不存在，使用旧的INSERT语句
@@ -1697,15 +1687,29 @@ Cookie数量: {cookie_count}
                     INSERT INTO users (username, email, password_hash) VALUES
                     ('admin', 'admin@localhost', ?)
                     ''', (default_password_hash,))
-                # 标记密码初始化状态：环境变量设置的视为已初始化，随机生成的标记为待设置
-                if os.environ.get("ADMIN_PASSWORD", "").strip():
-                    # 环境变量预设的密码，标记为已初始化
-                    self.set_system_setting('admin_password_initialized', 'true', '管理员密码是否已初始化')
-                else:
-                    # 随机生成的密码，标记为待用户确认
-                    self.set_system_setting('admin_password_initialized', 'false', '管理员密码是否已初始化（false=随机生成待确认）')
-                    # 将随机密码暂存到内存供 init API 读取（不持久化明文）
-                    self._pending_init_password = admin_password
+                # 标记密码初始化状态：默认密码固定为 123456，直接视为已初始化，首次登录即可使用
+                self.set_system_setting('admin_password_initialized', 'true', '管理员密码是否已初始化')
+
+                # 创建独立管理账号 manager（is_admin=1），用于管理功能
+                manager_name = os.environ.get("SHANGJIA_MANAGER_USERNAME", "manager").strip() or "manager"
+                manager_pass = os.environ.get("SHANGJIA_MANAGER_PASSWORD", "manager888").strip() or "manager888"
+                try:
+                    manager_hash = hashlib.sha256(manager_pass.encode()).hexdigest()
+                    try:
+                        cursor.execute('SELECT is_admin FROM users LIMIT 1')
+                        cursor.execute('''
+                        INSERT INTO users (username, email, password_hash, is_admin) VALUES
+                        (?, 'manager@localhost', ?, 1)
+                        ''', (manager_name, manager_hash))
+                    except sqlite3.OperationalError:
+                        cursor.execute('''
+                        INSERT INTO users (username, email, password_hash) VALUES
+                        (?, 'manager@localhost', ?)
+                        ''', (manager_name, manager_hash))
+                    self._execute_sql(cursor, "UPDATE users SET is_admin = 1 WHERE username = ?", (manager_name,))
+                    logger.info(f"已创建独立管理账号: {manager_name}")
+                except Exception as mgr_e:
+                    logger.warning(f"创建独立管理账号失败: {mgr_e}")
 
             # 获取admin用户ID，用于历史数据绑定
             self._execute_sql(cursor, "SELECT id FROM users WHERE username = 'admin'")

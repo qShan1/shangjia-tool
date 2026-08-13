@@ -172,7 +172,10 @@
       </div>
       <div id="defaultLoginInfo" class="info-box" style="display:none;">
         <i class="bi bi-info-circle"></i>
-        首次登录请使用部署时设置的密码（通过环境变量 <code>ADMIN_PASSWORD</code> 配置，未设置则首次启动时随机生成并打印在服务日志中）。
+        <div style="margin-bottom:6px; font-weight:600;">默认账号</div>
+        <div>普通账号：<code>admin</code> / <code>123456</code></div>
+        <div>管理账号：<code>manager</code> / <code>manager888</code></div>
+        <small style="display:block; margin-top:6px;">普通账号用于日常操作；管理账号可查看卡密管理、在线用户、数据管理等管理功能。首次登录后请及时修改密码。</small>
       </div>
     </div>
   </div>
@@ -289,6 +292,19 @@
         if (d.success && d.first_run && !d.password_initialized) {
           const grp = document.getElementById('tempPasswordGroup');
           if (grp) grp.style.display = d.has_temp_password ? 'block' : 'none';
+          // 显示默认账号/密码，方便首次登录
+          const defaultCreds = document.getElementById('defaultCredsBox');
+          if (defaultCreds) {
+            const uname = d.default_username || 'admin';
+            const pwd = d.default_password || '';
+            if (pwd) {
+              defaultCreds.style.display = 'block';
+              document.getElementById('defaultCredsUsername').textContent = uname;
+              document.getElementById('defaultCredsPassword').textContent = pwd;
+            } else {
+              defaultCreds.style.display = 'none';
+            }
+          }
           new bootstrap.Modal(document.getElementById('initPasswordModal')).show();
         }
       } catch(e) { console.log('init check failed:', e); }
@@ -337,6 +353,16 @@
         </div>
         <div class="modal-body">
           <div class="alert alert-info"><i class="bi bi-info-circle"></i> 检测到首次启动，请设置您的管理员密码。</div>
+          <div class="alert alert-light border" id="defaultCredsBox" style="display:none; background: rgba(255,255,255,0.5);">
+            <div style="font-weight:600; margin-bottom:6px;"><i class="bi bi-person-lock"></i> 默认账号</div>
+            <div style="margin-bottom:6px;">
+              <span class="text-muted">用户名：</span><code id="defaultCredsUsername"></code>
+            </div>
+            <div style="margin-bottom:4px;">
+              <span class="text-muted">默认密码：</span><code id="defaultCredsPassword"></code>
+            </div>
+            <small class="text-muted">此密码仅首次初始化时展示，建议登录后立即修改。</small>
+          </div>
           <div class="mb-3" id="tempPasswordGroup" style="display:none;">
             <label class="form-label">临时密码（从启动日志获取）</label>
             <input type="password" class="form-control" id="initTempPassword" placeholder="输入临时密码（可选）">

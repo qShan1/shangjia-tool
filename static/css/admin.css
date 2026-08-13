@@ -273,3 +273,18 @@
 #tableExportMatrix .btn {
     margin-bottom: 0.35rem;
 }
+
+/* 数据存储位置路径样式 */
+.storage-path-code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: 0.82rem;
+    word-break: break-all;
+    white-space: pre-wrap;
+    -webkit-user-select: text;
+    user-select: text;
+    cursor: text;
+    background: rgba(118, 118, 128, 0.08);
+    padding: 2px 7px;
+    border-radius: 6px;
+    color: var(--ui-ink);
+}

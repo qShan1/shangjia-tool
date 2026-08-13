@@ -1,11 +1,11 @@
 {
-  "latest": "v2.4.2",
-  "name": "ShangjiaTool-v2.4.2-windows-x64.zip",
-  "zip_url": "https://github.com/qShan1/shangjia-tool/releases/download/v2.4.2/ShangjiaTool-v2.4.2-windows-x64.zip",
+  "latest": "v2.4.0",
+  "name": "ShangjiaTool-v2.4.0-windows-x64.zip",
+  "zip_url": "https://github.com/qShan1/shangjia-tool/releases/download/v2.4.0/ShangjiaTool-v2.4.0-windows-x64.zip",
   "mirrors": [
-    "https://gh-proxy.com/https://github.com/qShan1/shangjia-tool/releases/download/v2.4.2/ShangjiaTool-v2.4.2-windows-x64.zip",
-    "https://ghproxy.net/https://github.com/qShan1/shangjia-tool/releases/download/v2.4.2/ShangjiaTool-v2.4.2-windows-x64.zip"
+    "https://gh-proxy.com/https://github.com/qShan1/shangjia-tool/releases/download/v2.4.0/ShangjiaTool-v2.4.0-windows-x64.zip",
+    "https://ghproxy.net/https://github.com/qShan1/shangjia-tool/releases/download/v2.4.0/ShangjiaTool-v2.4.0-windows-x64.zip"
   ],
-  "digest": "",
+  "digest": "sha256:2dcb6005fad098854eb3b4ca7ecb8996b79402c20b0817585118eef86c5dc5e6",
   "force": true
 }
