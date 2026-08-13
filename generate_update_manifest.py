@@ -124,16 +124,18 @@ def is_excluded_path(relative_path: Path) -> bool:
 
 
 def is_updatable_file(relative_path: Path) -> bool:
-    """判断文件是否应纳入热更新清单"""
+    """判断文件是否应纳入热更新清单。
+
+    只纳入前端静态资源（static/ 下的 html/js/css/图片 等）。
+    排除所有后端 Python 文件（.py）——后端代码在打包环境下运行于只读的临时解压目录，
+    热更新写入无效且会破坏运行中服务的代码状态，必须走整包更新才能生效。
+    """
     if is_excluded_path(relative_path):
         return False
 
     suffix = relative_path.suffix.lower()
     if suffix == '.py':
-        return True
-
-    if suffix == '.html':
-        return True
+        return False
 
     if not relative_path.parts:
         return False

@@ -204,6 +204,9 @@ class AutoUpdater:
     def _is_excluded(self, path: str) -> bool:
         """检查路径是否被排除"""
         path_lower = path.lower().replace('\\', '/')
+        # 保险：后端 Python 文件永不纳入热更新，避免写入无效且破坏运行中服务
+        if path_lower.endswith('.py'):
+            return True
         for excluded in self.EXCLUDED_PATHS:
             if path_lower.startswith(excluded.lower()) or excluded.lower() in path_lower:
                 return True
