@@ -285,13 +285,14 @@
     }
 
     async function checkInitStatus() {
+      // 首次启动设置管理员密码：不再强制弹窗，避免普通用户（如测试账号 admin）每次登录都被拦截。
+      // 管理端如需初始化/修改密码，登录后到系统设置中处理。
       try {
         const r = await fetch('/api/system/init-status');
         const d = await r.json();
         if (d.success && d.first_run && !d.password_initialized) {
           const grp = document.getElementById('tempPasswordGroup');
           if (grp) grp.style.display = d.has_temp_password ? 'block' : 'none';
-          // 显示默认账号/密码，方便首次登录
           const defaultCreds = document.getElementById('defaultCredsBox');
           if (defaultCreds) {
             const uname = d.default_username || 'admin';
@@ -304,7 +305,6 @@
               defaultCreds.style.display = 'none';
             }
           }
-          new bootstrap.Modal(document.getElementById('initPasswordModal')).show();
         }
       } catch(e) { console.log('init check failed:', e); }
     }
