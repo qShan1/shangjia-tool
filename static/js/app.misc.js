@@ -590,9 +590,19 @@ function clearIgnoredUpdateVersion(showFeedback = true) {
 
 // 本地版本历史（远程服务禁用时使用）
 const LOCAL_VERSION_HISTORY = {
-    version: 'v1.0.2',
+    version: 'v1.0.3',
     intro: '本系统仅供个人学习研究使用，请勿用于商业用途。如有问题或建议，欢迎反馈。',
     versionHistory: [
+        {
+            version: 'v1.0.3',
+            date: '2026-08-13',
+            updates: [
+                '【修复】商品列表鼠标悬停闪烁与显示错位问题',
+                '【修复】查看更新日志窗口被公告窗口遮挡',
+                '【登录】登录页仅显示默认账号，界面更简洁',
+                '【安全】修复部分场景下更新重复触发的问题'
+            ]
+        },
         {
             version: 'v1.0.2',
             date: '2026-08-13',
@@ -615,7 +625,7 @@ const LOCAL_VERSION_HISTORY = {
             version: 'v1.0.0',
             date: '2026-08-13',
             updates: [
-                '【账号】支持普通用户与管理账号，管理账号可查看系统数据与卡密管理等高级功能',
+                '【账号】支持多账号登录与卡密授权管理',
                 '【登录】支持账号密码登录与扫码登录，登录更简单稳定',
                 '【自动回复】关键词与智能辅助回复，多账号统一管理，自动响应买家咨询',
                 '【商品】商品素材管理与批量发布，支持商品擦亮，提升运营效率',
@@ -948,8 +958,10 @@ function showChangelogModal() {
 
     changelogContent.innerHTML = html;
 
-    // 显示模态框
-    const modal = new bootstrap.Modal(document.getElementById('changelogModal'));
+    // 显示模态框（z-index 提到公告弹窗之上，避免被其覆盖）
+    const changelogModalElement = document.getElementById('changelogModal');
+    changelogModalElement.style.zIndex = '2000';
+    const modal = new bootstrap.Modal(changelogModalElement);
     modal.show();
 }
 
@@ -3844,7 +3856,6 @@ async function initializeDesktopExperienceControls() {
                     </div>
                     <div class="col-lg-4 d-flex gap-2 flex-wrap">
                         <button type="button" class="btn btn-outline-primary" id="desktopReleaseCheckBtn"><i class="bi bi-arrow-repeat me-1"></i>检查更新</button>
-                        <a class="btn btn-outline-secondary" href="https://github.com/qShan1/shangjia-tool/issues/new/choose" target="_blank" rel="noopener"><i class="bi bi-chat-square-text me-1"></i>反馈问题</a>
                     </div>
                     <div class="col-lg-3"><small class="text-muted" id="desktopReleaseStatus">正在读取更新偏好...</small></div>
                 </div>

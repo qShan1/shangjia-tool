@@ -220,7 +220,7 @@ function showDashboardAnnouncementHistoryModal() {
         existingModal.remove();
     }
 
-    // 精简展示：仅保留最近若干条，完整版本历史引导到「更新日志」与 GitHub
+    // 精简展示：仅保留最近若干条，完整版本历史引导到「更新日志」
     const MAX_DISPLAY = 12;
     const displayHistory = history.slice(0, MAX_DISPLAY);
 
@@ -270,7 +270,7 @@ function showDashboardAnnouncementHistoryModal() {
 
     const hiddenCount = history.length - MAX_DISPLAY;
     const moreNote = hiddenCount > 0
-        ? `<div class="dashboard-announcement-history-more">仅展示最近 ${displayHistory.length} 条，更早版本详见「更新日志」或 GitHub 仓库。</div>`
+        ? `<div class="dashboard-announcement-history-more">仅展示最近 ${displayHistory.length} 条，更早版本详见「更新日志」。</div>`
         : '';
 
     document.body.insertAdjacentHTML('beforeend', `
@@ -293,9 +293,6 @@ function showDashboardAnnouncementHistoryModal() {
                         ${moreNote}
                     </div>
                     <div class="modal-footer dashboard-announcement-history-modal-footer">
-                        <a class="btn btn-sm btn-outline-secondary" href="https://github.com/qShan1/shangjia-tool/releases" target="_blank" rel="noopener noreferrer">
-                            <i class="bi bi-github me-1"></i>GitHub 发布记录
-                        </a>
                         <button type="button" class="btn btn-sm btn-primary" onclick="showChangelogModal()">
                             <i class="bi bi-journal-text me-1"></i>查看更新日志
                         </button>

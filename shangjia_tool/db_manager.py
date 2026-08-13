@@ -1600,7 +1600,7 @@ Cookie数量: {cookie_count}
                 self.update_admin_user_id(cursor)
                 self.set_system_setting("db_version", "1.0", "数据库版本号")
                 logger.info("数据库升级到版本1.0完成")
-            
+
             # 如果版本低于需要升级的版本，执行升级
             if current_version < "1.1":
                 logger.info("开始升级数据库到版本1.1...")
@@ -1654,6 +1654,9 @@ Cookie数量: {cookie_count}
             # 迁移遗留数据（在所有版本升级完成后执行）
             self.migrate_legacy_data(cursor)
 
+            # 每次启动都确保账号角色正确（旧库升级后也能用 manager 登录；admin 为普通用户）
+            self.ensure_manager_account(cursor)
+
         except Exception as e:
             logger.error(f"数据库版本检查或升级失败: {e}")
             raise
@@ -1689,27 +1692,6 @@ Cookie数量: {cookie_count}
                     ''', (default_password_hash,))
                 # 标记密码初始化状态：默认密码固定为 123456，直接视为已初始化，首次登录即可使用
                 self.set_system_setting('admin_password_initialized', 'true', '管理员密码是否已初始化')
-
-                # 创建独立管理账号 manager（is_admin=1），用于管理功能
-                manager_name = os.environ.get("SHANGJIA_MANAGER_USERNAME", "manager").strip() or "manager"
-                manager_pass = os.environ.get("SHANGJIA_MANAGER_PASSWORD", "manager888").strip() or "manager888"
-                try:
-                    manager_hash = hashlib.sha256(manager_pass.encode()).hexdigest()
-                    try:
-                        cursor.execute('SELECT is_admin FROM users LIMIT 1')
-                        cursor.execute('''
-                        INSERT INTO users (username, email, password_hash, is_admin) VALUES
-                        (?, 'manager@localhost', ?, 1)
-                        ''', (manager_name, manager_hash))
-                    except sqlite3.OperationalError:
-                        cursor.execute('''
-                        INSERT INTO users (username, email, password_hash) VALUES
-                        (?, 'manager@localhost', ?)
-                        ''', (manager_name, manager_hash))
-                    self._execute_sql(cursor, "UPDATE users SET is_admin = 1 WHERE username = ?", (manager_name,))
-                    logger.info(f"已创建独立管理账号: {manager_name}")
-                except Exception as mgr_e:
-                    logger.warning(f"创建独立管理账号失败: {mgr_e}")
 
             # 获取admin用户ID，用于历史数据绑定
             self._execute_sql(cursor, "SELECT id FROM users WHERE username = 'admin'")
@@ -1844,7 +1826,42 @@ Cookie数量: {cookie_count}
         except Exception as e:
             logger.error(f"更新admin用户ID失败: {e}")
             raise
-            
+
+    def ensure_manager_account(self, cursor):
+        """确保独立管理账号存在且 admin 为普通用户（幂等，每次启动调用）。
+
+        旧库升级后 manager 不存在则补建；admin 历史为管理员时降为普通用户，
+        管理功能统一由 manager 进入。"""
+        manager_name = os.environ.get("SHANGJIA_MANAGER_USERNAME", "manager").strip() or "manager"
+        try:
+            # admin 统一为普通用户
+            try:
+                self._execute_sql(cursor, "UPDATE users SET is_admin = 0 WHERE username = 'admin'")
+            except Exception:
+                pass
+            self._execute_sql(cursor, "SELECT id FROM users WHERE username = ?", (manager_name,))
+            if cursor.fetchone():
+                # manager 已存在，确保其管理员身份
+                self._execute_sql(cursor, "UPDATE users SET is_admin = 1 WHERE username = ?", (manager_name,))
+                return
+            manager_pass = os.environ.get("SHANGJIA_MANAGER_PASSWORD", "manager888").strip() or "manager888"
+            manager_hash = hashlib.sha256(manager_pass.encode()).hexdigest()
+            try:
+                cursor.execute("SELECT is_admin FROM users LIMIT 1")
+                cursor.execute('''
+                INSERT INTO users (username, email, password_hash, is_admin) VALUES
+                (?, 'manager@localhost', ?, 1)
+                ''', (manager_name, manager_hash))
+            except sqlite3.OperationalError:
+                cursor.execute('''
+                INSERT INTO users (username, email, password_hash) VALUES
+                (?, 'manager@localhost', ?)
+                ''', (manager_name, manager_hash))
+            self._execute_sql(cursor, "UPDATE users SET is_admin = 1 WHERE username = ?", (manager_name,))
+            logger.info(f"已补建独立管理账号: {manager_name}")
+        except Exception as mgr_e:
+            logger.warning(f"补建独立管理账号失败: {mgr_e}")
+
     def upgrade_notification_channels_table(self, cursor):
         """升级notification_channels表的type字段约束"""
         try:

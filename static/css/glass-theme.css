@@ -611,10 +611,9 @@ body.sidebar-collapsed .main-content {
   border-bottom-color: var(--ui-border);
 }
 
-.table tbody tr:hover > * {
-  background: transparent;
+.table tbody tr:hover {
+  background-color: rgba(118, 118, 128, 0.10) !important;
 }
-
 /* 商品管理列表行 hover：单一明确背景，避免与 Bootstrap table-hover 及通用规则叠加闪烁 */
 #itemsTableBody tbody tr:hover,
 #itemsTableBody tr:hover {
@@ -651,7 +650,6 @@ body.sidebar-collapsed .main-content {
 }
 
 /* 表格容器统一圆角 + 内容裁剪，契合系统圆角规范 */
-.card-body .table-responsive,
 .table-responsive {
   border-radius: 14px;
   overflow-x: auto;
@@ -2366,7 +2364,7 @@ html.has-custom-background body {
 
 /* 表格行 hover 增强（背景 + 轻微左移提示） */
 .table tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.6) !important;
+  background-color: rgba(118, 118, 128, 0.10) !important;
 }
 [data-theme="dark"] .table tbody tr:hover {
   background-color: rgba(255, 255, 255, 0.08) !important;
