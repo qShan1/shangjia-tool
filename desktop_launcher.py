@@ -133,16 +133,30 @@ class _DesktopApi:
         return set_autostart_enabled(bool(enabled))
 
     def resolve_desktop_dialog(self, result):
-        """接收网页弹窗的选择，供关闭/更新后台线程继续执行。"""
+        """接收网页弹窗的选择，供关闭/更新后台线程继续执行。
+
+        pywebview 的 JS bridge 回调运行在内部线程，直接在此调用 window.destroy()/
+        request_exit() 会在窗口销毁流程中死锁，导致界面无响应且后续 stop_service()
+        不执行、服务残留。因此把"托盘/退出"动作放到独立线程异步执行。
+        """
         global _DIALOG_RESULT, _DIALOG_EVENT
         _DIALOG_RESULT = str(result or "")
         if _DIALOG_EVENT is not None:
             _DIALOG_EVENT.set()
         elif _WINDOW is not None:
-            if _DIALOG_RESULT == "tray":
-                minimize_to_tray(_WINDOW)
-            elif _DIALOG_RESULT == "exit":
-                request_exit(_WINDOW)
+            choice = _DIALOG_RESULT
+
+            def _act():
+                try:
+                    if choice == "tray":
+                        minimize_to_tray(_WINDOW)
+                    elif choice == "exit":
+                        request_exit(_WINDOW)
+                except Exception as error:
+                    with desktop_log_path().open("a", encoding="utf-8") as output:
+                        output.write(f"resolve_desktop_dialog action failed: {error}\n")
+
+            threading.Thread(target=_act, name="shangjia-dialog-action", daemon=True).start()
         return {"success": True}
 
 
@@ -632,7 +646,13 @@ def _start_tray(window):
             _check_update_from_tray(window)
 
         def exit_app(_icon, _item):
-            request_exit(window)
+            # pystray 回调线程不能直接销毁窗口/停服务（会阻塞），放独立线程执行
+            def _exit_thread():
+                try:
+                    request_exit(window)
+                except Exception:
+                    pass
+            threading.Thread(target=_exit_thread, name="shangjia-tray-exit", daemon=True).start()
 
         _TRAY_ICON = pystray.Icon(
             "ShangjiaTool",
