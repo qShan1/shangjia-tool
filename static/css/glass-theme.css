@@ -626,6 +626,17 @@ body.sidebar-collapsed .main-content {
   background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
+/* 订单管理列表行 hover：单一明确背景，避免与 Bootstrap table-hover 及通用规则叠加闪烁 */
+#ordersTableBody tbody tr:hover,
+#ordersTableBody tr:hover {
+  background-color: rgba(118, 118, 128, 0.10) !important;
+  box-shadow: none;
+  transform: none;
+}
+[data-theme="dark"] #ordersTableBody tr:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
 /* 圆角收敛：玻璃卡片内嵌的表格/表头不再以直角漏出卡片圆角 */
 .content-section .card {
   overflow: hidden;

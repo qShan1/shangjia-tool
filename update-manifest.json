@@ -1,10 +1,10 @@
 {
-  "latest": "v1.0.0",
-  "name": "ShangjiaTool-v1.0.0-windows-x64.zip",
-  "zip_url": "https://github.com/qShan1/shangjia-tool/releases/download/v1.0.0/ShangjiaTool-v1.0.0-windows-x64.zip",
+  "latest": "v1.0.1",
+  "name": "ShangjiaTool-v1.0.1-windows-x64.zip",
+  "zip_url": "https://github.com/qShan1/shangjia-tool/releases/download/v1.0.1/ShangjiaTool-v1.0.1-windows-x64.zip",
   "mirrors": [
-    "https://gh-proxy.com/https://github.com/qShan1/shangjia-tool/releases/download/v1.0.0/ShangjiaTool-v1.0.0-windows-x64.zip",
-    "https://ghproxy.net/https://github.com/qShan1/shangjia-tool/releases/download/v1.0.0/ShangjiaTool-v1.0.0-windows-x64.zip"
+    "https://gh-proxy.com/https://github.com/qShan1/shangjia-tool/releases/download/v1.0.1/ShangjiaTool-v1.0.1-windows-x64.zip",
+    "https://ghproxy.net/https://github.com/qShan1/shangjia-tool/releases/download/v1.0.1/ShangjiaTool-v1.0.1-windows-x64.zip"
   ],
   "digest": "",
   "force": true

@@ -590,9 +590,19 @@ function clearIgnoredUpdateVersion(showFeedback = true) {
 
 // 本地版本历史（远程服务禁用时使用）
 const LOCAL_VERSION_HISTORY = {
-    version: 'v1.0.0',
+    version: 'v1.0.1',
     intro: '本系统仅供个人学习研究使用，请勿用于商业用途。如有问题或建议，欢迎反馈。',
     versionHistory: [
+        {
+            version: 'v1.0.1',
+            date: '2026-08-13',
+            updates: [
+                '【优化】订单列表鼠标悬停不再闪烁，操作更流畅',
+                '【优化】公告栏可点击，点击可查看更新记录与说明',
+                '【优化】桌面端启动更快，退出更干净',
+                '【新增】开机自启开关（设置中可配置）'
+            ]
+        },
         {
             version: 'v1.0.0',
             date: '2026-08-13',

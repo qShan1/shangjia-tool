@@ -441,7 +441,7 @@
               <p class="text-muted mb-0">系统概览和统计信息</p>
             </div>
             <div class="dashboard-announcement-slot" id="dashboardAnnouncementSlot" style="display: none;"></div>
-            <div class="dashboard-sticky-note" id="dashboardStickyNote" role="note" aria-label="常驻公告">
+            <div class="dashboard-sticky-note" id="dashboardStickyNote" role="button" tabindex="0" title="点击查看公告记录" aria-label="常驻公告，点击查看公告与更新记录" onclick="showDashboardAnnouncementHistoryModal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showDashboardAnnouncementHistoryModal();}">
               <span class="dashboard-sticky-note-icon"><i class="bi bi-pin-angle-fill"></i></span>
               <span class="dashboard-sticky-note-body">
                 <span class="dashboard-sticky-note-title">欢迎使用闲鱼商家工具</span>
