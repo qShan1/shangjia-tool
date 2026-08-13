@@ -1685,6 +1685,40 @@ async function performHotUpdate() {
     }
 }
 
+// 无感热更新：登录后后台静默检查，有更新时静默应用并刷新，全程不打扰用户
+let silentHotUpdateRunning = false;
+
+async function silentHotUpdateCheck() {
+    if (silentHotUpdateRunning) return;
+    // 仅登录态执行；未开启自动检查或已忽略该版本则跳过
+    if (!getAuthToken() || !isHotUpdateAutoCheckEnabled()) return;
+    silentHotUpdateRunning = true;
+    try {
+        const updateInfo = await checkHotUpdate();
+        if (!updateInfo || !updateInfo.has_update) return;
+        if (shouldSuppressHotUpdateHint(updateInfo)) return;
+        // 静默应用：不走确认/进度弹窗
+        const response = await fetch('/api/update/apply', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getAuthToken()}`
+            }
+        });
+        const result = await response.json();
+        if (result.success && result.data?.success) {
+            if (!result.data.needs_restart) {
+                window.location.reload();
+            }
+        }
+    } catch (error) {
+        console.warn('无感热更新执行失败:', error);
+    } finally {
+        silentHotUpdateRunning = false;
+    }
+}
+
 /**
  * 重置热更新按钮状态
  */
@@ -3854,6 +3888,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const nav = document.querySelector('#sidebar .sidebar-nav');
     if (nav) new MutationObserver(hideEmptySidebarGroups).observe(nav, { attributes: true, subtree: true, attributeFilter: ['style', 'class'] });
     initTableHorizontalScroll();
+    silentHotUpdateCheck();
 }, { once: true });
 
 /* 表格容器：支持滚轮横向滚动（触控板横向 或 Shift+滚轮） */
