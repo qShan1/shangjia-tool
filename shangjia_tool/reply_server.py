@@ -178,6 +178,10 @@ def _get_announcement_remote_url() -> str:
 
 def _get_announcement_local_path() -> Path:
     file_path = str(os.getenv('DASHBOARD_ANNOUNCEMENT_FILE') or 'announcement.json').strip().lstrip('/')
+    # PyInstaller onefile 打包后数据文件解压到 sys._MEIPASS，源码运行时在项目根目录
+    if getattr(sys, 'frozen', False):
+        meipass = Path(getattr(sys, '_MEIPASS', _PROJECT_ROOT))
+        return meipass / file_path
     return _PROJECT_ROOT / file_path
 
 
