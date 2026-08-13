@@ -123,23 +123,43 @@ def release_update():
     url = str(manifest.get("zip_url") or "").strip()
     if not url:
         url = f"https://github.com/qShan1/shangjia-tool/releases/download/{tag}/{name}"
+    mirrors = manifest.get("mirrors") if isinstance(manifest.get("mirrors"), list) else []
+    mirrors = [str(m).strip() for m in mirrors if str(m).strip()]
     force = bool(manifest.get("force", False))
     digest = str(manifest.get("digest") or "")
-    return {"tag": tag, "name": name, "url": url, "digest": digest, "force": force}
+    return {"tag": tag, "name": name, "url": url, "mirrors": mirrors, "digest": digest, "force": force}
 
 
 def _download_update(update):
     staging = DATA_ROOT / "updates" / "staging"
     staging.mkdir(parents=True, exist_ok=True)
     archive = staging / update["name"]
-    request = urllib.request.Request(update["url"], headers={"User-Agent": "ShangjiaTool"})
-    try:
-        with urllib.request.urlopen(request, timeout=300) as response, archive.open("wb") as target:
-            shutil.copyfileobj(response, target)
-    except Exception as e:
+    # 下载源优先级：镜像列表 → 原始 zip_url → 兜底失败
+    sources = list(update.get("mirrors") or [])
+    if update.get("url"):
+        sources.append(update["url"])
+    last_error = None
+    for src in sources:
+        try:
+            request = urllib.request.Request(src, headers={"User-Agent": "ShangjiaTool"})
+            with urllib.request.urlopen(request, timeout=300) as response, archive.open("wb") as target:
+                shutil.copyfileobj(response, target)
+            with desktop_log_path().open("a", encoding="utf-8") as output:
+                output.write(f"Update downloaded from: {src}\n")
+            last_error = None
+            break
+        except Exception as e:
+            last_error = e
+            with desktop_log_path().open("a", encoding="utf-8") as output:
+                output.write(f"Update source failed ({src}): {e}\n")
+            try:
+                archive.unlink(missing_ok=True)
+            except Exception:
+                pass
+    if last_error is not None:
         with desktop_log_path().open("a", encoding="utf-8") as output:
-            output.write(f"Update download failed: {e}\n")
-        raise
+            output.write(f"Update download failed: {last_error}\n")
+        raise last_error
     digest = str(update.get("digest") or "")
     if digest.startswith("sha256:"):
         actual = hashlib.sha256(archive.read_bytes()).hexdigest()
