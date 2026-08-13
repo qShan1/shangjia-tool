@@ -2241,7 +2241,8 @@ async function loadAIPresets() {
         });
         // 尝试自动匹配当前表单值对应的预设
         _autoSelectMatchingPreset();
-        deleteBtn.style.display = select.value ? '' : 'none';
+        const selectedId = Number(select.value);
+        deleteBtn.style.display = (select.value && selectedId > 0) ? '' : 'none';
     } catch (e) {
         console.error('加载AI配置预设失败:', e);
     }
@@ -2272,7 +2273,7 @@ function loadAIPreset() {
         deleteBtn.style.display = 'none';
         return;
     }
-    deleteBtn.style.display = '';
+    deleteBtn.style.display = Number(presetId) > 0 ? '' : 'none';
 
     const preset = _aiPresets.find(p => String(p.id) === presetId);
     if (!preset) return;
@@ -2349,6 +2350,10 @@ async function deleteSelectedPreset() {
 
     const preset = _aiPresets.find(p => String(p.id) === presetId);
     if (!preset) return;
+    if (Number(presetId) < 0) {
+        showToast('内置预设不可删除', 'info');
+        return;
+    }
     if (!await uiConfirm(`确定删除预设「${preset.preset_name}」吗？`)) return;
 
     try {

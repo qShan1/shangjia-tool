@@ -342,7 +342,7 @@ def _start_api_server():
     api_conf = AUTO_REPLY.get('api', {})
 
     # 优先使用环境变量配置
-    host = os.getenv('API_HOST', '0.0.0.0')  # 默认绑定所有接口
+    host = os.getenv('API_HOST', '127.0.0.1')  # 默认仅本机访问，避免局域网可直登管理界面
     port = int(os.getenv('API_PORT', '8090'))  # 默认端口8090
 
     # 显式环境变量优先，桌面启动器需要能选择隔离端口。

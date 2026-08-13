@@ -283,7 +283,15 @@
    AI回复配置 - 全量界面视觉增强
    ================================ */
 #ai-settings-section .ai-reply-content {
-  overflow: hidden;
+  overflow: visible;
+  max-width: 960px;
+  margin-inline: auto;
+  width: 100%;
+}
+#ai-settings-section .ai-reply-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 /* 内层子卡片视觉轻量化：避免玻璃套玻璃、hover 各自浮起显得杂乱 */
@@ -798,8 +806,6 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 500px;
-  overflow-y: auto;
 }
 
 .menu-sort-item {

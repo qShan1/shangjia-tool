@@ -502,6 +502,16 @@ def mask_secret_value(secret_value: str) -> str:
     return f"{secret_value[:2]}***{secret_value[-2:]}"
 
 
+def _mask_sensitive_dict(payload) -> str:
+    """把日志 payload 中的 cookie/密钥字段掩码后转字符串，避免完整闲鱼凭据落盘。"""
+    if isinstance(payload, dict):
+        masked = dict(payload)
+        for key in ('cookies', 'cookie', 'value', 'password', 'api_key', 'token', 'secret'):
+            if key in masked:
+                masked[key] = mask_cookie_value(str(masked[key]))
+        return str(masked)
+    return str(payload)
+
 def safe_client_error(message: str = '操作失败，请稍后重试') -> str:
     return message
 
@@ -1470,13 +1480,24 @@ async def root():
 
 # ========================= 验证码API =========================
 
+# 是否信任 X-Forwarded-For/X-Real-IP 代理头。默认关闭：只用直连 IP，
+# 避免攻击者伪造 XFF 绕过 IP 封禁/验证码绑定。仅在部署于可信反向代理后置 true。
+_TRUST_PROXY_HEADERS = os.getenv('TRUST_PROXY_HEADERS', '').strip().lower() in ('1', 'true', 'yes')
+
+
+def _get_client_ip(request: Request) -> str:
+    if _TRUST_PROXY_HEADERS:
+        return request.headers.get('X-Forwarded-For', '').split(',')[0].strip() or \
+            request.headers.get('X-Real-IP', '') or \
+            (request.client.host if request.client else 'unknown')
+    return request.client.host if request.client else 'unknown'
+
+
 @app.get('/captcha/generate')
 async def generate_captcha(request: Request):
     """生成验证码图片"""
     # 获取客户端IP
-    client_ip = request.headers.get('X-Forwarded-For', '').split(',')[0].strip() or \
-                request.headers.get('X-Real-IP', '') or \
-                request.client.host if request.client else 'unknown'
+    client_ip = _get_client_ip(request)
     
     # 清理过期验证码
     cleanup_expired_captchas()
@@ -1511,9 +1532,7 @@ async def generate_captcha(request: Request):
 @app.get('/captcha/check-required')
 async def check_captcha_required(request: Request):
     """检查是否需要验证码"""
-    client_ip = request.headers.get('X-Forwarded-For', '').split(',')[0].strip() or \
-                request.headers.get('X-Real-IP', '') or \
-                request.client.host if request.client else 'unknown'
+    client_ip = _get_client_ip(request)
     
     required = is_captcha_required(client_ip)
     failure_count = get_ip_failure_count(client_ip)
@@ -1825,9 +1844,7 @@ async def login(login_request: LoginRequest, request: Request):
     from db_manager import db_manager
     
     # 获取客户端IP（考虑代理）
-    client_ip = request.headers.get('X-Forwarded-For', '').split(',')[0].strip() or \
-                request.headers.get('X-Real-IP', '') or \
-                request.client.host if request.client else 'unknown'
+    client_ip = _get_client_ip(request)
     
     # 定期清理过期记录
     cleanup_login_trackers()
@@ -2093,8 +2110,7 @@ PRESENCE_ONLINE_WINDOW_SECONDS = 180
 
 
 def _client_ip(request: Request) -> str:
-    return request.headers.get('X-Forwarded-For', '').split(',')[0].strip() or \
-        (request.client.host if request.client else 'unknown')
+    return _get_client_ip(request)
 
 
 def _generate_activation_code(prefix: str = '') -> str:
@@ -7895,7 +7911,7 @@ async def generate_qr_code(current_user: Dict[str, Any] = Depends(get_current_us
     try:
         log_with_user('info', "请求生成扫码登录二维码", current_user)
 
-        result = await qr_login_manager.generate_qr_code()
+        result = await qr_login_manager.generate_qr_code(user_id=current_user.get('user_id'))
 
         if result['success']:
             log_with_user('info', f"扫码登录二维码生成成功: {result['session_id']}", current_user)
@@ -7915,6 +7931,13 @@ async def check_qr_code_status(session_id: str, current_user: Dict[str, Any] = D
     try:
         # 清理过期记录
         cleanup_qr_check_records()
+
+        # 会话归属校验：防止跨用户轮询他人 QR 会话导致 cookie 错绑
+        session_obj = getattr(qr_login_manager, 'sessions', {}).get(session_id)
+        if session_obj is not None and session_obj.user_id is not None \
+                and session_obj.user_id != current_user.get('user_id'):
+            log_with_user('warning', f"扫码登录会话归属校验失败: session={session_id}", current_user)
+            return {'status': 'error', 'message': '会话不存在或已失效'}
 
         # 检查是否已经处理过
         if session_id in qr_check_processed:
@@ -7967,9 +7990,9 @@ async def check_qr_code_status(session_id: str, current_user: Dict[str, Any] = D
 
             # 获取会话状态
             status_info = qr_login_manager.get_session_status(session_id)
-            log_with_user('info', f"获取会话状态1111111: {status_info}", current_user)
+            log_with_user('info', f"获取会话状态1111111: {_mask_sensitive_dict(status_info)}", current_user)
             if status_info['status'] == 'success':
-                log_with_user('info', f"获取会话状态22222222: {status_info}", current_user)
+                log_with_user('info', f"获取会话状态22222222: {_mask_sensitive_dict(status_info)}", current_user)
 
                 # 检查是否已经在后台处理中
                 if session_id in qr_check_processed and qr_check_processed[session_id].get('processing'):
@@ -7984,7 +8007,7 @@ async def check_qr_code_status(session_id: str, current_user: Dict[str, Any] = D
 
                 # 获取 Cookie 信息
                 cookies_info = qr_login_manager.get_session_cookies(session_id)
-                log_with_user('info', f"获取会话Cookie: {cookies_info}", current_user)
+                log_with_user('info', f"获取会话Cookie: {_mask_sensitive_dict(cookies_info)}", current_user)
 
                 if cookies_info:
                     # 异步处理 Cookie（不阻塞当前请求）
@@ -12815,12 +12838,22 @@ def get_all_ai_reply_settings(current_user: Dict[str, Any] = Depends(get_current
 
 @app.get("/ai-config-presets")
 def list_ai_config_presets(current_user: Dict[str, Any] = Depends(get_current_user)):
-    """获取当前用户的AI配置预设列表"""
+    """获取当前用户的AI配置预设列表（无自定义预设时提供内置常用预设）"""
     try:
         user_id = current_user['user_id']
         from db_manager import db_manager
         presets = db_manager.get_ai_config_presets(user_id)
-        return presets
+        if presets:
+            return presets
+        # 内置常用预设（id 用负数区分，不可删除，仅作便捷入口）
+        return [
+            {'id': -1, 'preset_name': '阿里云 DashScope', 'model_name': 'qwen3.5-plus',
+             'api_key': '', 'base_url': 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'api_type': '', 'builtin': True},
+            {'id': -2, 'preset_name': 'DeepSeek 官方', 'model_name': 'deepseek-chat',
+             'api_key': '', 'base_url': 'https://api.deepseek.com/v1', 'api_type': 'openai', 'builtin': True},
+            {'id': -3, 'preset_name': 'OpenAI', 'model_name': 'gpt-4o-mini',
+             'api_key': '', 'base_url': 'https://api.openai.com/v1', 'api_type': 'openai', 'builtin': True},
+        ]
     except Exception as e:
         logger.error(f"获取AI配置预设列表异常: {e}")
         raise HTTPException(status_code=500, detail=f"服务器错误: {str(e)}")

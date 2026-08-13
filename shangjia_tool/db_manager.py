@@ -2,6 +2,7 @@ import sqlite3
 import os
 import threading
 import hashlib
+import hmac
 import time
 import json
 import random
@@ -16,6 +17,36 @@ from typing import List, Tuple, Dict, Optional, Any
 from urllib.parse import parse_qs, urlparse
 from cryptography.fernet import Fernet, InvalidToken
 from loguru import logger
+
+_PBKDF2_ITERATIONS = 100_000
+
+
+def hash_password(password: str) -> str:
+    """PBKDF2 加盐哈希。格式: pbkdf2$iterations$salt_hex$hash_hex"""
+    salt = os.urandom(16).hex()
+    digest = hashlib.pbkdf2_hmac('sha256', password.encode(), bytes.fromhex(salt), _PBKDF2_ITERATIONS)
+    return f"pbkdf2${_PBKDF2_ITERATIONS}${salt}${digest.hex()}"
+
+
+def verify_password(stored: str, password: str) -> bool:
+    """校验密码。兼容新版 pbkdf2 与旧版无盐 sha256（旧格式登录成功后由调用方迁移）。"""
+    stored = str(stored or '')
+    if stored.startswith('pbkdf2$'):
+        try:
+            _, iterations_str, salt_hex, digest_hex = stored.split('$')
+            digest = hashlib.pbkdf2_hmac(
+                'sha256', password.encode(), bytes.fromhex(salt_hex), int(iterations_str))
+            return hmac_compare(digest_hex, digest.hex())
+        except Exception:
+            return False
+    # 旧格式：无盐 sha256
+    return hmac_compare(stored, hashlib.sha256(password.encode()).hexdigest())
+
+
+def hmac_compare(a: str, b: str) -> bool:
+    """恒定时间比较，避免时序侧信道。"""
+    return len(a) == len(b) and hmac.compare_digest(a.encode(), b.encode())
+
 
 class DBManager:
     """SQLite数据库管理，持久化存储Cookie和关键字"""
@@ -1676,7 +1707,7 @@ Cookie数量: {cookie_count}
                     logger.info("使用环境变量 ADMIN_PASSWORD 创建 admin 用户")
                 else:
                     logger.info("使用默认密码 123456 创建 admin 用户")
-                default_password_hash = hashlib.sha256(admin_password.encode()).hexdigest()
+                default_password_hash = hash_password(admin_password)
                 # 检查is_admin列是否存在
                 try:
                     cursor.execute('SELECT is_admin FROM users LIMIT 1')
@@ -1845,7 +1876,7 @@ Cookie数量: {cookie_count}
                 self._execute_sql(cursor, "UPDATE users SET is_admin = 1 WHERE username = ?", (manager_name,))
                 return
             manager_pass = os.environ.get("SHANGJIA_MANAGER_PASSWORD", "manager888").strip() or "manager888"
-            manager_hash = hashlib.sha256(manager_pass.encode()).hexdigest()
+            manager_hash = hash_password(manager_pass)
             try:
                 cursor.execute("SELECT is_admin FROM users LIMIT 1")
                 cursor.execute('''
@@ -4457,7 +4488,7 @@ Cookie数量: {cookie_count}
         with self.lock:
             try:
                 cursor = self.conn.cursor()
-                password_hash = hashlib.sha256(password.encode()).hexdigest()
+                password_hash = hash_password(password)
 
                 cursor.execute('''
                 INSERT INTO users (username, email, password_hash)
@@ -4561,20 +4592,19 @@ Cookie数量: {cookie_count}
                 return None
 
     def verify_user_password(self, username: str, password: str) -> bool:
-        """验证用户密码"""
+        """验证用户密码（兼容旧无盐 sha256）"""
         user = self.get_user_by_username(username)
         if not user:
             return False
 
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
-        return user['password_hash'] == password_hash and user['is_active']
+        return verify_password(user['password_hash'], password) and user['is_active']
 
     def update_user_password(self, username: str, new_password: str) -> bool:
         """更新用户密码"""
         with self.lock:
             try:
                 cursor = self.conn.cursor()
-                password_hash = hashlib.sha256(new_password.encode()).hexdigest()
+                password_hash = hash_password(new_password)
 
                 cursor.execute('''
                 UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP

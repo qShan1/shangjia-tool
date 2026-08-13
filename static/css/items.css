@@ -164,8 +164,6 @@
 .item-publish-side-list {
   display: grid;
   gap: 12px;
-  max-height: 420px;
-  overflow-y: auto;
 }
 
 .item-publish-side-item,
@@ -252,11 +250,6 @@
 }
 
 /* 批量发布 */
-.batch-publish-check-list {
-  max-height: 360px;
-  overflow-y: auto;
-}
-
 .batch-publish-check-item {
   cursor: pointer;
   background: rgba(255, 255, 255, 0.96);

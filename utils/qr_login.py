@@ -67,6 +67,7 @@ class QRLoginSession:
         self.screenshot_path = None  # 风控验证截图
         self.verification_task = None  # 风控验证页面保持任务
         self.success_source = None  # 登录成功来源: api/browser
+        self.user_id = None  # 会话归属用户（防跨用户轮询）
 
     def is_expired(self) -> bool:
         """检查是否过期"""
@@ -479,12 +480,13 @@ class QRLoginManager:
                 logger.error("获取登录参数时连接错误")
                 raise
     
-    async def generate_qr_code(self) -> Dict[str, Any]:
+    async def generate_qr_code(self, user_id: int = None) -> Dict[str, Any]:
         """生成二维码"""
         try:
             # 创建新的会话
             session_id = str(uuid.uuid4())
             session = QRLoginSession(session_id)
+            session.user_id = user_id
 
             # 1. 获取m_h5_tk
             await self._get_mh5tk(session)

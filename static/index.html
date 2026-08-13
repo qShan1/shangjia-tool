@@ -6333,7 +6333,7 @@
                       <label class="form-check-label" for="aiReplyEnabled">
                         <strong>启用AI回复</strong>
                       </label>
-                      <small class="form-text text-muted d-block">启用后将自动禁用关键词匹配和默认回复</small>
+                      <small class="form-text text-muted d-block">关键词未命中时由 AI 智能回复，支持议价、技术与一般咨询</small>
                     </div>
                   </div>
                 </div>
@@ -6511,7 +6511,7 @@
                     </div>
                     <small class="form-text text-muted d-block mb-2">当买家询问产品功能、使用方法、技术细节时的回复策略</small>
                     <textarea class="form-control ai-prompt-textarea" id="promptTech" rows="3"
-                              placeholder="【技术/产品问题】&#10;基于商品信息回答，不要自行发挥。&#10;如果问题超出商品信息范围，回复：&quot;等等，这个我需要看一看&quot;"></textarea>
+                              placeholder="【技术/产品问题】&#10;基于商品信息回答，不要自行发挥。&#10;如果问题超出商品信息范围，简短说明当前商品主要服务范围，&#10;并请客户提供软件名称、版本和截图。"></textarea>
                   </div>
 
                   <div class="ai-prompt-card ai-prompt-card-wide">
@@ -6521,7 +6521,7 @@
                     </div>
                     <small class="form-text text-muted d-block mb-2">物流、售后、商品介绍等其他咨询的回复策略</small>
                     <textarea class="form-control ai-prompt-textarea" id="promptDefault" rows="3"
-                              placeholder="【一般咨询】&#10;基于商品信息回答物流、售后等问题。&#10;如果问题超出商品信息范围，回复：&quot;等等，这个我需要看一看&quot;&#10;如果客户明确询问退款，回复：&quot;虚拟产品，一旦发出是不可以退款的&quot;"></textarea>
+                              placeholder="【一般咨询】&#10;基于商品信息回答物流、售后等问题。&#10;如果问题超出商品信息范围，简短说明当前商品主要服务范围并引导客户提供有效问题。&#10;如果客户没有主动询问退款、议价或远程，不要主动提及这些词。"></textarea>
                   </div>
                 </div>
               </div>

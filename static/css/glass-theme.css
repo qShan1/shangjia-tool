@@ -2468,10 +2468,6 @@ html.has-custom-background body {
 }
 
 /* 数据中心：排行列表与徽章 */
-.report-list {
-  max-height: 340px;
-  overflow-y: auto;
-}
 .report-rank {
   width: 22px;
   height: 22px;
@@ -2507,10 +2503,8 @@ html.has-custom-background body {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
 }
-.report-list,
-.keywords-list,
-.table-container,
-.log-container {
+.log-container,
+.table-container {
   overflow-y: auto;
 }
 
