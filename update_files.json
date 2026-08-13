@@ -1,0 +1,828 @@
+{
+  "version": "v1.0.3",
+  "release_date": "2026-08-13",
+  "description": "版本 v1.0.3 更新",
+  "min_version": "v1.0.0",
+  "changelog": [
+    "GitHub Releases 热更新清单"
+  ],
+  "files": [
+    {
+      "path": "Start.py",
+      "md5": "61c27fec54d59b86e070dfd8ee29dacf",
+      "size": 130,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/Start.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "desktop_launcher.py",
+      "md5": "1bc25ef8af288849ec85aa4f1d3a3ada",
+      "size": 39842,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/desktop_launcher.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "generate_update_manifest.py",
+      "md5": "f56af78f71593f9a731ea6759c3ff7dc",
+      "size": 12529,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/generate_update_manifest.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "release_precheck.py",
+      "md5": "2aa31ecfcc65b2f2cc6a5b16b383b1ee",
+      "size": 6604,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/release_precheck.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "scripts/audit_routes.py",
+      "md5": "b1a62a3f919af9e40ee0f9b3eaba561b",
+      "size": 6553,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/scripts/audit_routes.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "scripts/generate_icon.py",
+      "md5": "c4c081b737770a2275b0359b183e4bf9",
+      "size": 2495,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/scripts/generate_icon.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/XianyuAutoAsync.py",
+      "md5": "47247de4b3cd75f7bd61834b653fcd49",
+      "size": 945555,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/XianyuAutoAsync.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/__init__.py",
+      "md5": "1ab2d0ec37aacaafa862ea3e560cd825",
+      "size": 200,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/__init__.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/ai_reply_engine.py",
+      "md5": "fdd175d4784b9283c633e1a0e6f484cc",
+      "size": 40013,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/ai_reply_engine.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/ai_site_audit_service.py",
+      "md5": "b7ac6746ca9e294b078499c4a5a9be33",
+      "size": 15790,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/ai_site_audit_service.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/api_captcha_remote.py",
+      "md5": "25feab33eded0aec1ad5b3a45117d8eb",
+      "size": 16352,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/api_captcha_remote.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/auto_rate_task.py",
+      "md5": "a7a101017a1021c5d898a2e805b818b9",
+      "size": 7815,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/auto_rate_task.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/auto_red_flower_task.py",
+      "md5": "6aea6cd772d88e1b867bfb5da2277099",
+      "size": 8395,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/auto_red_flower_task.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/auto_updater.py",
+      "md5": "b11eed3921b6164050017e14e73db176",
+      "size": 40972,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/auto_updater.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/blacklist_service.py",
+      "md5": "a2c4667308efd3391b4d2311d4e44531",
+      "size": 6642,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/blacklist_service.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/browser_runtime.py",
+      "md5": "a0debacd931aa2787f77b28510a2afe8",
+      "size": 894,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/browser_runtime.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/chat_event_hub.py",
+      "md5": "adf25f09519e6d9f905a12d1007ccb66",
+      "size": 5514,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/chat_event_hub.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/config.py",
+      "md5": "5f94f960b6a04c0a41956cae472fcc7e",
+      "size": 8084,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/config.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/cookie_manager.py",
+      "md5": "1afaf2e6e8839c84c9da707e322fdf3a",
+      "size": 20807,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/cookie_manager.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/db_manager.py",
+      "md5": "57e346aa7cd9c6ccd211288f8a0cfbdf",
+      "size": 546580,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/db_manager.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/file_log_collector.py",
+      "md5": "a256449a1c9cf58e9d0df6cbd16be3eb",
+      "size": 8554,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/file_log_collector.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/item_polish_module.py",
+      "md5": "c1c6821fa71c4d05470e42dfb8937104",
+      "size": 9345,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/item_polish_module.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/message_filter_service.py",
+      "md5": "68fea5fe2075ed795d195611a1acf1f5",
+      "size": 9440,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/message_filter_service.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/order_event_hub.py",
+      "md5": "6c54e13052094854a5e5072f5831afad",
+      "size": 2394,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/order_event_hub.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/order_status_handler.py",
+      "md5": "73123f4b85bb854e13c989e2f5528bbe",
+      "size": 82538,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/order_status_handler.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/product_compliance.py",
+      "md5": "a1a91717ae5b64eba07ecad6622dff7b",
+      "size": 5769,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/product_compliance.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/reply_server.py",
+      "md5": "d35021d1bdf9030638b642f68732829e",
+      "size": 756675,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/reply_server.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/runtime_paths.py",
+      "md5": "0dd879c12d14a9190d66de6fd5226a1e",
+      "size": 588,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/runtime_paths.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/secure_confirm_decrypted.py",
+      "md5": "3dc06c255fe09974fc0f591001760c95",
+      "size": 10660,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/secure_confirm_decrypted.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/secure_freeshipping_decrypted.py",
+      "md5": "e8b697ce424576804f0ec65258d777ca",
+      "size": 7502,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/secure_freeshipping_decrypted.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "shangjia_tool/server.py",
+      "md5": "46b46339aa4c56c88c452be7aeeb252d",
+      "size": 12639,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/shangjia_tool/server.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "static/ShangjiaTool.ico",
+      "md5": "f2f0226088b0639f58be0ea32d14c3e8",
+      "size": 24425,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/ShangjiaTool.ico",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/assets/image-placeholder.svg",
+      "md5": "69dae668f4a01990795128e091c607cf",
+      "size": 516,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/assets/image-placeholder.svg",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/assets/wx.jpg",
+      "md5": "4b40e67f944a6a7f7ed138e08f4e10ac",
+      "size": 166827,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/assets/wx.jpg",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/assets/zfb.jpg",
+      "md5": "7925c443a17d59efc864f2dad0593915",
+      "size": 214431,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/assets/zfb.jpg",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/captcha_control.html",
+      "md5": "a3e9cab5bc2412339bd86bc536212548",
+      "size": 18136,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/captcha_control.html",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/css/about.css",
+      "md5": "a9af930e9765fdd2c93d2fabdcd6612f",
+      "size": 4442,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/css/about.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/css/accounts.css",
+      "md5": "608c210792b224af621f67a075d73774",
+      "size": 40290,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/css/accounts.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/css/admin.css",
+      "md5": "4dbec61c7d76f25a1f2e591505d3f268",
+      "size": 5637,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/css/admin.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/css/app.css",
+      "md5": "3c0ac0684787d7c5e30f016b459e0a6f",
+      "size": 441,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/css/app.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/css/components.css",
+      "md5": "405bc48a34bc0491575b6202cf07b512",
+      "size": 17413,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/css/components.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/css/dashboard.css",
+      "md5": "77e2083a7bb488a96dcc07cc7687f590",
+      "size": 51234,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/css/dashboard.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/css/glass-theme.css",
+      "md5": "53aac321d2c9e394f09e44aa76538e78",
+      "size": 76278,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/css/glass-theme.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/css/items.css",
+      "md5": "3a7add336e156ab87d0f655ebcd6d1d8",
+      "size": 5416,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/css/items.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/css/keywords.css",
+      "md5": "9f4c3b1cd3ad5b8c9eced2b683c569e6",
+      "size": 22744,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/css/keywords.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/css/layout.css",
+      "md5": "288cf875de189444f016875dec848109",
+      "size": 18262,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/css/layout.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/css/logs.css",
+      "md5": "41e4fe4c031cb2c03e2c2636de1865cd",
+      "size": 20584,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/css/logs.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/css/notifications.css",
+      "md5": "d7bab338e237dc5d754d599cf37cd9d8",
+      "size": 2007,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/css/notifications.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/css/variables.css",
+      "md5": "61c8c0ac86b9f4bed79be7b55f166958",
+      "size": 15741,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/css/variables.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/favicon.png",
+      "md5": "d456907103c7a3434a475c83cc9cbb6d",
+      "size": 7996,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/favicon.png",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/index.html",
+      "md5": "28befafc987ba6d2e1c4276eb8a7c981",
+      "size": 937703,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/index.html",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/js/app.accounts.js",
+      "md5": "04b501a1d6a00c20fa7d7f694577f73e",
+      "size": 97356,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/js/app.accounts.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/js/app.auto-reply.js",
+      "md5": "095b63f4189245270b4b49fe59711918",
+      "size": 60855,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/js/app.auto-reply.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/js/app.core.js",
+      "md5": "d68e5196db2ed8c140d2625470ab204c",
+      "size": 29612,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/js/app.core.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/js/app.dashboard.js",
+      "md5": "85d2522f65352660d8986df4d8205232",
+      "size": 88187,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/js/app.dashboard.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/js/app.delivery-theme.js",
+      "md5": "f36feceb2293030515e22faf3c8d6172",
+      "size": 64407,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/js/app.delivery-theme.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/js/app.filter-blacklist.js",
+      "md5": "8f728862d029cb82a0dba57c3c3d8c6a",
+      "size": 63403,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/js/app.filter-blacklist.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/js/app.items.js",
+      "md5": "e8016c70263b7f255d0b16512662294e",
+      "size": 121535,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/js/app.items.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/js/app.license.js",
+      "md5": "690ede18291383bd289a07b1d86c48c4",
+      "size": 22607,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/js/app.license.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/js/app.logs.js",
+      "md5": "fc6b57649aa57cc67ddf634bddf40a78",
+      "size": 110271,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/js/app.logs.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/js/app.misc.js",
+      "md5": "1cefb933139a983b2d78814602bba41b",
+      "size": 177992,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/js/app.misc.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/js/app.notify.js",
+      "md5": "98df40c592a03ccadd5bd74621b8afa6",
+      "size": 61542,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/js/app.notify.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/js/app.orders.js",
+      "md5": "82b11f156561ebd7423121623bc791b5",
+      "size": 161181,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/js/app.orders.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/js/app.reports.js",
+      "md5": "e22b79c2ceee1fa54c1a1a4f3d6fb932",
+      "size": 12011,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/js/app.reports.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/lib/anime/anime.umd.min.js",
+      "md5": "99b376c4a0e6a61c21ea17e20daf01b5",
+      "size": 118043,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/lib/anime/anime.umd.min.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/lib/bootstrap-icons/bootstrap-icons.css",
+      "md5": "a65fdadd9ff4f804c8d04dec25e5b2a5",
+      "size": 98255,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/lib/bootstrap-icons/bootstrap-icons.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/lib/bootstrap-icons/fonts/bootstrap-icons.woff",
+      "md5": "831d52f3c78cb3dcb200998d02edc0a8",
+      "size": 176196,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/lib/bootstrap-icons/fonts/bootstrap-icons.woff",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/lib/bootstrap-icons/fonts/bootstrap-icons.woff2",
+      "md5": "adc119571f0673e6063bd596679b6ee5",
+      "size": 130764,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/lib/bootstrap-icons/fonts/bootstrap-icons.woff2",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/lib/bootstrap/bootstrap.bundle.min.js",
+      "md5": "6baf57f25796c332144ed58a2a0cd9ee",
+      "size": 80663,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/lib/bootstrap/bootstrap.bundle.min.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/lib/bootstrap/bootstrap.min.css",
+      "md5": "cd822b7fd22c8a95a68470c795adea69",
+      "size": 232948,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/lib/bootstrap/bootstrap.min.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/lib/chart.js/chart.umd.min.js",
+      "md5": "e6452e2b454b091f857a45cce7624eae",
+      "size": 208522,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/lib/chart.js/chart.umd.min.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/lib/hover/hover.min.css",
+      "md5": "c3b8b4eec4f7e8d0737b9484b9ffe458",
+      "size": 95290,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/lib/hover/hover.min.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/lib/lenis/lenis.min.js",
+      "md5": "bf7916e121a5a66bfafe0dd44da117d2",
+      "size": 18429,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/lib/lenis/lenis.min.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/lib/magic/magic.min.css",
+      "md5": "1a7ff20a0255c4cdfc2b7d9d11a0988f",
+      "size": 36538,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/lib/magic/magic.min.css",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/login.html",
+      "md5": "b9a7b7f118d407e90017e7eb2255b022",
+      "size": 20387,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/login.html",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/logo.svg",
+      "md5": "c4b0660603759f2e6eedf4982c9045e8",
+      "size": 675,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/logo.svg",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/register.html",
+      "md5": "f2c9ce96360df31671526c9482bd7722",
+      "size": 9093,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/register.html",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/shangjia-logo.svg",
+      "md5": "7b89cfd40badca050ad95da53e82718a",
+      "size": 709,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/shangjia-logo.svg",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/shangjia-mark.svg",
+      "md5": "67cd19f46b77558eb156d8a82cc380b7",
+      "size": 371,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/shangjia-mark.svg",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/update_log.txt",
+      "md5": "34bc7a1efd6d162d01516d4462f4434b",
+      "size": 30288,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/update_log.txt",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/version.txt",
+      "md5": "b9d6a1bbefa59427425df861ea96f248",
+      "size": 6,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/version.txt",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "static/xianyu_js_version_2.js",
+      "md5": "04f038885e7cb7051bdb2d2740791614",
+      "size": 20424,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/xianyu_js_version_2.js",
+      "requires_restart": false,
+      "description": ""
+    },
+    {
+      "path": "utils/build_cookies.py",
+      "md5": "7bf2107784d2edfbd4bf1d21b51f8445",
+      "size": 4637,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/build_cookies.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/captcha_remote_control.py",
+      "md5": "b34f507422138efb8d862244e2998157",
+      "size": 15091,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/captcha_remote_control.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/image_uploader.py",
+      "md5": "ec200027a9479e3834220c528bd85a4d",
+      "size": 11606,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/image_uploader.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/image_utils.py",
+      "md5": "455ba1717888ca999990efc83bf768ef",
+      "size": 10080,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/image_utils.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/item_publisher.py",
+      "md5": "5fef06bc7ff15c6fa40a645944f087b8",
+      "size": 47678,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/item_publisher.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/item_search.py",
+      "md5": "50eef688231996a3aa98c7c6f84b1c75",
+      "size": 72341,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/item_search.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/notification_dispatcher.py",
+      "md5": "b84a44e7cd455395330a9108fd66b8e9",
+      "size": 22704,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/notification_dispatcher.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/order_detail_fetcher.py",
+      "md5": "2691c7d621df1d85dbff4859b895e7cb",
+      "size": 119888,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/order_detail_fetcher.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/order_history_sync.py",
+      "md5": "8c94d2106a51a259df9193ceef91a002",
+      "size": 18854,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/order_history_sync.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/qr_login.py",
+      "md5": "1c91e0c98556b57635c78d23203575af",
+      "size": 30565,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/qr_login.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/qr_login_lite.py",
+      "md5": "eba9cb8d428ec5005c282abdc3dbd56e",
+      "size": 12370,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/qr_login_lite.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/rate_service.py",
+      "md5": "f66b71a312cf7fbcaeaeda46b54e2f81",
+      "size": 18205,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/rate_service.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/red_flower_service.py",
+      "md5": "bbc73e082caa3ebf8a7e2f99aa7368c5",
+      "size": 9609,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/red_flower_service.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/refresh_util.py",
+      "md5": "0cca45175a92dc81192750aad9b74624",
+      "size": 97175,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/refresh_util.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/slider_orchestrator.py",
+      "md5": "442bbef7d51a032ef7523691bd69b675",
+      "size": 12529,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/slider_orchestrator.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/slider_patch.py",
+      "md5": "0db1235a57ad48cf53d6a1f37950079a",
+      "size": 108479,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/slider_patch.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/taobao_keys.py",
+      "md5": "c213764be2369faa3f58c36bb7847d8d",
+      "size": 1262,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/taobao_keys.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/time_utils.py",
+      "md5": "7db80adc4bf9224626beca3592ce8b21",
+      "size": 3701,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/time_utils.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/xianyu_slider_stealth.py",
+      "md5": "0e5498805519963973de4c02ee6439c3",
+      "size": 633512,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/xianyu_slider_stealth.py",
+      "requires_restart": true,
+      "description": ""
+    },
+    {
+      "path": "utils/xianyu_utils.py",
+      "md5": "b6c8ddbfd21b941ed92a1f40a826c8a9",
+      "size": 17995,
+      "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/utils/xianyu_utils.py",
+      "requires_restart": true,
+      "description": ""
+    }
+  ],
+  "deleted_files": []
+}
