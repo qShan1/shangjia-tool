@@ -12788,6 +12788,9 @@ class AIReplySettings(BaseModel):
     max_tokens: int = 150
     history_limit: int = 10
     custom_prompts: str = ""
+    ai_assistant_enabled: bool = False
+    ai_copy_enabled: bool = True
+    ai_publish_enabled: bool = False
 
 
 class AIConfigPreset(BaseModel):

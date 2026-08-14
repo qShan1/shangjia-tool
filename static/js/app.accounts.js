@@ -1986,6 +1986,9 @@ async function configAIReply(accountId) {
         accountIdSelect.value = accountId;
     }
     document.getElementById('aiReplyEnabled').checked = settings.ai_enabled;
+    document.getElementById('aiAssistantEnabled').checked = settings.ai_assistant_enabled;
+    document.getElementById('aiCopyEnabled').checked = settings.ai_copy_enabled !== false;
+    document.getElementById('aiPublishEnabled').checked = settings.ai_publish_enabled;
     // 处理模型名称
     const modelSelect = document.getElementById('aiModelName');
     const customModelInput = document.getElementById('customModelName');
@@ -2198,6 +2201,9 @@ async function saveAIReplyConfig() {
         temperature: parseFloat(document.getElementById('aiTemperature').value || '0.7'),
         max_tokens: parseInt(document.getElementById('aiMaxTokens').value || '150'),
         history_limit: parseInt(document.getElementById('aiHistoryLimit').value || '10'),
+        ai_assistant_enabled: document.getElementById('aiAssistantEnabled').checked,
+        ai_copy_enabled: document.getElementById('aiCopyEnabled').checked,
+        ai_publish_enabled: document.getElementById('aiPublishEnabled').checked,
         custom_prompts: customPromptsJson
     };
 

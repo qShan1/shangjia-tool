@@ -2341,9 +2341,26 @@
                       <input class="form-check-input" type="checkbox" id="aiReplyEnabled"
                         onchange="toggleAIReplySettings()">
                       <label class="form-check-label" for="aiReplyEnabled">
-                        <strong>启用AI回复</strong>
+                        <strong>AI 回复</strong>
                       </label>
                       <small class="form-text text-muted d-block">关键词未命中时由 AI 智能回复，支持议价、技术与一般咨询</small>
+                    </div>
+                    <div class="ai-feature-switches mt-3">
+                      <div class="form-check form-switch d-flex align-items-center gap-2 mb-2">
+                        <input class="form-check-input" type="checkbox" id="aiAssistantEnabled">
+                        <label class="form-check-label" for="aiAssistantEnabled">AI 助手</label>
+                        <small class="text-muted ms-1">聊天页新消息自动填入 AI 建议（不自动发送）</small>
+                      </div>
+                      <div class="form-check form-switch d-flex align-items-center gap-2 mb-2">
+                        <input class="form-check-input" type="checkbox" id="aiCopyEnabled">
+                        <label class="form-check-label" for="aiCopyEnabled">AI 文案</label>
+                        <small class="text-muted ms-1">发布页用 AI 生成/优化商品文案</small>
+                      </div>
+                      <div class="form-check form-switch d-flex align-items-center gap-2 mb-2">
+                        <input class="form-check-input" type="checkbox" id="aiPublishEnabled">
+                        <label class="form-check-label" for="aiPublishEnabled">AI 发布</label>
+                        <small class="text-muted ms-1">AI 自动生成完整商品并发布（图片需人工上传）</small>
+                      </div>
                     </div>
                   </div>
                 </div>

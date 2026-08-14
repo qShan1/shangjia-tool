@@ -663,6 +663,15 @@ class DBManager:
                     self._execute_sql(cursor, f"ALTER TABLE ai_reply_settings ADD COLUMN {_col} {_type} DEFAULT {_default}")
                     logger.info(f"ai_reply_settings 表 {_col} 列添加完成")
 
+            # AI 功能独立开关：ai_assistant_enabled(AI助手) / ai_copy_enabled(AI文案) / ai_publish_enabled(AI发布)
+            for _col, _type, _default in (('ai_assistant_enabled', 'BOOLEAN', 'FALSE'), ('ai_copy_enabled', 'BOOLEAN', 'TRUE'), ('ai_publish_enabled', 'BOOLEAN', 'FALSE')):
+                try:
+                    self._execute_sql(cursor, f"SELECT {_col} FROM ai_reply_settings LIMIT 1")
+                except sqlite3.OperationalError:
+                    logger.info(f"正在为 ai_reply_settings 表添加 {_col} 列...")
+                    self._execute_sql(cursor, f"ALTER TABLE ai_reply_settings ADD COLUMN {_col} {_type} DEFAULT {_default}")
+                    logger.info(f"ai_reply_settings 表 {_col} 列添加完成")
+
             # 检查并添加 user_id 列（用于数据库迁移）
             try:
                 self._execute_sql(cursor, "SELECT user_id FROM cards LIMIT 1")
@@ -3436,8 +3445,9 @@ Cookie数量: {cookie_count}
                 (cookie_id, ai_enabled, model_name, api_key, base_url, api_type,
                  max_discount_percent, max_discount_amount, max_bargain_rounds,
                  temperature, max_tokens, history_limit,
+                 ai_assistant_enabled, ai_copy_enabled, ai_publish_enabled,
                  custom_prompts, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ''', (
                     cookie_id,
                     settings.get('ai_enabled', False),
@@ -3451,6 +3461,9 @@ Cookie数量: {cookie_count}
                     float(settings.get('temperature', 0.7) or 0.7),
                     int(settings.get('max_tokens', 150) or 150),
                     int(settings.get('history_limit', 10) or 10),
+                    bool(settings.get('ai_assistant_enabled', False)),
+                    bool(settings.get('ai_copy_enabled', True)),
+                    bool(settings.get('ai_publish_enabled', False)),
                     settings.get('custom_prompts', '')
                 ))
                 self.conn.commit()
@@ -3469,7 +3482,8 @@ Cookie数量: {cookie_count}
                 cursor.execute('''
                 SELECT ai_enabled, model_name, api_key, base_url, api_type,
                        max_discount_percent, max_discount_amount, max_bargain_rounds,
-                       custom_prompts, temperature, max_tokens, history_limit
+                       custom_prompts, temperature, max_tokens, history_limit,
+                       ai_assistant_enabled, ai_copy_enabled, ai_publish_enabled
                 FROM ai_reply_settings WHERE cookie_id = ?
                 ''', (cookie_id,))
 
@@ -3488,6 +3502,9 @@ Cookie数量: {cookie_count}
                         'temperature': float(result[9] if result[9] is not None else 0.7),
                         'max_tokens': int(result[10] if result[10] is not None else 150),
                         'history_limit': int(result[11] if result[11] is not None else 10),
+                        'ai_assistant_enabled': bool(result[12]),
+                        'ai_copy_enabled': bool(result[13]) if result[13] is not None else True,
+                        'ai_publish_enabled': bool(result[14]),
                     }
                 else:
                     # 返回默认设置
@@ -3504,6 +3521,9 @@ Cookie数量: {cookie_count}
                         'temperature': 0.7,
                         'max_tokens': 150,
                         'history_limit': 10,
+                        'ai_assistant_enabled': False,
+                        'ai_copy_enabled': True,
+                        'ai_publish_enabled': False,
                     }
             except Exception as e:
                 logger.error(f"获取AI回复设置失败: {e}")
@@ -3520,6 +3540,9 @@ Cookie数量: {cookie_count}
                     'temperature': 0.7,
                     'max_tokens': 150,
                     'history_limit': 10,
+                    'ai_assistant_enabled': False,
+                    'ai_copy_enabled': True,
+                    'ai_publish_enabled': False,
                 }
 
     def get_all_ai_reply_settings(self) -> Dict[str, dict]:
