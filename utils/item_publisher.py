@@ -646,6 +646,19 @@ class ItemPublisher:
             "longitude": 118.78248347393424,
             "latitude": 31.91629189813543,
         }
+        # 优先使用用户配置的发布默认坐标（系统设置 publish_default_longitude/latitude），
+        # 避免硬编码南京坐标在异地账号下"接不住"闲鱼 POI 导致商品创建失败。
+        try:
+            from db_manager import db_manager as _db
+            _sys_lng = _db.get_system_setting('publish_default_longitude')
+            _sys_lat = _db.get_system_setting('publish_default_latitude')
+            if _sys_lng and _sys_lat:
+                _flng = float(_sys_lng)
+                _flat = float(_sys_lat)
+                if -180 <= _flng <= 180 and -90 <= _flat <= 90:
+                    payload = {"longitude": _flng, "latitude": _flat}
+        except Exception:
+            pass
         result = await self._post_mtop(
             api_name="mtop.taobao.idle.local.poi.get",
             version="1.0",
