@@ -1,3 +1,11 @@
+fix: 关闭/退出改用原生MessageBoxW彻底修复WinForms卡死(PR#638)；
+feat: 聊天页新增AI助手条自动切换会话填AI建议；
+fix: 订单买卖身份识别规范化修复买单混入卖单；
+style: 液态玻璃统一层+免责区块+按钮即时反馈；
+feat: AI配置选API类型自动填充供应商参数；
+feat: AI商品文案生成引导人工放图；
+fix: 商品发布默认坐标优先用用户配置。
+
 🎉1.发布 v2.3.0：正式版发布（基于 v2.3.0-beta 验证通过）。
 
 🎉1.发布 v2.3.0-beta：淘宝/闲鱼 H5 客户端 appKey 集中外置（utils/taobao_keys.py，支持 TAOBAO_APP_KEY / TAOBAO_H5_APP_KEY 环境变量覆盖），清除 15 个文件中的硬编码副本且默认值不变；
