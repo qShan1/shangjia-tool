@@ -1,4 +1,5 @@
 import asyncio
+import subprocess
 import json
 import re
 import time
@@ -95,6 +96,33 @@ async def _start_playwright_safe(cookie_id: str = "default"):
     except asyncio.TimeoutError:
         logger.error(f"【{cookie_id}】Playwright启动超时")
         return None
+
+
+# 全局浏览器并发上限：同时最多允许 MAX 个 chromium 实例，防止刷新/扫码/搜索叠加抢占资源
+_BROWSER_MAX_CONCURRENT = 2
+_BROWSER_SEMAPHORE = asyncio.Semaphore(_BROWSER_MAX_CONCURRENT)
+
+
+def _force_kill_chromium(pid=None):
+    """Windows 兜底强杀 chromium 进程树，playwright.stop() 超时后用 taskkill /T /F 释放残留进程。
+
+    优先按浏览器进程 PID 精确清理，避免误杀用户本机其它 chrome。
+    """
+    try:
+        if pid:
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(int(pid))],
+                capture_output=True,
+                timeout=10,
+            )
+        else:
+            subprocess.run(
+                ["taskkill", "/F", "/IM", "chrome.exe", "/T"],
+                capture_output=True,
+                timeout=10,
+            )
+    except Exception as e:
+        logger.warning(f"强杀chromium进程树失败: {e}")
 
 
 class ConnectionState(Enum):
@@ -14277,6 +14305,7 @@ class XianyuLive:
         """
         playwright = None
         browser = None
+        browser_pid = None
         target_cookie_id = cookie_id or self.cookie_id
         target_user_id = user_id or self.user_id
 
@@ -14284,6 +14313,10 @@ class XianyuLive:
             import asyncio
             from playwright.async_api import async_playwright
             from utils.xianyu_utils import trans_cookies
+
+            logger.info(f"【{target_cookie_id}】等待浏览器并发槽位...")
+            await _BROWSER_SEMAPHORE.acquire()
+            logger.info(f"【{target_cookie_id}】获取浏览器并发槽位成功（当前剩余: {_BROWSER_SEMAPHORE._value}）")
 
             logger.info(f"【{target_cookie_id}】开始使用扫码登录cookie获取真实cookie...")
             logger.info(f"【{target_cookie_id}】扫码cookie长度: {len(qr_cookies_str)}")
@@ -14326,6 +14359,8 @@ class XianyuLive:
             # 使用无头浏览器
             from browser_runtime import launch_options
             browser = await playwright.chromium.launch(**launch_options(browser_args, headless=True))
+            if browser.process:
+                browser_pid = browser.process.pid
 
             # 创建浏览器上下文
             context_options = {
@@ -14598,6 +14633,12 @@ class XianyuLive:
             logger.error(f"【{target_cookie_id}】使用扫码cookie获取真实cookie失败: {self._safe_str(e)}")
             return False
         finally:
+            try:
+                # 无论成功失败都释放浏览器并发槽位
+                _BROWSER_SEMAPHORE.release()
+                logger.info(f"【{target_cookie_id}】已释放浏览器并发槽位")
+            except Exception as sem_e:
+                logger.warning(f"【{target_cookie_id}】释放浏览器并发槽位失败: {self._safe_str(sem_e)}")
             # 确保资源清理
             try:
                 # 先关闭浏览器，再关闭Playwright（顺序很重要）
@@ -14613,6 +14654,7 @@ class XianyuLive:
                                 browser._connection = None
                         except Exception:
                             pass
+                        _force_kill_chromium(browser_pid)
                     except Exception as e:
                         logger.warning(f"【{target_cookie_id}】关闭浏览器时出错: {self._safe_str(e)}")
                 
@@ -14623,8 +14665,8 @@ class XianyuLive:
                         await asyncio.wait_for(playwright.stop(), timeout=2.0)
                         logger.warning(f"【{target_cookie_id}】Playwright关闭完成")
                     except asyncio.TimeoutError:
-                        logger.warning(f"【{target_cookie_id}】Playwright关闭超时（2秒），进程可能仍在运行")
-                        logger.warning(f"【{target_cookie_id}】提示：如果后续Playwright启动失败，可能需要手动清理残留进程")
+                        logger.warning(f"【{target_cookie_id}】Playwright关闭超时（2秒），强杀chromium进程树")
+                        _force_kill_chromium(browser_pid)
                         # 尝试清理Playwright的内部状态
                         try:
                             # 取消可能正在运行的Playwright任务
@@ -14652,11 +14694,16 @@ class XianyuLive:
         """
         playwright = None
         browser = None
+        browser_pid = None
 
         try:
             import asyncio
             from playwright.async_api import async_playwright
             from utils.xianyu_utils import trans_cookies
+
+            logger.info(f"【{self.cookie_id}】等待浏览器并发槽位...")
+            await _BROWSER_SEMAPHORE.acquire()
+            logger.info(f"【{self.cookie_id}】获取浏览器并发槽位成功（当前剩余: {_BROWSER_SEMAPHORE._value}）")
 
             logger.info(f"【{self.cookie_id}】开始使用当前cookie访问指定页面获取真实cookie...")
             logger.info(f"【{self.cookie_id}】当前cookie长度: {len(current_cookies_str)}")
@@ -14699,6 +14746,8 @@ class XianyuLive:
             show_browser = bool(account_info.get('show_browser', False))
             from browser_runtime import launch_options
             browser = await playwright.chromium.launch(**launch_options(browser_args, headless=not show_browser))
+            if browser.process:
+                browser_pid = browser.process.pid
 
             # 创建浏览器上下文
             context_options = {
@@ -14868,6 +14917,12 @@ class XianyuLive:
             logger.error(f"【{self.cookie_id}】使用当前cookie访问指定页面获取真实cookie失败: {self._safe_str(e)}")
             return False
         finally:
+            # 无论成功失败都释放浏览器并发槽位
+            try:
+                _BROWSER_SEMAPHORE.release()
+                logger.info(f"【{self.cookie_id}】已释放浏览器并发槽位")
+            except Exception as sem_e:
+                logger.warning(f"【{self.cookie_id}】释放浏览器并发槽位失败: {self._safe_str(sem_e)}")
             # 确保资源清理
             try:
                 # 先关闭浏览器，再关闭Playwright（顺序很重要）
@@ -14876,7 +14931,8 @@ class XianyuLive:
                         await asyncio.wait_for(browser.close(), timeout=5.0)
                         logger.warning(f"【{self.cookie_id}】浏览器关闭完成")
                     except asyncio.TimeoutError:
-                        logger.warning(f"【{self.cookie_id}】浏览器关闭超时（5秒），资源可能未完全释放")
+                        logger.warning(f"【{self.cookie_id}】浏览器关闭超时（5秒），强杀chromium进程树")
+                        _force_kill_chromium(browser_pid)
                     except Exception as e:
                         logger.warning(f"【{self.cookie_id}】关闭浏览器时出错: {self._safe_str(e)}")
                 
@@ -14887,7 +14943,8 @@ class XianyuLive:
                         await asyncio.wait_for(playwright.stop(), timeout=2.0)
                         logger.warning(f"【{self.cookie_id}】Playwright关闭完成")
                     except asyncio.TimeoutError:
-                        logger.warning(f"【{self.cookie_id}】Playwright关闭超时（2秒），进程可能仍在运行")
+                        logger.warning(f"【{self.cookie_id}】Playwright关闭超时（2秒），强杀chromium进程树")
+                        _force_kill_chromium(browser_pid)
                     except Exception as e:
                         logger.warning(f"【{self.cookie_id}】关闭Playwright时出错: {self._safe_str(e)}")
             except Exception as cleanup_e:
@@ -14915,9 +14972,14 @@ class XianyuLive:
 
         playwright = None
         browser = None
+        browser_pid = None
         try:
             import asyncio
             from playwright.async_api import async_playwright
+
+            logger.info(f"【{self.cookie_id}】等待浏览器并发槽位...")
+            await _BROWSER_SEMAPHORE.acquire()
+            logger.info(f"【{self.cookie_id}】获取浏览器并发槽位成功（当前剩余: {_BROWSER_SEMAPHORE._value}）")
 
             # 检查是否需要等待扫码登录Cookie刷新的冷却时间
             current_time = time.time()
@@ -14972,6 +15034,8 @@ class XianyuLive:
             show_browser = bool(account_info.get('show_browser', False))
             from browser_runtime import launch_options
             browser = await playwright.chromium.launch(**launch_options(browser_args, headless=not show_browser))
+            if browser.process:
+                browser_pid = browser.process.pid
 
             # 创建浏览器上下文
             context_options = {
@@ -15178,13 +15242,19 @@ class XianyuLive:
             logger.error(f"【{self.cookie_id}】通过浏览器刷新Cookie失败: {self._safe_str(e)}")
             return False
         finally:
+            # 无论成功失败都释放浏览器并发槽位
+            try:
+                _BROWSER_SEMAPHORE.release()
+                logger.info(f"【{self.cookie_id}】已释放浏览器并发槽位")
+            except Exception as sem_e:
+                logger.warning(f"【{self.cookie_id}】释放浏览器并发槽位失败: {self._safe_str(sem_e)}")
             # 异步关闭浏览器：创建清理任务并等待完成，确保资源正确释放
             close_task = None
             try:
                 if browser or playwright:
                     # 创建关闭任务
                     close_task = asyncio.create_task(
-                        self._async_close_browser(browser, playwright)
+                        self._async_close_browser(browser, playwright, browser_pid)
                     )
                     logger.info(f"【{self.cookie_id}】浏览器异步关闭任务已启动")
                     
@@ -15215,11 +15285,11 @@ class XianyuLive:
                 # 如果创建任务失败，尝试直接关闭
                 if browser or playwright:
                     try:
-                        await self._force_close_resources(browser, playwright)
+                        await self._force_close_resources(browser, playwright, browser_pid)
                     except Exception:
                         pass
 
-    async def _async_close_browser(self, browser, playwright):
+    async def _async_close_browser(self, browser, playwright, browser_pid=None):
         """异步关闭：正常关闭，超时后强制关闭"""
         try:
             logger.info(f"【{self.cookie_id}】开始异步关闭浏览器...")  # 改为info级别
@@ -15233,11 +15303,11 @@ class XianyuLive:
             
         except asyncio.TimeoutError:
             logger.warning(f"【{self.cookie_id}】正常关闭超时，开始强制关闭...")
-            await self._force_close_resources(browser, playwright)
+            await self._force_close_resources(browser, playwright, browser_pid)
             
         except Exception as e:
             logger.warning(f"【{self.cookie_id}】异步关闭时出错，强制关闭: {self._safe_str(e)}")
-            await self._force_close_resources(browser, playwright)
+            await self._force_close_resources(browser, playwright, browser_pid)
 
     async def _normal_close_resources(self, browser, playwright):
         """正常关闭资源：浏览器+Playwright短超时关闭"""
@@ -15282,7 +15352,7 @@ class XianyuLive:
             raise
 
     
-    async def _force_close_resources(self, browser, playwright):
+    async def _force_close_resources(self, browser, playwright, browser_pid=None):
         """强制关闭资源：强制关闭浏览器+Playwright超时等待"""
         try:
             logger.warning(f"【{self.cookie_id}】开始强制关闭资源...")
@@ -15302,7 +15372,8 @@ class XianyuLive:
                 for i, result in enumerate(results):
                     if isinstance(result, (asyncio.TimeoutError, Exception)):
                         resource_name = "浏览器" if i == 0 and browser else "Playwright"
-                        logger.warning(f"【{self.cookie_id}】{resource_name}强制关闭失败，尝试直接清理连接")
+                        logger.warning(f"【{self.cookie_id}】{resource_name}强制关闭失败，强杀chromium进程树")
+                        _force_kill_chromium(browser_pid)
                         try:
                             if i == 0 and browser and hasattr(browser, '_connection'):
                                 browser._connection.dispose()
