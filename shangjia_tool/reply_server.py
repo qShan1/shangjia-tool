@@ -1709,9 +1709,8 @@ async def get_init_status():
                 "password_initialized": False,
                 "has_temp_password": has_pending,
                 "default_username": "admin",
-                # 仅在首次本地初始化时返回默认密码，便于用户看到并首次登录
-                "default_password": os.environ.get("ADMIN_PASSWORD", "").strip()
-                    or (getattr(db_manager, '_pending_init_password', None) or ""),
+                # ponytail: 公网穿透后不在此暴露默认密码，避免泄露凭据。admin 密码仅首访可设，
+                # 设完即锁；若需无头初始化可改用 ADMIN_PASSWORD 环境变量注入。
                 "message": "首次启动，请设置管理员密码"
             }
     except Exception as e:
@@ -1796,7 +1795,7 @@ async def restore_welcome(current_user: Dict[str, Any] = Depends(get_current_use
 
 # Chromium 安装状态查询
 @app.get('/api/system/chromium-status')
-async def get_chromium_status():
+async def get_chromium_status(current_user: Dict[str, Any] = Depends(get_current_user)):
     """Describe the optional browser available for login/verification flows."""
     try:
         from pathlib import Path
@@ -3538,9 +3537,12 @@ async def send_message_api(request: SendMessageRequest):
 
 @app.post("/xianyu/reply", response_model=ResponseModel)
 async def xianyu_reply(req: RequestModel, request: Request):
-    # 秘钥校验：本机请求直接放行（前端/本地服务调用），远程请求必须携带有效 api_key
+    # 秘钥校验：默认本机请求直接放行（本地服务/前端调用）；远程请求必须携带有效 api_key。
+    # 公网穿透部署时（REQUIRE_API_KEY=1）隧道会把远程请求显示为本机 IP，本机豁免形同虚设，
+    # 因此穿透模式下无条件强制校验 api_key。
     client_host = request.client.host if request.client else ""
-    if client_host not in ("127.0.0.1", "::1", "localhost") and (
+    _force_key = os.getenv('REQUIRE_API_KEY', '').strip().lower() in ('1', 'true', 'yes')
+    if (_force_key or client_host not in ("127.0.0.1", "::1", "localhost")) and (
         not req.api_key or not verify_api_key(req.api_key)
     ):
         logger.warning(f"/xianyu/reply 秘钥验证失败: {mask_sensitive_text(req.api_key)}")
@@ -5436,7 +5438,13 @@ def _build_live_runtime_status(cookie_id: str) -> Dict[str, Any]:
     )
     if current_runtime_healthy and status_note:
         normalized_status_note = str(status_note).strip().lower()
-        stale_auth_markers = ('session', 'expired', '过期', '重新登录')
+        stale_auth_markers = (
+            'session', 'expired', '过期', '重新登录',
+            # 实例已健康运行（能连上闲鱼收发数据）即证明未被平台风控拦截，
+            # 历史残留的"滑块验证失败/风控保护中"标记应一并清除，否则前端会一直
+            # 拦截启用按钮（app.accounts.js toggleAccountStatus 检查 risk_protected）。
+            'account_risk_protected', '滑块验证失败，平台风控保护中', '风控保护中',
+        )
         if any(marker in normalized_status_note for marker in stale_auth_markers):
             status_note = ''
             risk_protected = False
@@ -12451,7 +12459,7 @@ async def search_items(
 
 @app.get("/cookies/check")
 async def check_valid_cookies(
-    current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+    current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """检查是否有有效的cookies账户（必须是启用状态）"""
     try:

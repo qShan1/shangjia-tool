@@ -53,7 +53,7 @@
 }
 
 .dashboard-sticky-note:focus-visible {
-  outline: 2px solid var(--primary-color);
+  outline: 2px solid var(--color-brand);
   outline-offset: 2px;
 }
 
@@ -66,7 +66,7 @@
   align-items: center;
   justify-content: center;
   background: rgba(15, 118, 110, 0.12);
-  color: var(--primary-color);
+  color: var(--color-brand);
 }
 
 .dashboard-sticky-note-body {
@@ -76,7 +76,7 @@
 
 .dashboard-sticky-note-title {
   display: block;
-  color: var(--text-color);
+  color: var(--color-text);
   font-size: 0.9rem;
   font-weight: 700;
   line-height: 1.2;
@@ -86,7 +86,7 @@
 .dashboard-sticky-note-message {
   display: block;
   margin-top: 0.18rem;
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   font-size: 0.78rem;
   line-height: 1.4;
 }
@@ -141,7 +141,7 @@
 
 .dashboard-announcement-title {
   display: block;
-  color: var(--text-color);
+  color: var(--color-text);
   font-size: 0.92rem;
   font-weight: 700;
   line-height: 1.2;
@@ -150,7 +150,7 @@
 .dashboard-announcement-message {
   display: block;
   margin-top: 0.22rem;
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   font-size: 0.8rem;
   line-height: 1.45;
   white-space: pre-line;
@@ -173,7 +173,7 @@
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.78);
-  color: var(--text-color);
+  color: var(--color-text);
   box-shadow: none;
 }
 
@@ -203,19 +203,19 @@
 .dashboard-announcement-action:focus,
 .dashboard-announcement-close:focus {
   background: rgba(255, 255, 255, 0.96);
-  color: var(--text-color);
+  color: var(--color-text);
   border-color: rgba(99, 102, 241, 0.24);
   box-shadow: none;
 }
 
 .dashboard-announcement-main:hover .dashboard-announcement-title,
 .dashboard-announcement-main:focus-visible .dashboard-announcement-title {
-  color: var(--primary-color);
+  color: var(--color-brand);
 }
 
 .dashboard-announcement-main:hover .dashboard-announcement-message,
 .dashboard-announcement-main:focus-visible .dashboard-announcement-message {
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 .dashboard-announcement-main:focus-visible .dashboard-announcement-icon {
@@ -317,7 +317,7 @@
 }
 
 .dashboard-announcement-history-title {
-  color: var(--text-color);
+  color: var(--color-text);
   font-size: 0.98rem;
   font-weight: 700;
   line-height: 1.3;
@@ -328,13 +328,13 @@
   display: inline-flex;
   align-items: center;
   gap: 0.38rem;
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   font-size: 0.82rem;
 }
 
 .dashboard-announcement-history-message {
   margin-top: 0.78rem;
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   font-size: 0.88rem;
   line-height: 1.62;
   white-space: pre-line;
@@ -345,7 +345,7 @@
   padding: 0.55rem 0.85rem;
   border-radius: 12px;
   background: rgba(148, 163, 184, 0.1);
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   font-size: 0.8rem;
   line-height: 1.5;
 }
@@ -450,7 +450,7 @@
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.28);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
-  color: var(--text-color) !important;
+  color: var(--color-text) !important;
   box-shadow: 0 10px 24px -22px rgba(15, 23, 42, 0.45);
   font-size: 0.88rem;
   font-weight: 600;
@@ -505,7 +505,7 @@
   border: none;
   border-radius: 0;
   background: transparent;
-  color: var(--text-color);
+  color: var(--color-text);
   font-size: 0.88rem;
   font-weight: 600;
   line-height: 1.2;
@@ -529,7 +529,7 @@
 .dashboard-hot-update-group .btn:focus,
 .dashboard-hot-update-group .btn:active {
   background: rgba(79, 70, 229, 0.08) !important;
-  color: var(--text-color) !important;
+  color: var(--color-text) !important;
   box-shadow: none !important;
   transform: none !important;
 }
@@ -581,7 +581,7 @@
 
 .dashboard-hot-update-dropdown .dropdown-item:active {
   background: rgba(79, 70, 229, 0.12);
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 .dashboard-hot-update-dropdown .dropdown-item-text {
@@ -592,7 +592,7 @@
 [data-theme="dark"] .version-pill {
   border-color: rgba(148, 163, 184, 0.2);
   background: linear-gradient(180deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.88));
-  color: var(--text-color) !important;
+  color: var(--color-text) !important;
   box-shadow: 0 16px 34px -26px rgba(2, 6, 23, 0.9);
 }
 
@@ -617,10 +617,6 @@
   border-color: rgba(148, 163, 184, 0.14);
   background: linear-gradient(180deg, rgba(30, 41, 59, 0.94), rgba(15, 23, 42, 0.9));
   box-shadow: 0 16px 34px -26px rgba(2, 6, 23, 0.95);
-}
-
-[data-theme="dark"] .dashboard-hot-update-group .btn {
-  color: var(--text-color);
 }
 
 [data-theme="dark"] .dashboard-hot-update-group .btn:hover,
@@ -664,7 +660,7 @@
 [data-theme="dark"] .dashboard-announcement-close {
   background: rgba(15, 23, 42, 0.42);
   border-color: rgba(148, 163, 184, 0.16);
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 [data-theme="dark"] .dashboard-announcement-action:hover,
@@ -673,7 +669,7 @@
 [data-theme="dark"] .dashboard-announcement-close:focus {
   background: rgba(30, 41, 59, 0.82);
   border-color: rgba(129, 140, 248, 0.24);
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 [data-theme="dark"] .dashboard-announcement-icon {
@@ -851,7 +847,7 @@
   border-radius: 8px;
   border-color: rgba(15, 118, 110, 0.2);
   background: #f0fdfa;
-  color: var(--primary-hover) !important;
+  color: var(--color-brand-hover) !important;
   box-shadow: none;
 }
 
@@ -931,7 +927,7 @@
 
 .stat-icon.primary {
   background: rgba(79, 70, 229, 0.1);
-  color: var(--primary-color);
+  color: var(--color-brand);
 }
 
 [data-theme="dark"] .stat-icon.primary {
@@ -941,12 +937,12 @@
 
 .stat-icon.success {
   background: rgba(16, 185, 129, 0.1);
-  color: var(--success-color);
+  color: var(--color-success);
 }
 
 .stat-icon.warning {
   background: rgba(245, 158, 11, 0.1);
-  color: var(--warning-color);
+  color: var(--color-warning);
 }
 
 .stat-icon.info {
@@ -957,7 +953,7 @@
 .stat-number {
   font-size: clamp(1.9rem, 2.6vw, 2.35rem);
   font-weight: 700;
-  color: var(--dark-color);
+  color: var(--color-text);
   line-height: 1;
   margin-left: 0;
   margin-top: auto;
@@ -967,7 +963,7 @@
 }
 
 .stat-label {
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.2;
@@ -1036,26 +1032,26 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.9rem;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 0.85rem 1rem;
-  background: var(--bg-color);
+  background: var(--color-bg-canvas);
 }
 
 .dashboard-account-summary-item.is-primary {
-  border-color: var(--border-color);
+  border-color: var(--color-border);
 }
 
 .dashboard-account-summary-item.is-success {
-  border-color: var(--border-color);
+  border-color: var(--color-border);
 }
 
 .dashboard-account-summary-item.is-muted {
-  border-color: var(--border-color);
+  border-color: var(--color-border);
 }
 
 .dashboard-account-summary-item.is-info {
-  border-color: var(--border-color);
+  border-color: var(--color-border);
 }
 
 .dashboard-account-summary-main {
@@ -1063,7 +1059,7 @@
 }
 
 .dashboard-account-summary-label {
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   font-size: 0.88rem;
   font-weight: 600;
   line-height: 1.2;
@@ -1080,7 +1076,7 @@
 }
 
 .dashboard-account-summary-value {
-  color: var(--text-color);
+  color: var(--color-text);
   font-size: 1.45rem;
   font-weight: 700;
   line-height: 1.1;
@@ -1099,7 +1095,7 @@
   gap: 0.45rem;
   padding: 0;
   border-radius: 999px;
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   font-size: 0.78rem;
 }
 
@@ -1108,7 +1104,7 @@
 }
 
 .dashboard-account-summary-detail-value {
-  color: var(--text-color);
+  color: var(--color-text);
   font-weight: 700;
 }
 
@@ -1119,14 +1115,14 @@
 }
 
 .dashboard-account-group {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 1rem;
-  background: var(--card-bg);
+  background: var(--color-bg-surface);
 }
 
 .dashboard-account-group-muted {
-  background: var(--card-bg);
+  background: var(--color-bg-surface);
 }
 
 .dashboard-account-group-head {
@@ -1136,11 +1132,11 @@
   gap: 0.75rem;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .dashboard-account-group-head h6 {
-  color: var(--text-color);
+  color: var(--color-text);
   font-size: 1rem;
 }
 
@@ -1151,15 +1147,15 @@
   background: transparent;
   border: 0;
   font-size: 0.78rem;
-  color: var(--secondary-color) !important;
+  color: var(--color-text-secondary) !important;
 }
 
 .dashboard-account-group:not(.dashboard-account-group-muted) #dashboardEnabledAccountsHint {
-  color: var(--success-color) !important;
+  color: var(--color-success) !important;
 }
 
 .dashboard-account-group-muted #dashboardDisabledAccountsHint {
-  color: var(--secondary-color) !important;
+  color: var(--color-text-secondary) !important;
 }
 
 .dashboard-account-list {
@@ -1169,10 +1165,10 @@
 
 .dashboard-account-card {
   width: 100%;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 1rem;
-  background: var(--bg-color);
+  background: var(--color-bg-canvas);
   text-align: left;
   transition: border-color 0.18s ease, background-color 0.18s ease;
   cursor: pointer;
@@ -1180,7 +1176,7 @@
 
 .dashboard-account-card:hover {
   border-color: rgba(79, 70, 229, 0.22);
-  background: var(--card-bg);
+  background: var(--color-bg-surface);
 }
 
 .dashboard-account-card.is-disabled {
@@ -1222,7 +1218,7 @@
 }
 
 .dashboard-account-card-id {
-  color: var(--text-color);
+  color: var(--color-text);
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.2;
@@ -1234,9 +1230,9 @@
   align-items: center;
   padding: 0.24rem 0.55rem;
   border-radius: 999px;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  color: var(--secondary-color);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
   font-size: 0.74rem;
   line-height: 1;
 }
@@ -1254,12 +1250,12 @@
 
 .dashboard-account-status.is-enabled {
   background: rgba(16, 185, 129, 0.1);
-  color: var(--success-color);
+  color: var(--color-success);
 }
 
 .dashboard-account-status.is-disabled {
   background: rgba(107, 114, 128, 0.1);
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
 }
 
 .dashboard-account-status-note {
@@ -1289,7 +1285,7 @@
   gap: 0.8rem 1rem;
   margin-top: 0.95rem;
   padding-top: 0.85rem;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--color-border);
 }
 
 .dashboard-account-runtime-summary {
@@ -1300,7 +1296,7 @@
   font-size: 0.84rem;
   font-weight: 700;
   line-height: 1.2;
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 .dashboard-account-runtime-summary-dot,
@@ -1329,7 +1325,7 @@
   align-items: center;
   gap: 0.38rem;
   min-width: 0;
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   font-size: 0.76rem;
   font-weight: 600;
   line-height: 1.2;
@@ -1361,26 +1357,26 @@
 
 .dashboard-account-runtime-summary.is-secondary,
 .dashboard-account-runtime-signal.is-secondary {
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
 }
 
 .dashboard-account-metric {
   min-width: 0;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 0.7rem 0.8rem;
-  background: var(--card-bg);
+  background: var(--color-bg-surface);
 }
 
 .dashboard-account-metric-label {
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   font-size: 0.76rem;
   font-weight: 600;
 }
 
 .dashboard-account-metric-value {
   margin-top: 0.32rem;
-  color: var(--text-color);
+  color: var(--color-text);
   font-size: 0.94rem;
   font-weight: 700;
   line-height: 1.25;
@@ -1388,17 +1384,17 @@
 
 .dashboard-account-metric.is-on {
   border-color: rgba(16, 185, 129, 0.2);
-  background: linear-gradient(180deg, rgba(16, 185, 129, 0.06), var(--bg-color));
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.06), var(--color-bg-canvas));
 }
 
 .dashboard-account-metric.is-info {
   border-color: rgba(79, 70, 229, 0.18);
-  background: linear-gradient(180deg, rgba(79, 70, 229, 0.06), var(--bg-color));
+  background: linear-gradient(180deg, rgba(79, 70, 229, 0.06), var(--color-bg-canvas));
 }
 
 .dashboard-account-metric.is-warn {
   border-color: rgba(245, 158, 11, 0.18);
-  background: linear-gradient(180deg, rgba(245, 158, 11, 0.07), var(--bg-color));
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.07), var(--color-bg-canvas));
 }
 
 .dashboard-account-secondary {
@@ -1414,9 +1410,9 @@
   gap: 0.4rem;
   padding: 0.34rem 0.62rem;
   border-radius: 999px;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  color: var(--secondary-color);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
   font-size: 0.76rem;
   line-height: 1.3;
 }
@@ -1432,7 +1428,7 @@
 }
 
 .dashboard-account-secondary-pill-value {
-  color: var(--text-color);
+  color: var(--color-text);
   font-weight: 600;
 }
 
@@ -1441,12 +1437,12 @@
 }
 
 .dashboard-account-secondary-pill.is-on .dashboard-account-secondary-pill-icon {
-  color: var(--success-color);
+  color: var(--color-success);
   opacity: 0.95;
 }
 
 .dashboard-account-secondary-pill.is-off {
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
 }
 
 .dashboard-account-secondary-pill.is-off .dashboard-account-secondary-pill-icon {
@@ -1458,7 +1454,7 @@
 }
 
 .dashboard-account-secondary-pill.is-info .dashboard-account-secondary-pill-icon {
-  color: var(--primary-hover);
+  color: var(--color-brand-hover);
   opacity: 0.95;
 }
 
@@ -1472,7 +1468,7 @@
 }
 
 .dashboard-account-secondary-pill.is-neutral {
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
 }
 
 .dashboard-account-secondary-pill.is-neutral .dashboard-account-secondary-pill-icon {
@@ -1481,34 +1477,34 @@
 
 .dashboard-account-card.is-disabled .dashboard-account-secondary,
 .dashboard-account-card.is-disabled .dashboard-account-card-remark-badge {
-  color: color-mix(in srgb, var(--secondary-color) 88%, transparent 12%);
+  color: color-mix(in srgb, var(--color-text-secondary) 88%, transparent 12%);
 }
 
 .dashboard-account-card.is-disabled .dashboard-account-secondary-pill {
-  background: color-mix(in srgb, var(--card-bg) 86%, var(--bg-color) 14%);
+  background: color-mix(in srgb, var(--color-bg-surface) 86%, var(--color-bg-canvas) 14%);
 }
 
 .dashboard-account-card.is-disabled .dashboard-account-metric {
-  background: color-mix(in srgb, var(--card-bg) 86%, var(--bg-color) 14%);
+  background: color-mix(in srgb, var(--color-bg-surface) 86%, var(--color-bg-canvas) 14%);
 }
 
 .dashboard-account-card.is-disabled .dashboard-account-metric.is-on,
 .dashboard-account-card.is-disabled .dashboard-account-metric.is-info,
 .dashboard-account-card.is-disabled .dashboard-account-metric.is-warn {
-  background: color-mix(in srgb, var(--card-bg) 92%, var(--bg-color) 8%);
+  background: color-mix(in srgb, var(--color-bg-surface) 92%, var(--color-bg-canvas) 8%);
 }
 
 .dashboard-account-card.is-disabled .dashboard-account-runtime {
-  border-top-color: color-mix(in srgb, var(--border-color) 80%, transparent 20%);
+  border-top-color: color-mix(in srgb, var(--color-border) 80%, transparent 20%);
 }
 
 .dashboard-account-empty {
-  border: 1px dashed var(--border-color);
+  border: 1px dashed var(--color-border);
   border-radius: 16px;
   padding: 1.4rem 1rem;
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   text-align: center;
-  background: var(--bg-color);
+  background: var(--color-bg-canvas);
 }
 
 .dashboard-account-focus {
@@ -1528,56 +1524,37 @@
 
 [data-theme="dark"] .dashboard-account-summary-item,
 [data-theme="dark"] .dashboard-account-group {
-  background: var(--bg-secondary);
-  border-color: var(--border-color);
+  background: var(--color-bg-muted);
+  border-color: var(--color-border);
 }
 
 [data-theme="dark"] .dashboard-account-summary-detail,
 [data-theme="dark"] #dashboardEnabledAccountsHint,
 [data-theme="dark"] #dashboardDisabledAccountsHint {
   background: transparent;
-  border-color: var(--border-color);
+  border-color: var(--color-border);
 }
 
-[data-theme="dark"] .dashboard-account-secondary-pill {
-  background: var(--card-bg);
-  border-color: var(--border-color);
-}
-
-[data-theme="dark"] .dashboard-account-secondary-pill.is-on {
+[data-theme="dark"] .dashboard-account-group-muted,
+[data-theme="dark"] .dashboard-account-card.is-disabled {
+  background: var(--color-bg-canvas);
 }
 
 [data-theme="dark"] .dashboard-account-secondary-pill.is-on .dashboard-account-secondary-pill-icon {
   color: #6ee7b7;
 }
 
-[data-theme="dark"] .dashboard-account-secondary-pill.is-info {
-}
-
 [data-theme="dark"] .dashboard-account-secondary-pill.is-info .dashboard-account-secondary-pill-icon {
   color: #c7d2fe;
-}
-
-[data-theme="dark"] .dashboard-account-secondary-pill.is-warn {
 }
 
 [data-theme="dark"] .dashboard-account-secondary-pill.is-warn .dashboard-account-secondary-pill-icon {
   color: #fcd34d;
 }
 
-[data-theme="dark"] .dashboard-account-group-muted,
-[data-theme="dark"] .dashboard-account-card.is-disabled {
-  background: var(--bg-color);
-}
-
 [data-theme="dark"] .dashboard-account-card {
-  border-color: var(--border-color);
-  background: var(--bg-secondary);
-}
-
-[data-theme="dark"] .dashboard-account-card-remark-badge {
-  background: var(--card-bg);
-  border-color: var(--border-color);
+  border-color: var(--color-border);
+  background: var(--color-bg-muted);
 }
 
 [data-theme="dark"] .dashboard-account-status.is-enabled {
@@ -1596,29 +1573,16 @@
   border-color: rgba(245, 158, 11, 0.28);
 }
 
-[data-theme="dark"] .dashboard-account-summary-detail-value {
-  color: var(--text-color);
-}
-
-[data-theme="dark"] .dashboard-account-metric {
-  background: var(--card-bg);
-  border-color: var(--border-color);
-}
-
 [data-theme="dark"] .dashboard-account-metric.is-on {
-  background: linear-gradient(180deg, rgba(16, 185, 129, 0.08), var(--card-bg));
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.08), var(--color-bg-surface));
 }
 
 [data-theme="dark"] .dashboard-account-metric.is-info {
-  background: linear-gradient(180deg, rgba(79, 70, 229, 0.12), var(--card-bg));
+  background: linear-gradient(180deg, rgba(79, 70, 229, 0.12), var(--color-bg-surface));
 }
 
 [data-theme="dark"] .dashboard-account-metric.is-warn {
-  background: linear-gradient(180deg, rgba(245, 158, 11, 0.1), var(--card-bg));
-}
-
-[data-theme="dark"] .dashboard-account-runtime {
-  border-top-color: var(--border-color);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.1), var(--color-bg-surface));
 }
 
 [data-theme="dark"] .dashboard-account-runtime-summary.is-success,
@@ -1646,11 +1610,6 @@
   color: #cbd5e1;
 }
 
-[data-theme="dark"] .dashboard-account-empty {
-  background: var(--bg-color);
-  border-color: var(--border-color);
-}
-
 @media (max-width: 992px) {
   .dashboard-account-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1668,8 +1627,8 @@
 }
 
 .order-kpi-item {
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
+  background: var(--color-bg-canvas);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -1680,7 +1639,7 @@
 
 .order-kpi-item-featured {
   grid-column: span 2;
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.06), var(--bg-color));
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.06), var(--color-bg-canvas));
   border-color: rgba(79, 70, 229, 0.16);
   padding: 1rem 1.1rem;
 }
@@ -1691,7 +1650,7 @@
 
 .order-kpi-label {
   font-size: 0.88rem;
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   font-weight: 600;
   line-height: 1.2;
 }
@@ -1699,7 +1658,7 @@
 .order-kpi-value {
   font-size: 1.45rem;
   font-weight: 700;
-  color: var(--text-color);
+  color: var(--color-text);
   line-height: 1.1;
   margin-left: auto;
   flex: 0 0 auto;
@@ -1725,7 +1684,7 @@
 }
 
 .sales-summary-head h6 {
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 .sales-kpi-grid {
@@ -1735,8 +1694,8 @@
 }
 
 .sales-kpi-item {
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
+  background: var(--color-bg-canvas);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -1746,7 +1705,7 @@
 }
 
 .sales-kpi-item-muted {
-  background: var(--bg-color);
+  background: var(--color-bg-canvas);
 }
 
 .sales-kpi-copy {
@@ -1755,7 +1714,7 @@
 
 .sales-kpi-label {
   font-size: 0.88rem;
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   font-weight: 600;
   line-height: 1.2;
 }
@@ -1763,7 +1722,7 @@
 .sales-kpi-value {
   font-size: 1.35rem;
   font-weight: 700;
-  color: var(--text-color);
+  color: var(--color-text);
   line-height: 1.1;
   margin-left: auto;
   flex: 0 0 auto;
@@ -1773,7 +1732,7 @@
 
 .sales-kpi-item-muted .sales-kpi-value {
   font-size: 1rem;
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
 }
 
 .dashboard-delivery-log-table thead th {
@@ -1797,7 +1756,7 @@
 
 .dashboard-delivery-channel-auto {
   background: rgba(79, 70, 229, 0.1);
-  color: var(--primary-hover);
+  color: var(--color-brand-hover);
   border: 1px solid rgba(79, 70, 229, 0.16);
 }
 
@@ -1820,7 +1779,7 @@
 }
 
 [data-theme="dark"] .order-kpi-item-featured {
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.16), var(--bg-color));
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.16), var(--color-bg-canvas));
   border-color: rgba(129, 140, 248, 0.18);
 }
 
@@ -1828,7 +1787,7 @@
 .sales-value-loading {
   font-size: 0.875rem;
   font-weight: 400;
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   animation: pulse 1.5s ease-in-out infinite;
   white-space: nowrap;
 }
@@ -1842,7 +1801,7 @@
 .sales-value-error {
   font-size: 0.875rem;
   font-weight: 400;
-  color: var(--danger-color);
+  color: var(--color-danger);
   white-space: nowrap;
 }
 
@@ -1895,25 +1854,25 @@
   padding: 0.42rem 0.8rem !important;
   border-color: transparent !important;
   box-shadow: none !important;
-  color: var(--secondary-color) !important;
+  color: var(--color-text-secondary) !important;
   background: transparent !important;
   transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .sales-period-button:hover,
 .sales-period-button:focus-visible {
-  color: var(--text-color) !important;
+  color: var(--color-text) !important;
   background: rgba(79, 70, 229, 0.08) !important;
 }
 
 .sales-period-button.is-active {
-  color: var(--primary-hover) !important;
+  color: var(--color-brand-hover) !important;
   background: linear-gradient(180deg, rgba(99, 102, 241, 0.16), rgba(79, 70, 229, 0.08)) !important;
   box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.14), 0 8px 18px -16px rgba(79, 70, 229, 0.35) !important;
 }
 
 .time-range-selector.is-open .sales-period-button[data-period="custom"] {
-  color: var(--primary-hover) !important;
+  color: var(--color-brand-hover) !important;
   background: linear-gradient(180deg, rgba(99, 102, 241, 0.2), rgba(79, 70, 229, 0.1)) !important;
   box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.16), 0 8px 18px -16px rgba(79, 70, 229, 0.42) !important;
 }
@@ -1954,25 +1913,25 @@
 
 .date-range-picker-title {
   margin-bottom: 0.7rem;
-  color: var(--text-color);
+  color: var(--color-text);
   font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.01em;
 }
 
 .date-range-separator {
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   font-size: 0.85rem;
   font-weight: 600;
 }
 
 .date-range-picker .form-control {
-  border-color: var(--input-border);
-  background: var(--input-bg);
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-input);
 }
 
 .date-range-picker .form-control:focus {
-  border-color: var(--primary-color);
+  border-color: var(--color-brand);
   box-shadow: 0 0 0 0.18rem rgba(79, 70, 229, 0.12);
 }
 
@@ -1988,12 +1947,12 @@
 }
 
 [data-theme="dark"] .sales-period-button {
-  color: var(--text-secondary) !important;
+  color: var(--color-text-secondary) !important;
 }
 
 [data-theme="dark"] .sales-period-button:hover,
 [data-theme="dark"] .sales-period-button:focus-visible {
-  color: var(--text-color) !important;
+  color: var(--color-text) !important;
   background: rgba(99, 102, 241, 0.16) !important;
 }
 
@@ -2016,7 +1975,7 @@
 }
 
 [data-theme="dark"] .date-range-picker-title {
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 .time-range-selector .form-control,
@@ -2123,7 +2082,7 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  color: var(--secondary-color);
+  color: var(--color-text-secondary);
   font-size: 0.9rem;
   font-weight: 500;
   text-align: center;
@@ -2158,7 +2117,7 @@
 }
 
 .chart-loading-text {
-  color: var(--text-color);
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 500;
 }

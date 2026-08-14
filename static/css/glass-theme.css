@@ -1,14 +1,14 @@
-/* Shared light glass theme for the management shell. */
+﻿/* Shared light glass theme for the management shell. */
 html {
   color-scheme: light;
-  /* 始终保留 body 垂直滚动槽，避免内容高度跨越视口边界时滚动条出现/消失造成跳动 */
+  /* 濮嬬粓淇濈暀 body 鍨傜洿婊氬姩妲斤紝閬垮厤鍐呭楂樺害璺ㄨ秺瑙嗗彛杈圭晫鏃舵粴鍔ㄦ潯鍑虹幇/娑堝け閫犳垚璺冲姩 */
   scrollbar-gutter: stable;
 }
 html[data-theme="dark"] {
   color-scheme: dark;
 }
-/* 页面切换过渡期隐藏纵向滚动条，消除进入时滚动条闪现；
-   仅隐藏 thumb，不改变布局（scrollbar-gutter 保留槽位），过渡结束恢复显示 */
+/* 椤甸潰鍒囨崲杩囨浮鏈熼殣钘忕旱鍚戞粴鍔ㄦ潯锛屾秷闄よ繘鍏ユ椂婊氬姩鏉￠棯鐜帮紱
+   浠呴殣钘?thumb锛屼笉鏀瑰彉甯冨眬锛坰crollbar-gutter 淇濈暀妲戒綅锛夛紝杩囨浮缁撴潫鎭㈠鏄剧ず */
 html.section-transition {
   scrollbar-width: none;
 }
@@ -307,7 +307,7 @@ textarea {
   justify-content: center;
 }
 
-/* 折叠状态：隐藏菜单文字，只显示图标（用 opacity+max-width 平滑过渡，避免 display:none 硬切造成“卡一下”） */
+/* 鎶樺彔鐘舵€侊細闅愯棌鑿滃崟鏂囧瓧锛屽彧鏄剧ず鍥炬爣锛堢敤 opacity+max-width 骞虫粦杩囨浮锛岄伩鍏?display:none 纭垏閫犳垚鈥滃崱涓€涓嬧€濓級 */
 .sidebar.collapsed .nav-link span,
 .sidebar.collapsed .sidebar-collapse-btn span {
   opacity: 0;
@@ -333,15 +333,14 @@ textarea {
   transition: opacity 180ms ease, height 180ms ease;
 }
 
-/* 折叠状态：图标居中显示 */
+/* 鎶樺彔鐘舵€侊細鍥炬爣灞呬腑鏄剧ず */
 .sidebar.collapsed .nav-link i {
   width: auto;
   margin: 0 auto;
   font-size: 1.15rem;
 }
 
-/* 折叠/收起过渡：锁定菜单项与图标的 transform，仅保留折叠按钮箭头旋转。
-   移动端 sticky hover + 激活态 scale 动画会在宽度过渡期间被引擎重放导致图标旋转错乱。 */
+/* 鎶樺彔/鏀惰捣杩囨浮锛氶攣瀹氳彍鍗曢」涓庡浘鏍囩殑 transform锛屼粎淇濈暀鎶樺彔鎸夐挳绠ご鏃嬭浆銆?   绉诲姩绔?sticky hover + 婵€娲绘€?scale 鍔ㄧ敾浼氬湪瀹藉害杩囨浮鏈熼棿琚紩鎿庨噸鏀惧鑷村浘鏍囨棆杞敊涔便€?*/
 .sidebar.collapsed .nav-link,
 .sidebar.collapsed .nav-link:hover,
 .sidebar.collapsed .nav-link.active,
@@ -354,7 +353,7 @@ textarea {
   animation: none !important;
 }
 
-/* 折叠状态：品牌区只显示logo，logo与主题按钮垂直堆叠避免拥挤 */
+/* 鎶樺彔鐘舵€侊細鍝佺墝鍖哄彧鏄剧ずlogo锛宭ogo涓庝富棰樻寜閽瀭鐩村爢鍙犻伩鍏嶆嫢鎸?*/
 .sidebar.collapsed .sidebar-header {
   padding: 14px 0;
   flex-direction: column;
@@ -394,7 +393,7 @@ textarea {
   margin: 0 auto;
 }
 
-/* 折叠状态：折叠按钮只显示图标 */
+/* 鎶樺彔鐘舵€侊細鎶樺彔鎸夐挳鍙樉绀哄浘鏍?*/
 .sidebar.collapsed .sidebar-collapse-btn span {
   opacity: 0;
   visibility: hidden;
@@ -559,7 +558,7 @@ body.sidebar-collapsed .main-content {
   transform: none;
 }
 
-/* 下拉框整体优化：隐藏原生箭头改为自定义图标，增强交互反馈 */
+/* 涓嬫媺妗嗘暣浣撲紭鍖栵細闅愯棌鍘熺敓绠ご鏀逛负鑷畾涔夊浘鏍囷紝澧炲己浜や簰鍙嶉 */
 .form-select {
   appearance: none;
   -webkit-appearance: none;
@@ -624,7 +623,7 @@ body.sidebar-collapsed .main-content {
 .table tbody tr:hover {
   background-color: rgba(118, 118, 128, 0.10) !important;
 }
-/* 商品管理列表行 hover：单一明确背景，避免与 Bootstrap table-hover 及通用规则叠加闪烁 */
+/* 鍟嗗搧绠＄悊鍒楄〃琛?hover锛氬崟涓€鏄庣‘鑳屾櫙锛岄伩鍏嶄笌 Bootstrap table-hover 鍙婇€氱敤瑙勫垯鍙犲姞闂儊 */
 #itemsTableBody tbody tr:hover,
 #itemsTableBody tr:hover {
   background-color: rgba(118, 118, 128, 0.10) !important;
@@ -635,7 +634,7 @@ body.sidebar-collapsed .main-content {
   background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-/* 订单管理列表行 hover：单一明确背景，避免与 Bootstrap table-hover 及通用规则叠加闪烁 */
+/* 璁㈠崟绠＄悊鍒楄〃琛?hover锛氬崟涓€鏄庣‘鑳屾櫙锛岄伩鍏嶄笌 Bootstrap table-hover 鍙婇€氱敤瑙勫垯鍙犲姞闂儊 */
 #ordersTableBody tbody tr:hover,
 #ordersTableBody tr:hover {
   background-color: rgba(118, 118, 128, 0.10) !important;
@@ -646,7 +645,7 @@ body.sidebar-collapsed .main-content {
   background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-/* 圆角收敛：玻璃卡片内嵌的表格/表头不再以直角漏出卡片圆角 */
+/* 鍦嗚鏀舵暃锛氱幓鐠冨崱鐗囧唴宓岀殑琛ㄦ牸/琛ㄥご涓嶅啀浠ョ洿瑙掓紡鍑哄崱鐗囧渾瑙?*/
 .content-section .card {
   overflow: hidden;
 }
@@ -659,7 +658,7 @@ body.sidebar-collapsed .main-content {
   background: rgba(118, 118, 128, 0.06);
 }
 
-/* 表格容器统一圆角 + 内容裁剪，契合系统圆角规范 */
+/* 琛ㄦ牸瀹瑰櫒缁熶竴鍦嗚 + 鍐呭瑁佸壀锛屽鍚堢郴缁熷渾瑙掕鑼?*/
 .table-responsive {
   border-radius: 14px;
   overflow-x: auto;
@@ -724,7 +723,7 @@ body.sidebar-collapsed .main-content {
   backdrop-filter: blur(6px);
 }
 
-/* 弹窗打开时锁定背景滚动，避免滚轮穿透到页面 */
+/* 寮圭獥鎵撳紑鏃堕攣瀹氳儗鏅粴鍔紝閬垮厤婊氳疆绌块€忓埌椤甸潰 */
 body.modal-open {
   overflow: hidden;
 }
@@ -765,7 +764,7 @@ html:has(body.modal-open) {
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
 }
 
-/* Toast 自然弹入（右下角通知）：自底部上滑 + 淡入，贴近系统通知而非缩放弹跳 */
+/* Toast 鑷劧寮瑰叆锛堝彸涓嬭閫氱煡锛夛細鑷簳閮ㄤ笂婊?+ 娣″叆锛岃创杩戠郴缁熼€氱煡鑰岄潪缂╂斁寮硅烦 */
 .toast.sg-toast-in {
   animation: sg-toast-in 0.38s cubic-bezier(0.21, 0.9, 0.3, 1) both;
 }
@@ -1334,7 +1333,7 @@ html:has(body.modal-open) {
   border-color: var(--ui-border) !important;
 }
 
-/* === 高透液态玻璃效果 === */
+/* === 楂橀€忔恫鎬佺幓鐠冩晥鏋?=== */
 .sidebar {
   position: fixed;
   overflow: hidden;
@@ -1359,7 +1358,7 @@ html:has(body.modal-open) {
   50% { background-position: 100% 100%; opacity: 1; }
 }
 
-/* === 卡片流光高光 === */
+/* === 鍗＄墖娴佸厜楂樺厜 === */
 .card {
   position: relative;
   overflow: visible;
@@ -1385,8 +1384,7 @@ html:has(body.modal-open) {
   position: relative;
   z-index: 1;
 }
-/* 卡片头/底部需盖过卡片体（如销售额趋势自定义日期面板从 header 绝对定位落到 body 区），
-   否则同为 z-index:1 的 card-body 层叠上下文会把面板压住、点击被 canvas 吃掉 */
+/* 鍗＄墖澶?搴曢儴闇€鐩栬繃鍗＄墖浣擄紙濡傞攢鍞瓒嬪娍鑷畾涔夋棩鏈熼潰鏉夸粠 header 缁濆瀹氫綅钀藉埌 body 鍖猴級锛?   鍚﹀垯鍚屼负 z-index:1 鐨?card-body 灞傚彔涓婁笅鏂囦細鎶婇潰鏉垮帇浣忋€佺偣鍑昏 canvas 鍚冩帀 */
 .card > .card-header,
 .card > .card-footer {
   z-index: 2;
@@ -1454,7 +1452,7 @@ body {
 
 .sidebar.collapsed {
   width: var(--sidebar-closed-width) !important;
-  /* 收起时文字先淡出(140ms)，侧边栏延迟 150ms 再收窄 */
+  /* 鏀惰捣鏃舵枃瀛楀厛娣″嚭(140ms)锛屼晶杈规爮寤惰繜 150ms 鍐嶆敹绐?*/
   transition: width 200ms ease 150ms, box-shadow 200ms ease 150ms !important;
 }
 
@@ -1468,7 +1466,7 @@ body.sidebar-collapsed .main-content {
   animation: none !important;
 }
 
-/* 订单等含大表格的卡片 hover 时不再淡入高光层，避免与表格重绘叠加闪烁 */
+/* 璁㈠崟绛夊惈澶ц〃鏍肩殑鍗＄墖 hover 鏃朵笉鍐嶆贰鍏ラ珮鍏夊眰锛岄伩鍏嶄笌琛ㄦ牸閲嶇粯鍙犲姞闂儊 */
 .content-section .card:hover::before {
   opacity: 0 !important;
   transition: none !important;
@@ -1542,9 +1540,8 @@ body.sidebar-collapsed .main-content {
 
 
 /* ================================================================
-   深色模式玻璃表面修正：consolidation 块此前以 !important 强制浅色
-   玻璃，导致深色主题下出现"白字浅底"不可读。此处以更高优先级覆盖。
-   ================================================================ */
+   娣辫壊妯″紡鐜荤拑琛ㄩ潰淇锛歝onsolidation 鍧楁鍓嶄互 !important 寮哄埗娴呰壊
+   鐜荤拑锛屽鑷存繁鑹蹭富棰樹笅鍑虹幇"鐧藉瓧娴呭簳"涓嶅彲璇汇€傛澶勪互鏇撮珮浼樺厛绾ц鐩栥€?   ================================================================ */
 [data-theme="dark"] .sidebar {
   background: rgba(28, 28, 30, 0.74) !important;
   border-color: rgba(235, 235, 245, 0.14) !important;
@@ -1598,7 +1595,7 @@ body.sidebar-collapsed .main-content {
   color: var(--ui-muted);
 }
 
-/* 深色：卡片 / 弹窗 / 下拉 / Toast 保持深色玻璃，文字仍为浅色 */
+/* 娣辫壊锛氬崱鐗?/ 寮圭獥 / 涓嬫媺 / Toast 淇濇寔娣辫壊鐜荤拑锛屾枃瀛椾粛涓烘祬鑹?*/
 [data-theme="dark"] .content-section .card,
 [data-theme="dark"] .modal-content,
 [data-theme="dark"] .dropdown-menu,
@@ -1619,14 +1616,14 @@ body.sidebar-collapsed .main-content {
   border-color: rgba(235, 235, 245, 0.22) !important;
 }
 
-/* 深色：登录/注册页由各自内联样式处理；这里只兜底常见浅色小控件 */
+/* 娣辫壊锛氱櫥褰?娉ㄥ唽椤电敱鍚勮嚜鍐呰仈鏍峰紡澶勭悊锛涜繖閲屽彧鍏滃簳甯歌娴呰壊灏忔帶浠?*/
 [data-theme="dark"] .sales-period-buttons,
 [data-theme="dark"] .date-range-picker {
   background: rgba(44, 44, 46, 0.72) !important;
   border-color: rgba(235, 235, 245, 0.14) !important;
 }
 
-/* 深色：强调色主按钮使用实心品牌色，保证操作语义清晰 */
+/* 娣辫壊锛氬己璋冭壊涓绘寜閽娇鐢ㄥ疄蹇冨搧鐗岃壊锛屼繚璇佹搷浣滆涔夋竻鏅?*/
 [data-theme="dark"] .btn-primary,
 [data-theme="dark"] .btn-success {
   color: #ffffff !important;
@@ -1652,18 +1649,16 @@ body.sidebar-collapsed .main-content {
   background: #b91c1c !important;
 }
 
-/* 警告徽章使用深色文字，保证可读性 */
+/* 璀﹀憡寰界珷浣跨敤娣辫壊鏂囧瓧锛屼繚璇佸彲璇绘€?*/
 .badge.bg-warning {
   color: #111827 !important;
 }
 
 
 /* ================================================================
-   管理台遗留问题修复（深扫确认）
-   ================================================================ */
+   绠＄悊鍙伴仐鐣欓棶棰樹慨澶嶏紙娣辨壂纭锛?   ================================================================ */
 
-/* 系统设置 / AI 巡检卡片：index.html 内联样式为浅色硬编码，
-   深色模式下必须恢复深色玻璃可读性 */
+/* 绯荤粺璁剧疆 / AI 宸℃鍗＄墖锛歩ndex.html 鍐呰仈鏍峰紡涓烘祬鑹茬‖缂栫爜锛?   娣辫壊妯″紡涓嬪繀椤绘仮澶嶆繁鑹茬幓鐠冨彲璇绘€?*/
 [data-theme="dark"] #system-settings-section .card,
 [data-theme="dark"] #aiSiteAuditCard {
   color: var(--ui-ink);
@@ -1703,7 +1698,7 @@ body.sidebar-collapsed .main-content {
   border-color: var(--primary-color) !important;
 }
 
-/* 用户管理统计卡：玻璃覆盖了 bootstrap bg-* 语义色，浅色下白字不可见 */
+/* 鐢ㄦ埛绠＄悊缁熻鍗★細鐜荤拑瑕嗙洊浜?bootstrap bg-* 璇箟鑹诧紝娴呰壊涓嬬櫧瀛椾笉鍙 */
 #user-management-section .card[class*="bg-"] {
   border-color: transparent !important;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.10), inset 0 1px rgba(255, 255, 255, 0.22) !important;
@@ -1717,7 +1712,7 @@ body.sidebar-collapsed .main-content {
   color: #111827 !important;
 }
 
-/* 折叠按钮：浅色模式文字/图标加深，保证可读 */
+/* 鎶樺彔鎸夐挳锛氭祬鑹叉ā寮忔枃瀛?鍥炬爣鍔犳繁锛屼繚璇佸彲璇?*/
 .sidebar-collapse-btn {
   color: var(--ui-ink);
 }
@@ -1730,7 +1725,7 @@ body.sidebar-collapsed .main-content {
   color: inherit;
 }
 
-/* outline 信息/警告按钮：浅色模式加深文字，保证对比度 */
+/* outline 淇℃伅/璀﹀憡鎸夐挳锛氭祬鑹叉ā寮忓姞娣辨枃瀛楋紝淇濊瘉瀵规瘮搴?*/
 .btn-outline-info {
   color: #0e7490 !important;
   border-color: rgba(14, 116, 144, 0.42) !important;
@@ -1779,7 +1774,7 @@ body.sidebar-collapsed .main-content {
   border-color: #fbbf24 !important;
 }
 
-/* 信息色 Toast / 徽章：青蓝底配白字对比不足，改用深色文字 */
+/* 淇℃伅鑹?Toast / 寰界珷锛氶潚钃濆簳閰嶇櫧瀛楀姣斾笉瓒筹紝鏀圭敤娣辫壊鏂囧瓧 */
 .toast.bg-info {
   background-color: #0ea5e9 !important;
   color: #083344 !important;
@@ -1794,11 +1789,11 @@ body.sidebar-collapsed .main-content {
   color: #083344 !important;
 }
 
-/* 用户管理统计卡：info/success 加深，保证白字对比度 */
+/* 鐢ㄦ埛绠＄悊缁熻鍗★細info/success 鍔犳繁锛屼繚璇佺櫧瀛楀姣斿害 */
 #user-management-section .card.bg-info { background-color: #0284c7 !important; }
 #user-management-section .card.bg-success { background-color: #15803d !important; }
 
-/* 绿色扫码按钮：默认文字为深色，改为白字保证对比 */
+/* 缁胯壊鎵爜鎸夐挳锛氶粯璁ゆ枃瀛椾负娣辫壊锛屾敼涓虹櫧瀛椾繚璇佸姣?*/
 .qr-login-btn,
 .qr-login-btn .fw-bold {
   color: #ffffff !important;
@@ -1808,8 +1803,7 @@ body.sidebar-collapsed .main-content {
   color: rgba(255, 255, 255, 0.92) !important;
 }
 
-/* 暗色：bg-warning 统计卡内标题/段落被全局深色标题规则刷成浅色，
-   在琥珀底上不可读，强制保持深色 */
+/* 鏆楄壊锛歜g-warning 缁熻鍗″唴鏍囬/娈佃惤琚叏灞€娣辫壊鏍囬瑙勫垯鍒锋垚娴呰壊锛?   鍦ㄧ惀鐝€搴曚笂涓嶅彲璇伙紝寮哄埗淇濇寔娣辫壊 */
 [data-theme="dark"] #user-management-section .card.bg-warning h3,
 [data-theme="dark"] #user-management-section .card.bg-warning p,
 [data-theme="dark"] #user-management-section .card.bg-warning h3 *,
@@ -1817,7 +1811,7 @@ body.sidebar-collapsed .main-content {
   color: #111827 !important;
 }
 
-/* 扫码登录按钮：加深绿色渐变，保证白色文字对比度（大文本 ≥3:1） */
+/* 鎵爜鐧诲綍鎸夐挳锛氬姞娣辩豢鑹叉笎鍙橈紝淇濊瘉鐧借壊鏂囧瓧瀵规瘮搴︼紙澶ф枃鏈?鈮?:1锛?*/
 .qr-login-btn {
   background: linear-gradient(135deg, #1e9e50 0%, #128464 100%) !important;
   box-shadow: 0 4px 15px rgba(18, 132, 100, 0.35) !important;
@@ -1829,22 +1823,20 @@ body.sidebar-collapsed .main-content {
 
 /* ================================================================
    Apple Liquid Glass v2.2.2
-   半透明折射玻璃 · 边缘高光 · 层级透明度逐级增强 · 弹性动效
-   动效服务层级与反馈，克制、专业、可读；支持 prefers-reduced-motion
-   与低性能降级（prefers-reduced-transparency / 无 backdrop-filter）。
-   ================================================================ */
+   鍗婇€忔槑鎶樺皠鐜荤拑 路 杈圭紭楂樺厜 路 灞傜骇閫忔槑搴﹂€愮骇澧炲己 路 寮规€у姩鏁?   鍔ㄦ晥鏈嶅姟灞傜骇涓庡弽棣堬紝鍏嬪埗銆佷笓涓氥€佸彲璇伙紱鏀寔 prefers-reduced-motion
+   涓庝綆鎬ц兘闄嶇骇锛坧refers-reduced-transparency / 鏃?backdrop-filter锛夈€?   ================================================================ */
 :root {
   --lg-spring: cubic-bezier(0.22, 1, 0.36, 1);
   --lg-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --lg-dur: 220ms;
   --lg-dur-spring: 240ms;
-  /* 玻璃层级：内容区 < 导航/工具栏 < 浮层/弹窗，透明度逐级增强 */
-  --lg-glass-1: rgba(255, 255, 255, 0.5);   /* 内容区卡片 */
-  --lg-glass-2: rgba(250, 252, 253, 0.62);  /* 侧边栏 */
-  --lg-glass-3: rgba(255, 255, 255, 0.9);  /* 弹窗 / 下拉菜单 */
+  /* 鐜荤拑灞傜骇锛氬唴瀹瑰尯 < 瀵艰埅/宸ュ叿鏍?< 娴眰/寮圭獥锛岄€忔槑搴﹂€愮骇澧炲己 */
+  --lg-glass-1: rgba(255, 255, 255, 0.5);   /* 鍐呭鍖哄崱鐗?*/
+  --lg-glass-2: rgba(250, 252, 253, 0.62);  /* 渚ц竟鏍?*/
+  --lg-glass-3: rgba(255, 255, 255, 0.9);  /* 寮圭獥 / 涓嬫媺鑿滃崟 */
 }
 
-/* ---------- 背景：为玻璃提供可折射的柔和光场（滚动时轻微视差） ---------- */
+/* ---------- 鑳屾櫙锛氫负鐜荤拑鎻愪緵鍙姌灏勭殑鏌斿拰鍏夊満锛堟粴鍔ㄦ椂杞诲井瑙嗗樊锛?---------- */
 body {
   background:
     radial-gradient(1100px 720px at 88% -12%, rgba(10, 124, 102, 0.16), transparent 62%),
@@ -1852,7 +1844,7 @@ body {
     radial-gradient(900px 820px at 55% 118%, rgba(168, 85, 247, 0.09), transparent 60%),
     radial-gradient(640px 460px at 30% 70%, rgba(255, 255, 255, 0.40), transparent 70%),
     radial-gradient(520px 380px at 78% 45%, rgba(255, 255, 255, 0.28), transparent 70%),
-    var(--bg-color);
+    var(--color-bg-canvas);
   background-attachment: fixed;
 }
 
@@ -1863,7 +1855,7 @@ body {
     radial-gradient(900px 820px at 55% 118%, rgba(14, 165, 233, 0.10), transparent 60%),
     radial-gradient(640px 460px at 30% 70%, rgba(255, 255, 255, 0.40), transparent 70%),
     radial-gradient(520px 380px at 78% 45%, rgba(255, 255, 255, 0.28), transparent 70%),
-    var(--bg-color);
+    var(--color-bg-canvas);
   background-attachment: fixed;
 }
 
@@ -1874,7 +1866,7 @@ body {
     radial-gradient(900px 820px at 55% 118%, rgba(71, 85, 105, 0.10), transparent 60%),
     radial-gradient(640px 460px at 30% 70%, rgba(255, 255, 255, 0.40), transparent 70%),
     radial-gradient(520px 380px at 78% 45%, rgba(255, 255, 255, 0.28), transparent 70%),
-    var(--bg-color);
+    var(--color-bg-canvas);
   background-attachment: fixed;
 }
 
@@ -1885,7 +1877,7 @@ body {
     radial-gradient(900px 820px at 55% 118%, rgba(251, 113, 133, 0.09), transparent 60%),
     radial-gradient(640px 460px at 30% 70%, rgba(255, 255, 255, 0.40), transparent 70%),
     radial-gradient(520px 380px at 78% 45%, rgba(255, 255, 255, 0.28), transparent 70%),
-    var(--bg-color);
+    var(--color-bg-canvas);
   background-attachment: fixed;
 }
 
@@ -1895,26 +1887,25 @@ body {
     radial-gradient(980px 680px at -8% 28%, rgba(59, 130, 246, 0.09), transparent 58%),
     radial-gradient(900px 820px at 55% 118%, rgba(168, 85, 247, 0.07), transparent 60%),
     radial-gradient(640px 460px at 30% 70%, rgba(255, 255, 255, 0.05), transparent 70%),
-    var(--bg-color);
+    var(--color-bg-canvas);
   background-attachment: fixed;
 }
 
-/* 自定义背景优先，玻璃折射其上的真实图像 */
+/* 鑷畾涔夎儗鏅紭鍏堬紝鐜荤拑鎶樺皠鍏朵笂鐨勭湡瀹炲浘鍍?*/
 html.has-custom-background body {
   background: var(--custom-background-image) center / cover no-repeat fixed !important;
 }
 
-/* ---------- 主内容区透明：让底层背景（光场/自定义背景图）透过玻璃折射 ----------
-   此前 .main-content 使用不透明 --ui-canvas/--bg-color，导致：
-     1) 液态玻璃主题看不到背景光场（拟态失效）
-     2) 设置-界面背景颜色/自定义背景图被遮盖，修改“无效”
-   这里强制透明，玻璃模糊由 .sidebar/.content-header/.card 等表面提供。 */
+/* ---------- 涓诲唴瀹瑰尯閫忔槑锛氳搴曞眰鑳屾櫙锛堝厜鍦?鑷畾涔夎儗鏅浘锛夐€忚繃鐜荤拑鎶樺皠 ----------
+   姝ゅ墠 .main-content 浣跨敤涓嶉€忔槑 --ui-canvas/--bg-color锛屽鑷达細
+     1) 娑叉€佺幓鐠冧富棰樼湅涓嶅埌鑳屾櫙鍏夊満锛堟嫙鎬佸け鏁堬級
+     2) 璁剧疆-鐣岄潰鑳屾櫙棰滆壊/鑷畾涔夎儗鏅浘琚伄鐩栵紝淇敼鈥滄棤鏁堚€?   杩欓噷寮哄埗閫忔槑锛岀幓鐠冩ā绯婄敱 .sidebar/.content-header/.card 绛夎〃闈㈡彁渚涖€?*/
 .main-content,
 [data-theme="dark"] .main-content {
   background: transparent !important;
 }
 
-/* ---------- 左侧栏：展开收起 / 激活态 / 图标动效 ---------- */
+/* ---------- 宸︿晶鏍忥細灞曞紑鏀惰捣 / 婵€娲绘€?/ 鍥炬爣鍔ㄦ晥 ---------- */
 .sidebar,
 .main-content {
   will-change: width, margin-left;
@@ -1947,7 +1938,7 @@ html.has-custom-background body {
   animation: lg-nav-settle var(--lg-dur-spring) var(--lg-spring) both;
 }
 
-/* 激活态左侧强调条：轻弹入场 */
+/* 婵€娲绘€佸乏渚у己璋冩潯锛氳交寮瑰叆鍦?*/
 .sidebar .nav-link.active::before {
   content: '';
   position: absolute;
@@ -1971,7 +1962,7 @@ html.has-custom-background body {
   to   { transform: scale(1); }
 }
 
-/* 折叠按钮箭头：折叠时旋转 180° 指向右侧 */
+/* 鎶樺彔鎸夐挳绠ご锛氭姌鍙犳椂鏃嬭浆 180掳 鎸囧悜鍙充晶 */
 .sidebar .sidebar-collapse-btn i {
   transition: transform var(--lg-dur-spring) var(--lg-spring);
 }
@@ -1980,7 +1971,7 @@ html.has-custom-background body {
   transform: rotate(180deg);
 }
 
-/* ---------- 侧边栏：更透的玻璃，顶部边缘高光模拟厚度 ---------- */
+/* ---------- 渚ц竟鏍忥細鏇撮€忕殑鐜荤拑锛岄《閮ㄨ竟缂橀珮鍏夋ā鎷熷帤搴?---------- */
 .sidebar {
   background: linear-gradient(180deg, rgba(252, 253, 254, 0.68), rgba(238, 243, 246, 0.52)) !important;
   border-color: rgba(255, 255, 255, 0.9) !important;
@@ -1993,7 +1984,7 @@ html.has-custom-background body {
   backdrop-filter: blur(30px) saturate(1.5);
 }
 
-/* 侧边栏悬停菜单项：轻微提亮与高光位移，不带位移以免喧宾夺主 */
+/* 渚ц竟鏍忔偓鍋滆彍鍗曢」锛氳交寰彁浜笌楂樺厜浣嶇Щ锛屼笉甯︿綅绉讳互鍏嶅枾瀹惧ず涓?*/
 .sidebar .nav-link {
   transition: background-color var(--lg-dur) ease, border-color var(--lg-dur) ease,
               color var(--lg-dur) ease, box-shadow var(--lg-dur) ease !important;
@@ -2005,7 +1996,7 @@ html.has-custom-background body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 4px 12px rgba(20, 39, 52, 0.05) !important;
 }
 
-/* 激活项：主色浅染的液态玻璃 + 左侧强调条 */
+/* 婵€娲婚」锛氫富鑹叉祬鏌撶殑娑叉€佺幓鐠?+ 宸︿晶寮鸿皟鏉?*/
 .sidebar .nav-link.active {
   background: color-mix(in srgb, var(--primary-color) 11%, rgba(255, 255, 255, 0.66)) !important;
   border-color: color-mix(in srgb, var(--primary-color) 26%, rgba(255, 255, 255, 0.8)) !important;
@@ -2015,7 +2006,7 @@ html.has-custom-background body {
     0 6px 16px rgba(20, 39, 52, 0.06) !important;
 }
 
-/* ---------- 内容顶栏：更强的毛玻璃，随滚动保留悬浮层次 ---------- */
+/* ---------- 鍐呭椤舵爮锛氭洿寮虹殑姣涚幓鐠冿紝闅忔粴鍔ㄤ繚鐣欐偓娴眰娆?---------- */
 .content-header {
   background: rgba(248, 250, 252, 0.52) !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.85) !important;
@@ -2024,7 +2015,7 @@ html.has-custom-background body {
   backdrop-filter: blur(34px) saturate(1.6);
 }
 
-/* ---------- 内容卡片：液态玻璃材质（渐变折射 + 顶部亮缘 + 内阴影） ---------- */
+/* ---------- 鍐呭鍗＄墖锛氭恫鎬佺幓鐠冩潗璐紙娓愬彉鎶樺皠 + 椤堕儴浜紭 + 鍐呴槾褰憋級 ---------- */
 .content-section .card {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.42) 62%, rgba(255, 255, 255, 0.50)) !important;
@@ -2045,7 +2036,7 @@ html.has-custom-background body {
               border-color var(--lg-dur) ease !important;
 }
 
-/* 顶部内高光：玻璃厚度可见的边缘反光 */
+/* 椤堕儴鍐呴珮鍏夛細鐜荤拑鍘氬害鍙鐨勮竟缂樺弽鍏?*/
 .content-section .card::after {
   content: "";
   position: absolute;
@@ -2069,7 +2060,7 @@ html.has-custom-background body {
     0 4px 12px rgba(25, 39, 52, 0.06) !important;
 }
 
-/* ---------- 控件圆角：适中（11px），避免过于圆润玩具化 ---------- */
+/* ---------- 鎺т欢鍦嗚锛氶€備腑锛?1px锛夛紝閬垮厤杩囦簬鍦嗘鼎鐜╁叿鍖?---------- */
 .btn {
   position: relative;
   overflow: hidden;
@@ -2079,7 +2070,7 @@ html.has-custom-background body {
   will-change: transform;
 }
 
-/* 点击涟漪式高光：从顶部洒下的柔和光晕，非扩散圆 */
+/* 鐐瑰嚮娑熸吉寮忛珮鍏夛細浠庨《閮ㄦ磼涓嬬殑鏌斿拰鍏夋檿锛岄潪鎵╂暎鍦?*/
 .btn::after {
   content: '';
   position: absolute;
@@ -2108,7 +2099,7 @@ html.has-custom-background body {
   transition-duration: 60ms;
 }
 
-/* 主操作按钮：清晰的强调色语义（浅色用浅染玻璃，深色用实心） */
+/* 涓绘搷浣滄寜閽細娓呮櫚鐨勫己璋冭壊璇箟锛堟祬鑹茬敤娴呮煋鐜荤拑锛屾繁鑹茬敤瀹炲績锛?*/
 .btn-primary,
 .btn-success {
   box-shadow:
@@ -2117,7 +2108,7 @@ html.has-custom-background body {
     0 4px 14px color-mix(in srgb, var(--primary-color) 22%, transparent) !important;
 }
 
-/* ---------- 销售额周期按钮：激活态清晰可辨 ---------- */
+/* ---------- 閿€鍞鍛ㄦ湡鎸夐挳锛氭縺娲绘€佹竻鏅板彲杈?---------- */
 .sales-period-button.is-active {
   color: #ffffff !important;
   background: var(--primary-color) !important;
@@ -2127,7 +2118,7 @@ html.has-custom-background body {
     0 6px 16px color-mix(in srgb, var(--primary-color) 30%, transparent) !important;
 }
 
-/* 销售构成分组按钮：active 态高亮（Bootstrap 的 is-active 无默认样式） */
+/* 閿€鍞瀯鎴愬垎缁勬寜閽細active 鎬侀珮浜紙Bootstrap 鐨?is-active 鏃犻粯璁ゆ牱寮忥級 */
 .btn[data-breakdown].is-active,
 .btn[data-breakdown].is-active:hover,
 .btn[data-breakdown].is-active:focus {
@@ -2137,7 +2128,7 @@ html.has-custom-background body {
   box-shadow: 0 4px 12px color-mix(in srgb, var(--primary-color) 35%, transparent) !important;
 }
 
-/* ---------- 浮层：弹窗 / 下拉菜单 透明度与模糊逐级增强 ---------- */
+/* ---------- 娴眰锛氬脊绐?/ 涓嬫媺鑿滃崟 閫忔槑搴︿笌妯＄硦閫愮骇澧炲己 ---------- */
 .modal-content {
   background: var(--lg-glass-3) !important;
   border-top-color: rgba(255, 255, 255, 1) !important;
@@ -2166,7 +2157,7 @@ html.has-custom-background body {
   transition: background-color 160ms ease, color 160ms ease;
 }
 
-/* ---------- 页面切换：轻弹入，不闪烁 ---------- */
+/* ---------- 椤甸潰鍒囨崲锛氳交寮瑰叆锛屼笉闂儊 ---------- */
 .content-section.active {
   animation: lg-section-in 260ms var(--lg-ease-out) both;
 }
@@ -2176,7 +2167,7 @@ html.has-custom-background body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ---------- 弹窗：从中心轻微放大展开（不透明度同步） ---------- */
+/* ---------- 寮圭獥锛氫粠涓績杞诲井鏀惧ぇ灞曞紑锛堜笉閫忔槑搴﹀悓姝ワ級 ---------- */
 .modal.fade .modal-dialog {
   transform: translateY(14px) scale(0.965) !important;
   opacity: 0;
@@ -2188,7 +2179,7 @@ html.has-custom-background body {
   opacity: 1;
 }
 
-/* ---------- 下拉菜单：从左上触发点展开 ---------- */
+/* ---------- 涓嬫媺鑿滃崟锛氫粠宸︿笂瑙﹀彂鐐瑰睍寮€ ---------- */
 .dropdown-menu {
   transform-origin: top left;
 }
@@ -2202,7 +2193,7 @@ html.has-custom-background body {
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* ---------- Toast：右下轻弹入 ---------- */
+/* ---------- Toast锛氬彸涓嬭交寮瑰叆 ---------- */
 .toast:not([class*="bg-"]) {
   animation: lg-toast-in 280ms var(--lg-spring) both;
 }
@@ -2212,7 +2203,7 @@ html.has-custom-background body {
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ---------- 深色模式：镜像液态玻璃 ---------- */
+/* ---------- 娣辫壊妯″紡锛氶暅鍍忔恫鎬佺幓鐠?---------- */
 [data-theme="dark"] .sidebar {
   background: linear-gradient(180deg, rgba(44, 44, 48, 0.82), rgba(26, 26, 30, 0.7)) !important;
   border-color: rgba(235, 235, 245, 0.16) !important;
@@ -2282,9 +2273,8 @@ html.has-custom-background body {
   color: #ffffff !important;
 }
 
-/* ---------- 低性能降级：用户偏好减少透明时保留玻璃材质但关闭模糊 ----------
-   注意：headless Chromium 默认 prefers-reduced-transparency: reduce，
-   因此此分支也是自动化验证可见玻璃层的关键路径。 */
+/* ---------- 浣庢€ц兘闄嶇骇锛氱敤鎴峰亸濂藉噺灏戦€忔槑鏃朵繚鐣欑幓鐠冩潗璐ㄤ絾鍏抽棴妯＄硦 ----------
+   娉ㄦ剰锛歨eadless Chromium 榛樿 prefers-reduced-transparency: reduce锛?   鍥犳姝ゅ垎鏀篃鏄嚜鍔ㄥ寲楠岃瘉鍙鐜荤拑灞傜殑鍏抽敭璺緞銆?*/
 @media (prefers-reduced-transparency: reduce) {
   .sidebar,
   .content-header,
@@ -2321,7 +2311,7 @@ html.has-custom-background body {
   }
 }
 
-/* ---------- 低性能降级：不支持 backdrop-filter 时退回实底 ---------- */
+/* ---------- 浣庢€ц兘闄嶇骇锛氫笉鏀寔 backdrop-filter 鏃堕€€鍥炲疄搴?---------- */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .sidebar { background: #f3f6f8 !important; }
   .content-section .card, .modal-content, .dropdown-menu, .toast:not([class*="bg-"]) {
@@ -2336,7 +2326,7 @@ html.has-custom-background body {
   }
 }
 
-/* ---------- 无障碍：关闭动态效果后保留功能反馈，移除位移与动画 ---------- */
+/* ---------- 鏃犻殰纰嶏細鍏抽棴鍔ㄦ€佹晥鏋滃悗淇濈暀鍔熻兘鍙嶉锛岀Щ闄や綅绉讳笌鍔ㄧ敾 ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -2354,12 +2344,9 @@ html.has-custom-background body {
 }
 
 /* ================================================================
-   动效补充：卡片悬浮上浮、表格行入场、模态内容级联、图表淡入、
-   侧边栏折叠动效、admin 菜单淡入、tab 指示条、空状态淡入
-   （reduced-motion 时被上方规则自动关闭）
-   ================================================================ */
+   鍔ㄦ晥琛ュ厖锛氬崱鐗囨偓娴笂娴€佽〃鏍艰鍏ュ満銆佹ā鎬佸唴瀹圭骇鑱斻€佸浘琛ㄦ贰鍏ャ€?   渚ц竟鏍忔姌鍙犲姩鏁堛€乤dmin 鑿滃崟娣″叆銆乼ab 鎸囩ず鏉°€佺┖鐘舵€佹贰鍏?   锛坮educed-motion 鏃惰涓婃柟瑙勫垯鑷姩鍏抽棴锛?   ================================================================ */
 
-/* 卡片 hover 上浮 + 阴影增强（玻璃倾斜卡除外，避免 transform 冲突） */
+/* 鍗＄墖 hover 涓婃诞 + 闃村奖澧炲己锛堢幓鐠冨€炬枩鍗￠櫎澶栵紝閬垮厤 transform 鍐茬獊锛?*/
 .card:not(.glass-tilt-surface) {
   transition: transform var(--lg-dur-spring) var(--lg-spring),
               box-shadow var(--lg-dur) ease, border-color var(--lg-dur) ease !important;
@@ -2376,15 +2363,15 @@ html.has-custom-background body {
   border-color: rgba(255, 255, 255, 0.18) !important;
 }
 
-/* 页面卡片保持稳定，不在表格/表单上做 hover 位移；避免大面积重绘和层级抖动。 */
+/* 椤甸潰鍗＄墖淇濇寔绋冲畾锛屼笉鍦ㄨ〃鏍?琛ㄥ崟涓婂仛 hover 浣嶇Щ锛涢伩鍏嶅ぇ闈㈢Н閲嶇粯鍜屽眰绾ф姈鍔ㄣ€?*/
 .content-section .card:hover {
   transform: none !important;
   will-change: auto;
 }
 
-/* 表格行入场（重绘/新增时上滑淡入）
-   注：频繁重绘的表格（账号/卡密列表）每次重排都会重放该动画并伴随延迟，
-   在鼠标悬停时表现为行/表头闪烁抖动，故此处关闭级联入场动画以消除闪烁。 */
+/* 琛ㄦ牸琛屽叆鍦猴紙閲嶇粯/鏂板鏃朵笂婊戞贰鍏ワ級
+   娉細棰戠箒閲嶇粯鐨勮〃鏍硷紙璐﹀彿/鍗″瘑鍒楄〃锛夋瘡娆￠噸鎺掗兘浼氶噸鏀捐鍔ㄧ敾骞朵即闅忓欢杩燂紝
+   鍦ㄩ紶鏍囨偓鍋滄椂琛ㄧ幇涓鸿/琛ㄥご闂儊鎶栧姩锛屾晠姝ゅ鍏抽棴绾ц仈鍏ュ満鍔ㄧ敾浠ユ秷闄ら棯鐑併€?*/
 .table tbody tr {
   animation: none;
 }
@@ -2393,7 +2380,7 @@ html.has-custom-background body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* 表格行 hover 增强（背景 + 轻微左移提示） */
+/* 琛ㄦ牸琛?hover 澧炲己锛堣儗鏅?+ 杞诲井宸︾Щ鎻愮ず锛?*/
 .table tbody tr:hover {
   background-color: rgba(118, 118, 128, 0.10) !important;
 }
@@ -2401,7 +2388,7 @@ html.has-custom-background body {
   background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-/* 模态框内容入场：内容上浮 + 透明度（在 dialog scale 之外再叠一层） */
+/* 妯℃€佹鍐呭鍏ュ満锛氬唴瀹逛笂娴?+ 閫忔槑搴︼紙鍦?dialog scale 涔嬪鍐嶅彔涓€灞傦級 */
 .modal-content {
   animation: lg-modal-in 0.34s cubic-bezier(0.21, 0.9, 0.3, 1) both;
 }
@@ -2410,7 +2397,7 @@ html.has-custom-background body {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* 下拉菜单入场 */
+/* 涓嬫媺鑿滃崟鍏ュ満 */
 .dropdown-menu.show {
   animation: lg-dropdown-pop 0.22s cubic-bezier(0.21, 0.9, 0.3, 1) both;
 }
@@ -2419,12 +2406,12 @@ html.has-custom-background body {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* 图表容器淡入 */
+/* 鍥捐〃瀹瑰櫒娣″叆 */
 .chart-container {
   animation: lg-fade-up 0.5s ease both;
 }
 
-/* 侧边栏折叠：文字先淡出再收拢（收起），先展开再淡入（展开），用 max-width 可插值 + transition-delay 错峰 */
+/* 渚ц竟鏍忔姌鍙狅細鏂囧瓧鍏堟贰鍑哄啀鏀舵嫝锛堟敹璧凤級锛屽厛灞曞紑鍐嶆贰鍏ワ紙灞曞紑锛夛紝鐢?max-width 鍙彃鍊?+ transition-delay 閿欏嘲 */
 .sidebar .sidebar-nav .nav-link span {
   max-width: 160px;
   transition:
@@ -2443,17 +2430,17 @@ html.has-custom-background body {
     visibility 0s 140ms;
 }
 
-/* 管理员菜单显示淡入 */
+/* 绠＄悊鍛樿彍鍗曟樉绀烘贰鍏?*/
 #adminMenuSection {
   animation: lg-fade 0.3s ease both;
 }
 
-/* 空状态/占位提示淡入 */
+/* 绌虹姸鎬?鍗犱綅鎻愮ず娣″叆 */
 .text-center.py-4 {
   animation: lg-fade-up 0.4s ease both;
 }
 
-/* tab 底部指示条（激活时滑入） */
+/* tab 搴曢儴鎸囩ず鏉★紙婵€娲绘椂婊戝叆锛?*/
 .content-body .nav-tabs .nav-link {
   position: relative;
 }
@@ -2473,7 +2460,7 @@ html.has-custom-background body {
   to { transform: scaleX(1); }
 }
 
-/* 通用淡入动效 */
+/* 閫氱敤娣″叆鍔ㄦ晥 */
 @keyframes lg-fade {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -2483,7 +2470,7 @@ html.has-custom-background body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* 数据中心：排行列表与徽章 */
+/* 鏁版嵁涓績锛氭帓琛屽垪琛ㄤ笌寰界珷 */
 .report-rank {
   width: 22px;
   height: 22px;
@@ -2505,8 +2492,8 @@ html.has-custom-background body {
   color: #fff;
 }
 
-/* ============ 滚动条稳定性与横向滚动 ============ */
-/* 只给明确的固定纵向工作区预留滚动条槽，避免普通卡片/下拉出现永久空白槽。 */
+/* ============ 婊氬姩鏉＄ǔ瀹氭€т笌妯悜婊氬姩 ============ */
+/* 鍙粰鏄庣‘鐨勫浐瀹氱旱鍚戝伐浣滃尯棰勭暀婊氬姩鏉℃Ы锛岄伩鍏嶆櫘閫氬崱鐗?涓嬫媺鍑虹幇姘镐箙绌虹櫧妲姐€?*/
 .sidebar-nav,
 .table-container,
 .log-container {
@@ -2518,7 +2505,7 @@ html.has-custom-background body {
   overflow-y: auto;
 }
 
-/* 表格容器横向滚轮（shift+滚轮 或 触控板横向 均可） */
+/* 琛ㄦ牸瀹瑰櫒妯悜婊氳疆锛坰hift+婊氳疆 鎴?瑙︽帶鏉挎í鍚?鍧囧彲锛?*/
 .table-responsive,
 .card-body .table-responsive {
   overscroll-behavior-x: contain;
@@ -2529,7 +2516,7 @@ html.has-custom-background body {
   white-space: nowrap;
 }
 
-/* 数据中心周期选择：即使使用 form-select-sm 也保留主题化箭头与圆角 */
+/* 鏁版嵁涓績鍛ㄦ湡閫夋嫨锛氬嵆浣夸娇鐢?form-select-sm 涔熶繚鐣欎富棰樺寲绠ご涓庡渾瑙?*/
 #reportsRangeSelect.form-select-sm {
   min-height: 34px;
   padding: 5px 36px 5px 14px;
@@ -2538,7 +2525,7 @@ html.has-custom-background body {
   background-size: 13px 13px;
 }
 
-/* ============ 引导/欢迎弹窗：实心高对比背景，避免与背景重叠 ============ */
+/* ============ 寮曞/娆㈣繋寮圭獥锛氬疄蹇冮珮瀵规瘮鑳屾櫙锛岄伩鍏嶄笌鑳屾櫙閲嶅彔 ============ */
 #welcomeModal .modal-content {
   background: #ffffff !important;
   border: 1px solid rgba(148, 163, 184, 0.35) !important;

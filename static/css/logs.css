@@ -98,7 +98,7 @@
 
 .log-center-tabs .nav-link.active {
   color: #fff;
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+  background: linear-gradient(135deg, var(--color-brand), var(--color-brand-bg));
   box-shadow: 0 10px 22px -14px rgba(79, 70, 229, 0.75);
 }
 
@@ -135,11 +135,11 @@
 }
 
 .task-log-stat-card.success strong {
-  color: var(--success-color);
+  color: var(--color-success);
 }
 
 .task-log-stat-card.danger strong {
-  color: var(--danger-color);
+  color: var(--color-danger);
 }
 
 .task-log-stat-card.muted strong {
@@ -330,19 +330,19 @@
 
 .risk-event-category-trigger {
   background: rgba(79, 70, 229, 0.1);
-  color: var(--primary-color);
+  color: var(--color-brand);
   border-color: rgba(79, 70, 229, 0.14);
 }
 
 .risk-event-category-refresh {
   background: rgba(16, 185, 129, 0.1);
-  color: var(--success-color);
+  color: var(--color-success);
   border-color: rgba(16, 185, 129, 0.14);
 }
 
 .risk-event-category-error {
   background: rgba(239, 68, 68, 0.1);
-  color: var(--danger-color);
+  color: var(--color-danger);
   border-color: rgba(239, 68, 68, 0.14);
 }
 
@@ -394,7 +394,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+  background: linear-gradient(90deg, var(--color-brand), var(--color-brand-bg));
   opacity: 0.9;
   pointer-events: none;
 }
@@ -437,7 +437,7 @@
 .risk-tool-card-icon.primary,
 .risk-tool-card-icon.warning {
   background: rgba(79, 70, 229, 0.1);
-  color: var(--primary-color);
+  color: var(--color-brand);
 }
 
 .risk-tool-card-kicker {
@@ -445,7 +445,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--primary-color);
+  color: var(--color-brand);
   margin-bottom: 0.12rem;
 }
 
@@ -467,7 +467,7 @@
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   background: rgba(79, 70, 229, 0.05);
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   font-size: 0.76rem;
   font-weight: 600;
   white-space: nowrap;
@@ -494,7 +494,7 @@
   border: none;
   border-radius: 999px;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1;
@@ -504,11 +504,11 @@
 
 .risk-slider-range-btn:hover {
   background: rgba(79, 70, 229, 0.08);
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 .risk-slider-range-btn.is-active {
-  background: var(--primary-color);
+  background: var(--color-brand);
   color: #fff;
   box-shadow: 0 6px 16px rgba(79, 70, 229, 0.18);
 }
@@ -527,7 +527,7 @@
 .risk-slider-rate-label {
   font-size: 0.72rem;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   margin-bottom: 0.12rem;
 }
 
@@ -535,7 +535,7 @@
   font-size: clamp(1.72rem, 2.7vw, 2.15rem);
   line-height: 0.95;
   font-weight: 800;
-  color: var(--primary-hover);
+  color: var(--color-brand-hover);
   letter-spacing: -0.03em;
 }
 
@@ -546,7 +546,7 @@
   padding: 0.38rem 0.68rem;
   border-radius: 12px;
   background: rgba(79, 70, 229, 0.05);
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   font-size: 0.78rem;
   font-weight: 600;
   white-space: nowrap;
@@ -575,7 +575,7 @@
 .risk-slider-stat-chip span {
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .risk-slider-stat-chip strong {
@@ -584,11 +584,11 @@
 }
 
 .risk-slider-stat-chip.success strong {
-  color: var(--success-color);
+  color: var(--color-success);
 }
 
 .risk-slider-stat-chip.danger strong {
-  color: var(--danger-color);
+  color: var(--color-danger);
 }
 
 .risk-slider-stats-foot {
@@ -609,13 +609,13 @@
   display: block;
   font-size: 0.68rem;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   margin-bottom: 0.1rem;
 }
 
 .risk-slider-foot-item strong {
   font-size: 0.84rem;
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 .risk-filter-panel-body {
@@ -663,7 +663,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   margin-bottom: 0.3rem;
 }
 

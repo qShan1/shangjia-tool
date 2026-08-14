@@ -1,6 +1,6 @@
 /* 关键词管理现代化样式 */
 .keyword-container {
-  background: white;
+  background: var(--color-bg-surface);
   border-radius: 16px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   overflow: hidden;
@@ -8,7 +8,7 @@
 }
 
 .keyword-header {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+  background: linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-hover) 100%);
   color: white;
   padding: 1.5rem 2rem;
   display: flex;
@@ -77,7 +77,7 @@
   border-radius: 12px;
   font-size: 0.875rem;
   transition: all 0.3s ease;
-  background: white;
+  background: var(--color-bg-input);
 }
 
 .input-field input:focus, .input-field select:focus, .input-field textarea:focus {
@@ -146,7 +146,7 @@
 }
 
 .keyword-item {
-  background: white;
+  background: var(--color-bg-surface);
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   margin-bottom: 1rem;
@@ -170,7 +170,7 @@
 }
 
 .keyword-tag {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+  background: linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-hover) 100%);
   color: white;
   padding: 0.5rem 1rem;
   border-radius: 20px;
@@ -234,7 +234,7 @@
 }
 
 .reply-text {
-  color: #374151;
+  color: var(--color-text);
   line-height: 1.6;
   margin: 0;
   font-size: 0.875rem;
@@ -254,7 +254,7 @@
 
 .empty-state h3 {
   margin: 0 0 0.5rem;
-  color: #374151;
+  color: var(--color-text);
 }
 
 .empty-state p {
@@ -263,7 +263,7 @@
 }
 
 .quick-add-btn {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+  background: linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-hover) 100%);
   color: white;
   border: none;
   border-radius: 12px;
@@ -280,7 +280,7 @@
 
 /* 账号选择器现代化 */
 .account-selector {
-  background: white;
+  background: var(--color-bg-surface);
   border-radius: 16px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 2rem;
@@ -297,7 +297,7 @@
 .selector-icon {
   width: 48px;
   height: 48px;
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+  background: linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-hover) 100%);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -328,7 +328,7 @@
   border: 2px solid #e5e7eb;
   border-radius: 12px;
   font-size: 1rem;
-  background: white;
+  background: var(--color-bg-input);
   cursor: pointer;
   transition: all 0.3s ease;
 }
@@ -617,7 +617,7 @@
    【关键词分组显示】新样式
    ================================ */
 .keyword-group-item {
-  background: white;
+  background: var(--color-bg-surface);
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   margin-bottom: 1.5rem;
@@ -644,7 +644,7 @@
   align-items: center;
   gap: 0.75rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-text);
 }
 
 .keyword-count-badge {
@@ -669,7 +669,7 @@
 }
 
 .reply-text-content {
-  color: #374151;
+  color: var(--color-text);
   font-weight: 500;
 }
 
@@ -795,8 +795,8 @@
   line-height: 1.5;
   resize: vertical;
   min-height: 60px;
-  background: white;
-  color: #374151;
+  background: var(--color-bg-input);
+  color: var(--color-text);
   transition: border-color 0.2s ease;
 }
 
@@ -846,26 +846,26 @@
    暗色模式适配 - 关键词管理
    ================================ */
 [data-theme="dark"] .keyword-container {
-  background: var(--card-bg);
+  background: var(--color-bg-surface);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
 [data-theme="dark"] .keyword-input-area {
-  background: var(--bg-secondary);
-  border-bottom-color: var(--border-color);
+  background: var(--color-bg-muted);
+  border-bottom-color: var(--color-border);
 }
 
 [data-theme="dark"] .input-field label {
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
 }
 
 [data-theme="dark"] .input-field input,
 [data-theme="dark"] .input-field select,
 [data-theme="dark"] .input-field textarea {
-  background: var(--input-bg);
-  border-color: var(--input-border);
-  color: var(--text-color);
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
 }
 
 [data-theme="dark"] .input-field input:focus,
@@ -877,16 +877,16 @@
 
 [data-theme="dark"] .input-field input::placeholder,
 [data-theme="dark"] .input-field textarea::placeholder {
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 [data-theme="dark"] .input-field select[multiple] option {
-  background: var(--input-bg);
-  color: var(--text-color);
+  background: var(--color-bg-input);
+  color: var(--color-text);
 }
 
 [data-theme="dark"] .input-field select[multiple] option:hover {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-bg-muted);
 }
 
 [data-theme="dark"] .input-field select[multiple] option:checked {
@@ -896,36 +896,28 @@
 
 /* 暗色 - 关键词列表 */
 [data-theme="dark"] .keyword-item {
-  background: var(--card-bg);
-  border-color: var(--border-color);
+  background: var(--color-bg-surface);
+  border-color: var(--color-border);
 }
 
 [data-theme="dark"] .keyword-item-header {
-  background: var(--bg-secondary);
-  border-bottom-color: var(--border-color);
+  background: var(--color-bg-muted);
+  border-bottom-color: var(--color-border);
 }
 
 [data-theme="dark"] .keyword-content {
-  background: var(--card-bg);
-}
-
-[data-theme="dark"] .reply-text {
-  color: var(--text-color);
+  background: var(--color-bg-surface);
 }
 
 /* 暗色 - 关键词分组 */
 [data-theme="dark"] .keyword-group-item {
-  background: var(--card-bg);
-  border-color: var(--border-color);
+  background: var(--color-bg-surface);
+  border-color: var(--color-border);
 }
 
 [data-theme="dark"] .keyword-group-header {
-  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--input-bg) 100%);
-  border-bottom-color: var(--border-color);
-}
-
-[data-theme="dark"] .keyword-group-title {
-  color: var(--text-color);
+  background: linear-gradient(135deg, var(--color-bg-muted) 0%, var(--color-bg-input) 100%);
+  border-bottom-color: var(--color-border);
 }
 
 [data-theme="dark"] .keyword-group-reply {
@@ -937,16 +929,12 @@
   color: #fcd34d;
 }
 
-[data-theme="dark"] .reply-text-content {
-  color: var(--text-color);
-}
-
 [data-theme="dark"] .keyword-group-content {
-  background: var(--card-bg);
+  background: var(--color-bg-surface);
 }
 
 [data-theme="dark"] .section-title {
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 /* 暗色 - Chips */
@@ -978,12 +966,12 @@
 
 /* 暗色 - 操作按钮 */
 [data-theme="dark"] .edit-btn {
-  background: var(--input-bg);
-  color: var(--text-color);
+  background: var(--color-bg-input);
+  color: var(--color-text);
 }
 
 [data-theme="dark"] .edit-btn:hover {
-  background: var(--border-color);
+  background: var(--color-border);
 }
 
 [data-theme="dark"] .delete-btn {
@@ -998,31 +986,31 @@
 
 /* 暗色 - 空状态 */
 [data-theme="dark"] .empty-state {
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 [data-theme="dark"] .empty-state h3 {
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 /* 暗色 - 账号选择器 */
 [data-theme="dark"] .account-selector {
-  background: var(--card-bg);
+  background: var(--color-bg-surface);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 [data-theme="dark"] .selector-title {
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 [data-theme="dark"] .selector-subtitle {
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 [data-theme="dark"] .account-select {
-  background: var(--input-bg);
-  border-color: var(--input-border);
-  color: var(--text-color);
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
 }
 
 [data-theme="dark"] .account-select:focus {
@@ -1032,12 +1020,12 @@
 
 /* 暗色 - 图片预览 */
 [data-theme="dark"] .preview-container {
-  background-color: var(--bg-secondary);
-  border-color: var(--border-color);
+  background-color: var(--color-bg-muted);
+  border-color: var(--color-border);
 }
 
 [data-theme="dark"] .keyword-image-preview {
-  border-color: var(--border-color);
+  border-color: var(--color-border);
 }
 
 [data-theme="dark"] .keyword-image-preview:hover {
@@ -1057,20 +1045,14 @@
 
 /* 暗色 - 回复编辑 */
 [data-theme="dark"] .reply-edit-btn {
-  border-color: var(--border-color);
-  color: var(--text-secondary);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
 }
 
 [data-theme="dark"] .reply-edit-btn:hover {
-  background: var(--input-bg);
-  color: var(--text-color);
-  border-color: var(--text-secondary);
-}
-
-[data-theme="dark"] .reply-edit-textarea {
-  background: var(--input-bg);
-  border-color: #667eea;
-  color: var(--text-color);
+  background: var(--color-bg-input);
+  color: var(--color-text);
+  border-color: var(--color-text-secondary);
 }
 
 [data-theme="dark"] .reply-edit-textarea:focus {
@@ -1079,21 +1061,21 @@
 }
 
 [data-theme="dark"] .reply-cancel-btn {
-  background: var(--input-bg);
-  color: var(--text-secondary);
+  background: var(--color-bg-input);
+  color: var(--color-text-secondary);
 }
 
 [data-theme="dark"] .reply-cancel-btn:hover {
-  background: var(--border-color);
-  color: var(--text-color);
+  background: var(--color-border);
+  color: var(--color-text);
 }
 
 /* 暗色 - Modal 内关键词样式 */
 [data-theme="dark"] .modal .input-field input,
 [data-theme="dark"] .modal .input-field textarea {
-  background: var(--input-bg);
-  border-color: var(--input-border);
-  color: var(--text-color);
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
 }
 
 /* 响应式调整 */

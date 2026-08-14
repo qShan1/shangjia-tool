@@ -27,6 +27,11 @@ _TRAY_ICON = None
 _WINDOW = None
 _DIALOG_EVENT = None
 _DIALOG_RESULT = None
+# 关闭流程防重入锁：pywebview 的 closing 事件在主线程同步回调，连续点标题栏 X
+# 会重复触发 allow_window_close；配合弹窗按钮的异步动作线程，可能在窗口 hide/destroy
+# 时产生竞态导致整个界面卡死。用该标志保证同一时间只有一个关闭动作在执行。
+_CLOSE_LOCK = threading.Lock()
+_CLOSE_ACTIVE = False
 # 更新清单：从 GitHub 仓库 raw 文件读取，raw 直链不受 API 限流（避免 GitHub API 403 rate limit）。
 UPDATE_MANIFEST_URL = os.environ.get(
     "SHANGJIA_UPDATE_MANIFEST_URL",
@@ -175,11 +180,21 @@ class _DesktopApi:
                         minimize_to_tray(_WINDOW)
                     elif choice == "exit":
                         request_exit(_WINDOW)
+                    elif choice == "cancel":
+                        # 用户点了弹窗右上角 ✕ 或背景：仅关闭弹窗，不执行任何关闭动作。
+                        pass
                 except Exception as error:
                     with desktop_log_path().open("a", encoding="utf-8") as output:
                         output.write(f"resolve_desktop_dialog action failed: {error}\n")
+                finally:
+                    # 动作结束后释放关闭防重入锁，确保后续再次点关闭仍可正常弹窗。
+                    global _CLOSE_ACTIVE
+                    _CLOSE_ACTIVE = False
 
             threading.Thread(target=_act, name="shangjia-dialog-action", daemon=True).start()
+        else:
+            global _CLOSE_ACTIVE
+            _CLOSE_ACTIVE = False
         return {"success": True}
 
 
@@ -719,7 +734,7 @@ def desktop_remember_close_choice():
     return desktop_settings().get("remember_close_choice", False) is not False
 
 
-def _desktop_dialog_script(title, message, buttons, remember_label=None):
+def _desktop_dialog_script(title, message, buttons, remember_label=None, dismissable=True):
     payload = json.dumps({"title": title, "message": message, "buttons": buttons}, ensure_ascii=False)
     remember = json.dumps(remember_label, ensure_ascii=False)
     return f"""(() => {{
@@ -727,24 +742,33 @@ def _desktop_dialog_script(title, message, buttons, remember_label=None):
         document.getElementById('__desktopDialog')?.remove();
         const root = document.createElement('div');
         root.id = '__desktopDialog';
-        root.innerHTML = `<div class=\"desktop-dialog-backdrop\"><div class=\"desktop-dialog-card\" role=\"dialog\" aria-modal=\"true\"><div class=\"desktop-dialog-mark\">上架</div><h3></h3><p></p><div class=\"desktop-dialog-actions\"></div></div></div>`;
+        root.innerHTML = `<div class=\"desktop-dialog-backdrop\"><div class=\"desktop-dialog-card\" role=\"dialog\" aria-modal=\"true\"><button type=\"button\" class=\"desktop-dialog-close\" aria-label=\"关闭\" data-dismiss>✕</button><div class=\"desktop-dialog-head\"><div class=\"desktop-dialog-mark\">上架</div><h3 class=\"desktop-dialog-title\"></h3></div><p></p><div class=\"desktop-dialog-actions\"></div></div></div>`;
         const card = root.querySelector('.desktop-dialog-card');
-        card.querySelector('h3').textContent = data.title;
-        card.querySelector('p').textContent = data.message;
+        card.querySelector('.desktop-dialog-title').textContent = data.title;
+        card.querySelector('.desktop-dialog-card p').textContent = data.message;
         const actions = card.querySelector('.desktop-dialog-actions');
         const rememberEl = {remember};
         let rememberChecked = false;
+        const close = (value) => {{
+            const send = rememberEl ? JSON.stringify({{value, remember: rememberChecked}}) : value;
+            window.pywebview?.api?.resolve_desktop_dialog(send);
+            root.remove();
+        }};
+        const dismissEl = {str(dismissable).lower()};
+        card.querySelector('[data-dismiss]')?.addEventListener('click', () => {{
+            if (dismissEl) close('cancel');
+        }});
+        if (dismissEl) {{
+            root.querySelector('.desktop-dialog-backdrop').addEventListener('click', (ev) => {{
+                if (ev.target === ev.currentTarget) close('cancel');
+            }});
+        }}
         data.buttons.forEach(item => {{
             const button = document.createElement('button');
             button.type = 'button';
             button.textContent = item.label;
             button.className = item.primary ? 'desktop-dialog-primary' : 'desktop-dialog-secondary';
-            button.onclick = () => {{
-                const value = item.value;
-                const send = rememberEl ? JSON.stringify({{value, remember: rememberChecked}}) : value;
-                window.pywebview?.api?.resolve_desktop_dialog(send);
-                root.remove();
-            }};
+            button.onclick = () => close(item.value);
             actions.appendChild(button);
         }});
         if (rememberEl) {{
@@ -759,7 +783,7 @@ def _desktop_dialog_script(title, message, buttons, remember_label=None):
             actions.insertBefore(row, actions.firstChild);
         }}
         document.body.appendChild(root);
-        card.querySelector('button')?.focus();
+        card.querySelector('button:not(.desktop-dialog-close)')?.focus();
     }})()"""
 
 
@@ -854,6 +878,7 @@ def _prompt_close_choice():
 
 def allow_window_close():
     """标题栏关闭按钮 → 依据配置：弹窗选择 / 最小化托盘 / 直接退出。"""
+    global _CLOSE_ACTIVE
     if _EXIT_REQUESTED or _WINDOW is None:
         return True
     behavior = desktop_close_behavior()
@@ -863,25 +888,33 @@ def allow_window_close():
     if behavior == "tray":
         minimize_to_tray(_WINDOW)
         return False
-    # prompt：使用当前页面的玻璃弹窗，避免原生 MessageBox 与应用视觉割裂。
-    if _show_web_close_prompt(_WINDOW):
+    # 防重入：closing 事件可能被连续触发，避免重复弹窗/并发操作窗口导致卡死。
+    with _CLOSE_LOCK:
+        if _CLOSE_ACTIVE:
+            return False
+        _CLOSE_ACTIVE = True
+    try:
+        # prompt：使用当前页面的玻璃弹窗，避免原生 MessageBox 与应用视觉割裂。
+        if _show_web_close_prompt(_WINDOW):
+            return False
+        choice, remember = _prompt_close_choice()
+        if remember:
+            try:
+                settings = desktop_settings()
+                settings["close_behavior"] = choice
+                settings["remember_close_choice"] = True
+                desktop_settings_path().parent.mkdir(parents=True, exist_ok=True)
+                desktop_settings_path().write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
+            except Exception as error:
+                with desktop_log_path().open("a", encoding="utf-8") as output:
+                    output.write(f"Persist close choice failed: {error}\n")
+        if choice == "exit":
+            request_exit(_WINDOW)
+            return True
+        minimize_to_tray(_WINDOW)
         return False
-    choice, remember = _prompt_close_choice()
-    if remember:
-        try:
-            settings = desktop_settings()
-            settings["close_behavior"] = choice
-            settings["remember_close_choice"] = True
-            desktop_settings_path().parent.mkdir(parents=True, exist_ok=True)
-            desktop_settings_path().write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
-        except Exception as error:
-            with desktop_log_path().open("a", encoding="utf-8") as output:
-                output.write(f"Persist close choice failed: {error}\n")
-    if choice == "exit":
-        request_exit(_WINDOW)
-        return True
-    minimize_to_tray(_WINDOW)
-    return False
+    finally:
+        _CLOSE_ACTIVE = False
 
 def migrate_runtime_data():
     """Copy legacy runtime folders once; never remove or overwrite source data."""

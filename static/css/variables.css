@@ -1,6 +1,69 @@
-/* ================================
-   全局变量和基础样式
+﻿/* ================================
+   鍏ㄥ眬鍙橀噺鍜屽熀纭€鏍峰紡
    ================================ */
+
+/* ------------------------------------------------------------------
+   Ant Design 涓夊眰 Token 涔?Alias 灞傦紙涓氬姟/缁勪欢鏈€缁堝紩鐢級
+   瑙勮寖瑙?E:\Agent\OpenCode\XianyyuShangjia\DESIGN_TOKENS.md
+   涓氬姟绫诲彧寮曠敤 var(--color-*)锛涙敼涓婚鍙敼鏈眰浜?鏆椾袱濂楀€笺€?   鍙栧€煎熀鍑嗭細浜壊椤甸潰搴?#e9edef锛坓lass-theme 鐢熸晥锛夛紝鏆楄壊 #0f172a锛坴ariables 鐢熸晥锛夈€?   ------------------------------------------------------------------ */
+:root {
+  /* 鍝佺墝鑹?*/
+  --color-brand: #0a7c66;
+  --color-brand-hover: #076a58;
+  --color-brand-bg: #dff6ef;
+  /* 璇箟鑹?*/
+  --color-success: #34c759;
+  --color-danger: #ff3b30;
+  --color-warning: #ff9f0a;
+  /* 鑳屾櫙 */
+  --color-bg-canvas: #e9edef;
+  --color-bg-surface: rgba(255, 255, 255, 0.92);
+  --color-bg-elevated: #ffffff;
+  --color-bg-input: rgba(255, 255, 255, 0.72);
+  --color-bg-muted: rgba(0, 0, 0, 0.02);
+  /* 鏂囧瓧 */
+  --color-text: #1d1d1f;
+  --color-text-secondary: #6e6e73;
+  /* 杈规 */
+  --color-border: rgba(60, 60, 67, 0.14);
+  --color-border-strong: rgba(60, 60, 67, 0.2);
+  /* 鍦嗚 / 闃村奖 */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 6px 18px rgba(15, 23, 42, 0.07), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 14px 36px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04);
+  /* 闂磋窛 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+}
+
+/* 鏆楄壊 token锛氬彧鍦ㄦ灞傚垏鎹紝涓氬姟绫讳笉鍐嶅啓 [data-theme="dark"] 纭紪鐮佽鐩?*/
+[data-theme="dark"] {
+  --color-brand: #34d399;
+  --color-brand-hover: #2dd4bf;
+  --color-brand-bg: rgba(16, 185, 129, 0.16);
+  --color-success: #4ade80;
+  --color-danger: #f87171;
+  --color-warning: #fbbf24;
+  --color-bg-canvas: #0f172a;
+  --color-bg-surface: #1e293b;
+  --color-bg-elevated: #1e293b;
+  --color-bg-input: #334155;
+  --color-bg-muted: rgba(255, 255, 255, 0.03);
+  --color-text: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-border: #334155;
+  --color-border-strong: #475569;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+}
+
 :root {
     --primary-color: #0a7c66;
     --primary-hover: #076a58;
@@ -16,7 +79,7 @@
     --shadow-md: 0 6px 18px rgba(15, 23, 42, 0.07), 0 1px 3px rgba(15, 23, 42, 0.04);
     --shadow-lg: 0 14px 36px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04);
 
-    /* 暗色模式变量 */
+    /* 鏆楄壊妯″紡鍙橀噺 */
     --bg-color: #f5f5f7;
     --bg-secondary: #ffffff;
     --text-color: #1d1d1f;
@@ -28,7 +91,7 @@
     --modal-bg: #ffffff;
   }
 
-  /* 暗色模式 */
+  /* 鏆楄壊妯″紡 */
   [data-theme="dark"] {
     --bg-color: #0f172a;
     --bg-secondary: #1e293b;
@@ -49,60 +112,60 @@
 
   body {
     font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: var(--bg-color);
-    color: var(--text-color);
+    background: var(--color-bg-canvas);
+    color: var(--color-text);
     min-height: 100vh;
     padding: 0;
     margin: 0;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
 
-  /* 暗色模式下的通用样式覆盖 */
+  /* 鏆楄壊妯″紡涓嬬殑閫氱敤鏍峰紡瑕嗙洊 */
   [data-theme="dark"] .card {
-    background: var(--card-bg);
-    border-color: var(--border-color);
+    background: var(--color-bg-surface);
+    border-color: var(--color-border);
   }
 
   [data-theme="dark"] .form-control,
   [data-theme="dark"] .form-select {
-    background-color: var(--input-bg);
-    border-color: var(--input-border);
-    color: var(--text-color);
+    background-color: var(--color-bg-input);
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .form-control:focus,
   [data-theme="dark"] .form-select:focus {
-    background-color: var(--input-bg);
-    border-color: var(--primary-color);
-    color: var(--text-color);
+    background-color: var(--color-bg-input);
+    border-color: var(--color-brand);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .form-control::placeholder {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
   }
 
   [data-theme="dark"] .table {
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .table > :not(caption) > * > * {
-    background-color: var(--card-bg);
-    border-color: var(--border-color);
-    color: var(--text-color);
+    background-color: var(--color-bg-surface);
+    border-color: var(--color-border);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > * {
-    background-color: var(--table-stripe);
+    background-color: var(--color-bg-muted);
   }
 
   [data-theme="dark"] .modal-content {
-    background-color: var(--modal-bg);
-    border-color: var(--border-color);
-    color: var(--text-color);
+    background-color: var(--color-bg-elevated);
+    border-color: var(--color-border);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .modal-header {
-    border-color: var(--border-color);
+    border-color: var(--color-border);
   }
 
   [data-theme="dark"] #ai-settings-section .ai-account-panel,
@@ -126,12 +189,12 @@
   }
 
   [data-theme="dark"] #ai-settings-section .ai-intro-title {
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] #ai-settings-section .ai-intro-text,
   [data-theme="dark"] #ai-settings-section .ai-footer-note {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
   }
 
   [data-theme="dark"] #ai-settings-section .ai-section-tag {
@@ -164,11 +227,11 @@
   [data-theme="dark"] #ai-settings-section .ai-test-result .alert {
     border-color: rgba(59, 130, 246, 0.4);
     background-color: rgba(30, 58, 138, 0.25);
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .modal-footer {
-    border-color: var(--border-color);
+    border-color: var(--color-border);
   }
 
   [data-theme="dark"] .btn-close {
@@ -176,109 +239,109 @@
   }
 
   [data-theme="dark"] .dropdown-menu {
-    background-color: var(--card-bg);
-    border-color: var(--border-color);
+    background-color: var(--color-bg-surface);
+    border-color: var(--color-border);
   }
 
   [data-theme="dark"] .dropdown-item {
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .dropdown-item:hover {
-    background-color: var(--input-bg);
+    background-color: var(--color-bg-input);
   }
 
   [data-theme="dark"] .list-group-item {
-    background-color: var(--card-bg);
-    border-color: var(--border-color);
-    color: var(--text-color);
+    background-color: var(--color-bg-surface);
+    border-color: var(--color-border);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .badge.bg-light {
-    background-color: var(--input-bg) !important;
-    color: var(--text-color) !important;
+    background-color: var(--color-bg-input) !important;
+    color: var(--color-text) !important;
   }
 
   [data-theme="dark"] .text-muted {
-    color: var(--text-secondary) !important;
+    color: var(--color-text-secondary) !important;
   }
 
   [data-theme="dark"] .border {
-    border-color: var(--border-color) !important;
+    border-color: var(--color-border) !important;
   }
 
   [data-theme="dark"] hr {
-    border-color: var(--border-color);
+    border-color: var(--color-border);
   }
 
   [data-theme="dark"] .bg-white {
-    background-color: var(--card-bg) !important;
+    background-color: var(--color-bg-surface) !important;
   }
 
   [data-theme="dark"] .bg-light {
-    background-color: var(--bg-secondary) !important;
+    background-color: var(--color-bg-muted) !important;
   }
 
-  /* 暗色模式下的主内容区域 */
+  /* 鏆楄壊妯″紡涓嬬殑涓诲唴瀹瑰尯鍩?*/
   [data-theme="dark"] .main-content {
-    background: var(--bg-color);
+    background: var(--color-bg-canvas);
   }
 
   [data-theme="dark"] .content-header {
-    background: var(--card-bg);
-    border-color: var(--border-color);
+    background: var(--color-bg-surface);
+    border-color: var(--color-border);
   }
 
-  /* 暗色模式下的统计卡片 */
+  /* 鏆楄壊妯″紡涓嬬殑缁熻鍗＄墖 */
   [data-theme="dark"] .stat-card {
-    background: var(--card-bg);
+    background: var(--color-bg-surface);
   }
 
-  /* 暗色模式下的输入框组 */
+  /* 鏆楄壊妯″紡涓嬬殑杈撳叆妗嗙粍 */
   [data-theme="dark"] .input-group-text {
-    background-color: var(--input-bg);
-    border-color: var(--input-border);
-    color: var(--text-color);
+    background-color: var(--color-bg-input);
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
   }
 
-  /* 暗色模式下的表单标签 */
+  /* 鏆楄壊妯″紡涓嬬殑琛ㄥ崟鏍囩 */
   [data-theme="dark"] .form-label,
   [data-theme="dark"] .form-check-label,
   [data-theme="dark"] .col-form-label {
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
-  /* 暗色模式下的卡片标题和文字 */
+  /* 鏆楄壊妯″紡涓嬬殑鍗＄墖鏍囬鍜屾枃瀛?*/
   [data-theme="dark"] .card-title,
   [data-theme="dark"] .card-text,
   [data-theme="dark"] .card-header,
   [data-theme="dark"] .card-body {
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
-  /* 暗色模式下的纯文本表单控件 */
+  /* 鏆楄壊妯″紡涓嬬殑绾枃鏈〃鍗曟帶浠?*/
   [data-theme="dark"] .form-control-plaintext {
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
-  /* 暗色模式下的表格表头 */
+  /* 鏆楄壊妯″紡涓嬬殑琛ㄦ牸琛ㄥご */
   [data-theme="dark"] .table th {
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
-  /* 暗色模式下的 Bootstrap 文字颜色类 */
+  /* 鏆楄壊妯″紡涓嬬殑 Bootstrap 鏂囧瓧棰滆壊绫?*/
   [data-theme="dark"] .text-dark {
-    color: var(--text-color) !important;
+    color: var(--color-text) !important;
   }
 
   [data-theme="dark"] .text-body {
-    color: var(--text-color) !important;
+    color: var(--color-text) !important;
   }
 
-  /* 暗色模式下的 alert 组件 */
+  /* 鏆楄壊妯″紡涓嬬殑 alert 缁勪欢 */
   [data-theme="dark"] .alert {
-    color: var(--text-color);
-    border-color: var(--border-color);
+    color: var(--color-text);
+    border-color: var(--color-border);
   }
 
   [data-theme="dark"] .alert-info {
@@ -305,7 +368,7 @@
     color: #6ee7b7;
   }
 
-  /* 暗色模式下的状态徽章 */
+  /* 鏆楄壊妯″紡涓嬬殑鐘舵€佸窘绔?*/
   [data-theme="dark"] .status-badge.enabled {
     background-color: rgba(16, 185, 129, 0.2);
     color: #6ee7b7;
@@ -316,75 +379,75 @@
     color: #fca5a5;
   }
 
-  /* 暗色模式下的空状态图标 */
+  /* 鏆楄壊妯″紡涓嬬殑绌虹姸鎬佸浘鏍?*/
   [data-theme="dark"] .empty-state i,
   [data-theme="dark"] .text-center i[style*="color: #ccc"] {
-    color: var(--text-secondary) !important;
+    color: var(--color-text-secondary) !important;
   }
 
-  /* 暗色模式下的标题和段落 */
+  /* 鏆楄壊妯″紡涓嬬殑鏍囬鍜屾钀?*/
   [data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3,
   [data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6 {
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] p {
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
-  /* 暗色模式下的小字和次要文字 */
+  /* 鏆楄壊妯″紡涓嬬殑灏忓瓧鍜屾瑕佹枃瀛?*/
   [data-theme="dark"] small,
   [data-theme="dark"] .small,
   [data-theme="dark"] .text-secondary {
-    color: var(--text-secondary) !important;
+    color: var(--color-text-secondary) !important;
   }
 
-  /* 暗色模式下的账号禁用状态 */
+  /* 鏆楄壊妯″紡涓嬬殑璐﹀彿绂佺敤鐘舵€?*/
   [data-theme="dark"] .account-row.disabled {
     background-color: rgba(0, 0, 0, 0.2);
   }
 
-  /* 暗色模式下的 Cookie 值显示 */
+  /* 鏆楄壊妯″紡涓嬬殑 Cookie 鍊兼樉绀?*/
   [data-theme="dark"] .cookie-value {
-    background-color: var(--input-bg);
-    color: var(--text-color);
+    background-color: var(--color-bg-input);
+    color: var(--color-text);
   }
 
-  /* 暗色模式下的选择器标题 */
+  /* 鏆楄壊妯″紡涓嬬殑閫夋嫨鍣ㄦ爣棰?*/
   [data-theme="dark"] .selector-title,
   [data-theme="dark"] .selector-subtitle {
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
-  /* 暗色模式下的关键词管理 */
+  /* 鏆楄壊妯″紡涓嬬殑鍏抽敭璇嶇鐞?*/
   [data-theme="dark"] .keyword-container,
   [data-theme="dark"] .keyword-input-area {
-    background-color: var(--card-bg);
-    border-color: var(--border-color);
+    background-color: var(--color-bg-surface);
+    border-color: var(--color-border);
   }
 
   [data-theme="dark"] .keyword-group-title,
   [data-theme="dark"] .section-title,
   [data-theme="dark"] .reply-text,
   [data-theme="dark"] .reply-text-content {
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .empty-state,
   [data-theme="dark"] .empty-state h3 {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
   }
 
   [data-theme="dark"] .edit-btn {
-    background-color: var(--input-bg);
-    color: var(--text-color);
+    background-color: var(--color-bg-input);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .input-field label {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
   }
 
-  /* 内容区域的 nav-tabs 样式修复（覆盖侧边栏样式） */
+  /* 鍐呭鍖哄煙鐨?nav-tabs 鏍峰紡淇锛堣鐩栦晶杈规爮鏍峰紡锛?*/
   .content-body .nav-tabs .nav-link {
     color: #495057;
     background-color: transparent;
@@ -406,122 +469,122 @@
     border-color: #dee2e6 #dee2e6 #fff;
   }
 
-  /* 暗色模式下的 nav-tabs */
+  /* 鏆楄壊妯″紡涓嬬殑 nav-tabs */
   [data-theme="dark"] .nav-tabs {
-    border-color: var(--border-color);
+    border-color: var(--color-border);
   }
 
   [data-theme="dark"] .nav-tabs .nav-link,
   [data-theme="dark"] .content-body .nav-tabs .nav-link {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     background-color: transparent;
   }
 
   [data-theme="dark"] .nav-tabs .nav-link.active,
   [data-theme="dark"] .content-body .nav-tabs .nav-link.active {
-    background-color: var(--card-bg);
-    border-color: var(--border-color);
-    color: var(--text-color);
+    background-color: var(--color-bg-surface);
+    border-color: var(--color-border);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .nav-tabs .nav-link:hover,
   [data-theme="dark"] .content-body .nav-tabs .nav-link:hover {
-    border-color: var(--border-color);
-    color: var(--text-color);
+    border-color: var(--color-border);
+    color: var(--color-text);
   }
 
-  /* 暗色模式下的 tab-content */
+  /* 鏆楄壊妯″紡涓嬬殑 tab-content */
   [data-theme="dark"] .tab-content {
-    border-color: var(--border-color) !important;
-    background-color: var(--card-bg);
+    border-color: var(--color-border) !important;
+    background-color: var(--color-bg-surface);
   }
 
-  /* 暗色模式下的模板预览区域 */
+  /* 鏆楄壊妯″紡涓嬬殑妯℃澘棰勮鍖哄煙 */
   [data-theme="dark"] .bg-light {
-    background-color: var(--bg-color) !important;
-    color: var(--text-color);
+    background-color: var(--color-bg-canvas) !important;
+    color: var(--color-text);
   }
 
-  /* 暗色模式下的 accordion */
+  /* 鏆楄壊妯″紡涓嬬殑 accordion */
   [data-theme="dark"] .accordion-item {
-    background-color: var(--card-bg);
-    border-color: var(--border-color);
+    background-color: var(--color-bg-surface);
+    border-color: var(--color-border);
   }
 
   [data-theme="dark"] .accordion-button {
-    background-color: var(--card-bg);
-    color: var(--text-color);
+    background-color: var(--color-bg-surface);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .accordion-button:not(.collapsed) {
-    background-color: var(--input-bg);
-    color: var(--text-color);
+    background-color: var(--color-bg-input);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .accordion-body {
-    background-color: var(--card-bg);
-    color: var(--text-color);
+    background-color: var(--color-bg-surface);
+    color: var(--color-text);
   }
 
-  /* 暗色模式下的账号选择器 */
+  /* 鏆楄壊妯″紡涓嬬殑璐﹀彿閫夋嫨鍣?*/
   [data-theme="dark"] .account-selector {
-    background-color: var(--card-bg);
+    background-color: var(--color-bg-surface);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   }
 
   [data-theme="dark"] .account-select {
-    background-color: var(--input-bg);
-    border-color: var(--input-border);
-    color: var(--text-color);
+    background-color: var(--color-bg-input);
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .account-select:focus {
-    border-color: var(--primary-color);
+    border-color: var(--color-brand);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
   }
 
   [data-theme="dark"] .selector-title {
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .selector-subtitle {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
   }
 
   [data-theme="dark"] .account-select-wrapper select option {
-    background-color: var(--card-bg);
-    color: var(--text-color);
+    background-color: var(--color-bg-surface);
+    color: var(--color-text);
   }
 
-  /* 暗色模式下的表单帮助文字 */
+  /* 鏆楄壊妯″紡涓嬬殑琛ㄥ崟甯姪鏂囧瓧 */
   [data-theme="dark"] .form-text {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
   }
 
-  /* 暗色模式下的菜单管理列表 */
+  /* 鏆楄壊妯″紡涓嬬殑鑿滃崟绠＄悊鍒楄〃 */
   [data-theme="dark"] .menu-sort-item {
-    background-color: var(--input-bg);
-    border-color: var(--border-color);
-    color: var(--text-color);
+    background-color: var(--color-bg-input);
+    border-color: var(--color-border);
+    color: var(--color-text);
   }
 
   [data-theme="dark"] .menu-sort-item:hover {
-    background-color: var(--card-bg);
+    background-color: var(--color-bg-surface);
   }
 
   [data-theme="dark"] .menu-sort-item.dragging {
-    background-color: var(--bg-secondary);
+    background-color: var(--color-bg-muted);
   }
 
   [data-theme="dark"] .menu-sort-item .drag-handle {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
   }
 
   [data-theme="dark"] .menu-sort-item .menu-name {
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
-  /* 暗色模式下的全局滚动条（含页面主滚动条，data-theme 在 <html> 自身需自匹配前缀） */
+  /* 鏆楄壊妯″紡涓嬬殑鍏ㄥ眬婊氬姩鏉★紙鍚〉闈富婊氬姩鏉★紝data-theme 鍦?<html> 鑷韩闇€鑷尮閰嶅墠缂€锛?*/
   [data-theme="dark"] {
     scrollbar-color: #475569 #1e293b;
   }
@@ -558,7 +621,7 @@
     background: #1e293b;
   }
 
-  /* 亮色模式全局滚动条：细窄统一，避免回退到系统默认宽条导致视觉混乱 */
+  /* 浜壊妯″紡鍏ㄥ眬婊氬姩鏉★細缁嗙獎缁熶竴锛岄伩鍏嶅洖閫€鍒扮郴缁熼粯璁ゅ鏉″鑷磋瑙夋贩涔?*/
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;

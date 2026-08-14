@@ -691,6 +691,26 @@ function cancelCookieEdit(id) {
 
 // 切换账号启用/禁用状态
 async function toggleAccountStatus(accountId, enabled) {
+    if (enabled) {
+        // 启用前实时查询该账号运行态，避免使用仪表盘旧缓存导致"已恢复正常仍被风控标记拦截"。
+        try {
+            const liveResp = await fetch(`${apiBase}/cookies/${encodeURIComponent(accountId)}/runtime-status`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (liveResp.ok) {
+                const liveData = await liveResp.json();
+                const liveStatus = liveData?.runtime_status || {};
+                if (liveStatus.risk_protected) {
+                    const toggle = document.querySelector(`input[onchange*="${accountId}"]`);
+                    if (toggle) toggle.checked = false;
+                    showToast('账号处于平台风控保护中，请先恢复账号并导入新 Cookie 后再启用', 'warning');
+                    return;
+                }
+            }
+        } catch (e) {
+            // 查询失败不阻塞，回退到本地缓存判断
+        }
+    }
     const accountSnapshot = (dashboardData.accounts || []).find(
         account => String(account?.id || '') === String(accountId)
     );
