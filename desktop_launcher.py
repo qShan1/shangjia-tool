@@ -924,22 +924,49 @@ def service_ready():
 def loading_page() -> str:
     """返回内联加载页 HTML，在服务就绪前显示，避免开屏白等。
 
+    配色与设计对齐主应用（亮色玻璃风格，青色 primary）：
+    - 浅灰 canvas 背景 + 玻璃质感卡片
+    - 内联复刻 shangjia-mark.svg 的 logo（加载页是 NavigateToString 纯 HTML，
+      不能引用外部图片——pywebview 会把 data: URL 当本地路径交给内置 HTTP server
+      serve 导致 404，因此 logo/样式全部内联）
+    - 青色进度条动画，与主应用 app-splash 一致
+
     直接返回纯 HTML 字符串（create_window 的 html= 参数走 NavigateToString），
-    不要拼成 data: URL —— pywebview 会把 data: 当本地相对路径交给内置 HTTP server
-    serve，导致双击打开时先报 404（http://127.0.0.1:PORT/html%3E），几秒后才切到管理台。
+    不要拼成 data: URL。
     """
+    mark = (
+        "<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240' fill='none'>"
+        "<path d='M52 68H146L217 139L139 217L52 130V68Z' stroke='#0a7c66' stroke-width='17' stroke-linejoin='round'/>"
+        "<circle cx='92' cy='103' r='12' fill='#0a7c66'/>"
+        "<path d='M120 132H179M120 164H161' stroke='#0a7c66' stroke-width='15' stroke-linecap='round'/>"
+        "</svg>"
+    )
     return (
         "<!doctype html><html><head><meta charset='utf-8'>"
         "<style>"
         "html,body{height:100%;margin:0;display:flex;align-items:center;justify-content:center;"
-        "background:#0f172a;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;}"
-        ".box{text-align:center;}"
-        ".spinner{width:42px;height:42px;margin:0 auto 18px;border:4px solid rgba(148,163,184,.25);"
-        "border-top-color:#38bdf8;border-radius:50%;animation:spin .9s linear infinite;}"
-        "@keyframes spin{to{transform:rotate(360deg)}}"
-        "p{margin:0;font-size:14px;color:#94a3b8}"
+        "background:#e9edef;color:#1d1d1f;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;}"
+        "body{background-image:linear-gradient(135deg,rgba(71,85,105,.06),transparent 42%),"
+        "linear-gradient(315deg,rgba(148,163,184,.06),transparent 48%);}"
+        ".box{text-align:center;animation:in 300ms cubic-bezier(.22,1,.36,1) both;}"
+        "@keyframes in{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}"
+        ".logo{width:76px;height:76px;margin:0 auto 18px;border-radius:22px;display:flex;align-items:center;justify-content:center;"
+        "background:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,1);"
+        "box-shadow:0 14px 34px rgba(25,39,52,.18),inset 0 1px rgba(255,255,255,.95);"
+        "backdrop-filter:blur(24px) saturate(1.5);-webkit-backdrop-filter:blur(24px) saturate(1.5);}"
+        ".logo svg{width:46px;height:46px}"
+        ".title{font-size:20px;font-weight:700;letter-spacing:.02em;color:#1d1d1f}"
+        ".sub{margin-top:4px;font-size:10px;font-weight:600;letter-spacing:.22em;color:#6e6e73}"
+        ".bar{width:164px;height:4px;margin:22px auto 0;border-radius:999px;background:rgba(118,118,128,.18);overflow:hidden}"
+        ".bar span{display:block;width:40%;height:100%;border-radius:999px;"
+        "background:linear-gradient(90deg,#0a7c66,#5ecbb0);animation:slide 1.1s cubic-bezier(.22,1,.36,1) infinite}"
+        "@keyframes slide{0%{transform:translateX(-120%)}60%{transform:translateX(220%)}100%{transform:translateX(220%)}}"
+        ".tip{margin-top:20px;font-size:13px;color:#6e6e73}"
         "</style></head><body><div class='box'>"
-        "<div class='spinner'></div><p>正在启动本地服务，请稍候...</p>"
+        f"<div class='logo'>{mark}</div>"
+        "<div class='title'>上架工具</div><div class='sub'>SHANGJIA TOOL</div>"
+        "<div class='bar'><span></span></div>"
+        "<div class='tip'>正在启动本地服务，请稍候...</div>"
         "</div></body></html>"
     )
 
