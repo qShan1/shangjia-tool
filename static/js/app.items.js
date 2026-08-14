@@ -1404,7 +1404,16 @@ async function generateItemCopyWithAI() {
                     </div>
                 </div>`;
         }
-        showToast('AI 文案已生成，请复核', 'success');
+        // 生成成功后引导人工上传图片（AI 不生成图）
+        const publishImages = document.getElementById('publishImages');
+        const hasImages = publishImages && Array.from(publishImages.files || []).length > 0;
+        if (hasImages) {
+            showToast('AI 文案已生成，请复核后发布', 'success');
+        } else {
+            showToast('AI 文案已生成，请上传商品图片后发布', 'success');
+            const summaryEl = document.getElementById('publishImageSummary');
+            if (summaryEl) summaryEl.textContent = 'AI 文案已生成，请在此人工上传 1-9 张商品图片后发布。';
+        }
     } catch (error) {
         const msg = error.message || 'AI 撰写失败';
         showToast(msg, 'danger');
