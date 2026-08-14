@@ -11417,20 +11417,6 @@ Cookie数量: {cookie_count}
                 logger.error(f"更新消息过滤规则失败: {e}")
                 raise
 
-    def get_message_filter_rule(self, rule_id: int, user_id: int) -> Optional[Dict[str, Any]]:
-        """按 ID 查询消息过滤规则。"""
-        with self.lock:
-            cursor = self.conn.cursor()
-            try:
-                self._execute_sql(cursor, "SELECT * FROM xy_message_filter_rules WHERE id = ? AND user_id = ?", (rule_id, user_id))
-                row = cursor.fetchone()
-                if not row:
-                    return None
-                columns = [desc[0] for desc in cursor.description]
-                return self._message_filter_row_to_dict(row, columns)
-            except Exception as e:
-                logger.error(f"查询消息过滤规则失败: {e}")
-                return None
 
     def list_message_filter_rules(
         self,

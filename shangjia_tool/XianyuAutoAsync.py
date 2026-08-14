@@ -6980,19 +6980,6 @@ class XianyuLive:
             'account_switched': account_switched,
         }
 
-    def _merge_cookie_dicts(self, incoming_cookies_dict, existing_cookies_dict=None):
-        """兼容旧调用，返回保护性合并结果。"""
-        merge_result = self.protected_merge_cookie_dicts(
-            existing_cookies_dict if existing_cookies_dict is not None else trans_cookies(self.cookies_str),
-            incoming_cookies_dict,
-        )
-        return (
-            merge_result['existing_cookies_dict'],
-            merge_result['merged_cookies_dict'],
-            merge_result['updated_fields'],
-            merge_result['changed_fields'],
-            merge_result['new_fields'],
-        )
 
     def _log_protected_merge_event(self, event_name: str, merge_result: Dict[str, Any]):
         """输出受保护 Cookie 合并审计日志，便于定位快照覆盖问题。"""
