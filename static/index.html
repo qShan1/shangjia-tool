@@ -3881,16 +3881,12 @@
                   </div>
                   <div class="chat-messages-area" id="chatMessagesArea"></div>
                   <div class="chat-input-area border-top p-2">
-                    <div class="chat-assistant-bar d-flex align-items-center gap-2 px-1 pb-2" id="chatAssistantBar">
-                      <div class="form-check form-switch m-0 d-flex align-items-center gap-1">
-                        <input class="form-check-input" type="checkbox" id="chatAssistantSwitch" onchange="toggleChatAssistant()" title="AI 助手">
-                        <i class="bi bi-magic text-primary"></i>
-                      </div>
-                      <span class="small text-muted">AI 助手</span>
-                      <span class="small text-muted chat-assistant-state" id="chatAssistantState">关闭</span>
-                    </div>
-                    <div class="d-flex gap-2">
+                    <div id="chatAiSuggestions" class="chat-ai-suggestions" style="display:none;"></div>
+                    <div class="d-flex gap-2 align-items-end">
                       <textarea class="form-control form-control-sm" id="chatInputBox" rows="2" placeholder="输入消息... (Enter发送, Shift+Enter换行)" onkeydown="handleChatInputKeydown(event)"></textarea>
+                      <button type="button" class="btn btn-outline-primary btn-sm align-self-end" onclick="showChatAiSuggestions()" id="chatAiSuggestBtn" title="AI 建议：生成多条回复建议，点击填入，不自动发送" style="white-space:nowrap;">
+                        <i class="bi bi-magic me-1"></i>AI 建议
+                      </button>
                       <button class="btn btn-primary btn-sm align-self-end" onclick="sendChatMessage()" id="chatSendBtn" style="min-width: 60px;">发送</button>
                     </div>
                   </div>

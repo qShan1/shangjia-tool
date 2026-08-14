@@ -2633,3 +2633,23 @@ html.has-custom-background body {
     background: #1c1c1e !important;
   }
 }
+
+/* 聊天页 AI 建议区（手动按钮生成，点击填入，不自动发送） */
+.chat-ai-suggestions {
+  max-height: 180px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+  background: var(--lg-glass-1);
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+}
+.chat-ai-suggestion-list .chat-ai-suggestion-item {
+  text-align: left;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.5;
+  padding: 6px 10px;
+}
+.chat-ai-suggestion-item:hover {
+  border-color: var(--primary-color);
+}
