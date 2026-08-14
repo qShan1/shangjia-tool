@@ -2735,9 +2735,13 @@ class XianyuLive:
         incoming_buyer_is_trustworthy = self._is_trustworthy_buyer_id(incoming_buyer_id)
         source_label = buyer_id_source or 'unknown'
 
-        if incoming_buyer_id and incoming_buyer_id == self.myid:
+        # 本账号ID统一规范化后比较：unb 可能带 @goofish/空格等，与消息/接口里的 buyer_id
+        # 格式不一致会导致"我是买家"的买单漏判、被误写入订单表。
+        normalized_self_id = self._normalize_buyer_id_value(self.myid)
+
+        if incoming_buyer_id and normalized_self_id and incoming_buyer_id == normalized_self_id:
             if existing_order:
-                preserved_buyer_id = existing_buyer_id if existing_buyer_id and existing_buyer_id != self.myid else None
+                preserved_buyer_id = existing_buyer_id if existing_buyer_id and existing_buyer_id != normalized_self_id else None
                 if existing_buyer_nick:
                     incoming_buyer_nick = existing_buyer_nick
                 logger.info(
@@ -2782,7 +2786,7 @@ class XianyuLive:
                 f"order_id={order_id}, incoming_buyer_id={incoming_buyer_id}, incoming_source={source_label}"
             )
 
-        fallback_buyer_id = existing_buyer_id if existing_buyer_id and existing_buyer_id != self.myid else None
+        fallback_buyer_id = existing_buyer_id if existing_buyer_id and existing_buyer_id != normalized_self_id else None
         return fallback_buyer_id, incoming_buyer_nick or existing_buyer_nick, False
 
     def _extract_order_message_context(self, message: dict, msg_id: str = None) -> Dict[str, Any]:
@@ -9947,7 +9951,10 @@ class XianyuLive:
                 or ''
             ).strip()
             if seller_id:
-                owned = seller_id == str(self.myid)
+                # 双方统一规范化（去 @goofish/空格）后比较，避免 ID 格式差异导致买卖身份误判
+                normalized_seller_id = self._normalize_buyer_id_value(seller_id)
+                normalized_self_id = self._normalize_buyer_id_value(self.myid)
+                owned = bool(normalized_seller_id and normalized_self_id and normalized_seller_id == normalized_self_id)
                 cache[item_id] = owned
                 if not owned:
                     logger.info(
