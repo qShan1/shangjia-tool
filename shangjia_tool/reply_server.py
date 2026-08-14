@@ -6854,10 +6854,16 @@ async def _execute_password_login(session_id: str, account_id: str, account: str
                 )
                 
                 if update_success:
-                    # A successful password login/refresh with token preflight proves the
-                    # replacement credentials are usable; release the old risk lock while
-                    # keeping the account disabled until the user explicitly enables it.
+                    # 手动账号密码登录成功 = 拿到可用凭证。应恢复账号到可用状态：
+                    # 1) 清除历史风控/连续失败 status_note；2) 重新启用账号；3) 启动任务。
+                    # 否则账号会一直停留在"连续失败/滑块失败"保护后的禁用态，前端仍显示风控不可用。
                     db_manager.update_cookie_status_note(account_id, '')
+                    db_manager.save_cookie_status(account_id, True)
+                    try:
+                        if cookie_manager.manager:
+                            cookie_manager.manager.cookie_status[account_id] = True
+                    except Exception:
+                        pass
                     if is_new_account:
                         log_with_user('info', f"新账号Cookie和账号密码已保存: {account_id}", current_user)
                     else:
