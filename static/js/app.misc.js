@@ -3069,15 +3069,39 @@ function appendChatMessage(message) {
     area.scrollTop = area.scrollHeight;
 }
 
-function handleChatInputKeydown(event) {
-    if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        sendChatMessage();
-    }
-}
+ function handleChatInputKeydown(event) {
+     if (event.key === 'Enter' && !event.shiftKey) {
+         event.preventDefault();
+         sendChatMessage();
+     }
+ }
 
-function initChatSSE() {
-    if (chatSseAbortController) {
+ // 人工正在输入时上报后端，AI 回复待机不自动发送（防抖，避免高频请求）
+ let _chatTypingTimer = null;
+ function reportChatTyping() {
+     if (!chatCurrentChatId) return;
+     if (_chatTypingTimer) clearTimeout(_chatTypingTimer);
+     _chatTypingTimer = setTimeout(() => {
+         fetch(`${apiBase}/api/chat/typing`, {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+             body: JSON.stringify({ chat_id: chatCurrentChatId })
+         }).catch(() => {});
+     }, 300);
+ }
+
+ function initChatTypingReporter() {
+     const input = document.getElementById('chatInputBox');
+     if (input && !input.dataset.typingBound) {
+         input.dataset.typingBound = '1';
+         input.addEventListener('input', reportChatTyping);
+         input.addEventListener('keydown', reportChatTyping);
+     }
+ }
+
+ function initChatSSE() {
+     initChatTypingReporter();
+     if (chatSseAbortController) {
         chatSseAbortController.abort();
         chatSseAbortController = null;
     }

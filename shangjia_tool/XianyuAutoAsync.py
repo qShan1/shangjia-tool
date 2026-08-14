@@ -102,6 +102,32 @@ async def _start_playwright_safe(cookie_id: str = "default"):
 _BROWSER_MAX_CONCURRENT = 2
 _BROWSER_SEMAPHORE = asyncio.Semaphore(_BROWSER_MAX_CONCURRENT)
 
+# 会话"人工正在输入"状态：chat_id -> 最近输入时间戳。
+# 用户在聊天页输入框打字时前端上报，AI 自动回复检测到后暂停（待机），避免与人工输入冲突。
+# ponytail: 全局单字典；多账号并发量大时可改按 cookie 分片，当前规模足够。
+_MANUAL_TYPING: Dict[str, float] = {}
+_MANUAL_TYPING_TTL_SECONDS = 30
+
+
+def mark_chat_manual_typing(chat_id: str) -> None:
+    """标记某会话当前有人工正在输入，AI 回复应暂停。"""
+    if chat_id:
+        _MANUAL_TYPING[str(chat_id)] = time.time()
+
+
+def is_chat_manual_typing(chat_id: str) -> bool:
+    """检查某会话最近是否有人工输入（TTL 内），用于 AI 回复跳过。"""
+    if not chat_id:
+        return False
+    ts = _MANUAL_TYPING.get(str(chat_id))
+    if ts is None:
+        return False
+    if time.time() - ts > _MANUAL_TYPING_TTL_SECONDS:
+        _MANUAL_TYPING.pop(str(chat_id), None)
+        return False
+    return True
+
+
 
 def _force_kill_chromium(pid=None):
     """Windows 兜底强杀 chromium 进程树，playwright.stop() 超时后用 taskkill /T /F 释放残留进程。
@@ -10417,6 +10443,11 @@ class XianyuLive:
                 action='AI回复',
                 log_delivery=False,
             ):
+                return None
+
+            # 人工正在输入时 AI 待机：用户在聊天页输入框打字时，AI 不自动回复，避免与人工冲突
+            if is_chat_manual_typing(chat_id):
+                logger.info(f"【{self.cookie_id}】会话 {chat_id} 有人工正在输入，AI 回复待机")
                 return None
 
             from ai_reply_engine import ai_reply_engine

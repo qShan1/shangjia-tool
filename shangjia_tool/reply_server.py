@@ -16325,6 +16325,21 @@ async def get_chat_messages(
         raise HTTPException(status_code=500, detail="获取聊天消息失败")
 
 
+@app.post('/api/chat/typing')
+def chat_mark_typing(req: dict, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """标记某会话人工正在输入（聊天框打字时上报），AI 回复将待机不自动发送。"""
+    try:
+        chat_id = str((req or {}).get('chat_id') or '').strip()
+        if not chat_id:
+            return {'success': False, 'message': '缺少 chat_id'}
+        from XianyuAutoAsync import mark_chat_manual_typing
+        mark_chat_manual_typing(chat_id)
+        return {'success': True}
+    except Exception as e:
+        logger.error(f"标记会话人工输入失败: {mask_sensitive_text(e)}")
+        return {'success': False, 'message': '标记失败'}
+
+
 @app.post('/api/chat/send')
 async def chat_send_message(
     req: ChatSendRequest,
