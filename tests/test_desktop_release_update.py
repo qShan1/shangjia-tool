@@ -19,12 +19,11 @@ def test_release_update_uses_newer_windows_archive(tmp_path):
     launcher = load_launcher()
     launcher.DATA_ROOT = tmp_path
     payload = {
-        "tag_name": "v2.1.4",
-        "assets": [{
-            "name": "ShangjiaTool-v2.1.4-windows-x64.zip",
-            "browser_download_url": "https://example.invalid/update.zip",
-            "digest": "sha256:abc",
-        }],
+        "latest": "v2.1.4",
+        "name": "ShangjiaTool-v2.1.4-windows-x64.zip",
+        "zip_url": "https://example.invalid/ShangjiaTool-v2.1.4-windows-x64.zip",
+        "digest": "sha256:abc",
+        "force": False,
     }
 
     class Response:
