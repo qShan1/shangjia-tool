@@ -333,10 +333,6 @@ class CookieManager:
         """获取Cookie的启用状态"""
         return self.cookie_status.get(cookie_id, True)  # 默认启用
 
-    def get_enabled_cookies(self) -> Dict[str, str]:
-        """获取所有启用的Cookie"""
-        return {cid: value for cid, value in self.cookies.items()
-                if self.cookie_status.get(cid, True)}
 
     def get_xianyu_instance(self, cookie_id: str):
         """获取指定Cookie的XianyuLive实例（如果正在运行）"""
@@ -437,9 +433,6 @@ class CookieManager:
         except Exception as e:
             logger.error(f"更新自动确认发货设置失败: {cookie_id}, {e}")
 
-    def get_auto_confirm_setting(self, cookie_id: str) -> bool:
-        """获取账号的自动确认发货设置"""
-        return self.auto_confirm_settings.get(cookie_id, True)  # 默认开启
 
 
 # 在 Start.py 中会把此变量赋值为具体实例

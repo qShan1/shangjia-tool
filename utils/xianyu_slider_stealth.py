@@ -749,10 +749,6 @@ class SliderConcurrencyManager:
             self._initialized = True
             logger.info(f"滑块验证并发管理器初始化: 最大并发数={self.max_concurrent}, 等待超时={self.wait_timeout}秒")
     
-    def can_start_instance(self, user_id: str) -> bool:
-        """检查是否可以启动新实例"""
-        with self.instance_lock:
-            return self._can_start_locked(user_id)
 
     def _find_same_account_active_locked(self, user_id: str):
         """查找同账号的活跃实例，避免同账号并发滑块互相踩踏"""
@@ -1528,48 +1524,6 @@ class XianyuSliderStealth:
 
         return True
 
-    def _select_preferred_browser_profile(self, browser_profiles: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-        stable_profile = next(
-            (item for item in browser_profiles if item.get('window_size') == '1600,900'),
-            None,
-        )
-
-        # 无头滑块已经验证过 1600x900 更稳，别再让画像乱飘。
-        if self.headless and stable_profile:
-            return stable_profile
-
-        if self.risk_trigger_scene not in {'password_login', 'manual_password_refresh'}:
-            return None
-
-        history = self._load_success_history()
-        for record in reversed(history):
-            if not isinstance(record, dict) or not record.get("success"):
-                continue
-
-            verification_result = record.get("verification_result", {}) or {}
-            record_profile_id = str(
-                record.get("profile_id")
-                or verification_result.get("profile_id")
-                or ""
-            ).strip()
-            preferred_window_size = self._extract_profile_window_size(record_profile_id)
-            if not preferred_window_size:
-                continue
-
-            matched_profile = next(
-                (item for item in browser_profiles if item.get('window_size') == preferred_window_size),
-                None,
-            )
-            if matched_profile:
-                logger.info(
-                    f"【{self.pure_user_id}】密码登录优先复用成功画像: {record_profile_id}"
-                )
-                return matched_profile
-
-        if stable_profile:
-            logger.info(f"【{self.pure_user_id}】密码登录未命中成功画像，回退到 1600x900 稳定画像")
-            return stable_profile
-        return None
 
     def _update_current_result_meta(
         self,
@@ -3450,22 +3404,6 @@ class XianyuSliderStealth:
             logger.error(f"【{self.pure_user_id}】获取滑块验证成功后的cookie失败: {str(e)}")
             return None
     
-    def _save_cookies_to_file(self, cookies):
-        """保存cookie到文件"""
-        try:
-            # 确保目录存在
-            cookie_dir = f"slider_cookies/{self.user_id}"
-            os.makedirs(cookie_dir, exist_ok=True)
-
-            # 保存cookie到JSON文件
-            cookie_file = f"{cookie_dir}/cookies_{int(time.time())}.json"
-            with open(cookie_file, 'w', encoding='utf-8') as f:
-                json.dump(cookies, f, ensure_ascii=False, indent=2)
-
-            logger.info(f"【{self.pure_user_id}】Cookie已保存到文件: {cookie_file}")
-
-        except Exception as e:
-            logger.error(f"【{self.pure_user_id}】保存cookie到文件失败: {str(e)}")
 
     # 关键 Cookie 名称列表（用于判定"有意义的刷新"）
     _KEY_COOKIE_NAMES = {
@@ -4497,11 +4435,6 @@ class XianyuSliderStealth:
         except Exception:
             return ''
 
-    def _safe_page_title(self, page) -> str:
-        try:
-            return str(page.title() or '')
-        except Exception:
-            return ''
 
     def _get_context_pages(self, context=None, fallback_page=None) -> List[Any]:
         pages = []
@@ -5378,22 +5311,6 @@ class XianyuSliderStealth:
         finally:
             self.page = original_page
 
-    def _cleanup_verification_screenshots(self):
-        try:
-            import glob
-
-            screenshots_dir = 'static/uploads/images'
-            all_screenshots = glob.glob(os.path.join(screenshots_dir, f'face_verify_{self.pure_user_id}_*.jpg'))
-            all_screenshots += glob.glob(os.path.join(screenshots_dir, f'face_verify_{self.pure_user_id}_*.png'))
-            for screenshot_file in all_screenshots:
-                try:
-                    if os.path.exists(screenshot_file):
-                        os.remove(screenshot_file)
-                        logger.info(f"【{self.pure_user_id}】✅ 已删除验证截图: {screenshot_file}")
-                except Exception as e:
-                    logger.warning(f"【{self.pure_user_id}】⚠️ 删除截图失败: {e}")
-        except Exception as e:
-            logger.error(f"【{self.pure_user_id}】删除截图时出错: {e}")
 
     def _finalize_logged_in_cookies(
         self,
@@ -6461,22 +6378,7 @@ class XianyuSliderStealth:
             }};
         """
     
-    def _bezier_curve(self, p0, p1, p2, p3, t):
-        """三次贝塞尔曲线 - 生成更自然的轨迹"""
-        return (1-t)**3 * p0 + 3*(1-t)**2*t * p1 + 3*(1-t)*t**2 * p2 + t**3 * p3
     
-    def _easing_function(self, t, mode='easeOutQuad'):
-        """缓动函数 - 模拟真实人类滑动的速度变化"""
-        if mode == 'easeOutQuad':
-            return t * (2 - t)
-        elif mode == 'easeInOutCubic':
-            return 4*t**3 if t < 0.5 else 1 - pow(-2*t + 2, 3) / 2
-        elif mode == 'easeOutBack':
-            c1 = 1.70158
-            c3 = c1 + 1
-            return 1 + c3 * pow(t - 1, 3) + c1 * pow(t - 1, 2)
-        else:
-            return t
     
     def _build_client_hint_profile(self, browser_features: Dict[str, Any]) -> Dict[str, Any]:
         user_agent = str(browser_features.get("user_agent") or "")
@@ -6536,13 +6438,6 @@ class XianyuSliderStealth:
             "wow64": False,
         }
 
-    def _build_headless_extra_headers(self, browser_features: Dict[str, Any]) -> Dict[str, str]:
-        hints = self._build_client_hint_profile(browser_features)
-        return {
-            "sec-ch-ua": hints["secChUa"],
-            "sec-ch-ua-mobile": hints["secChUaMobile"],
-            "sec-ch-ua-platform": hints["secChUaPlatform"],
-        }
 
     def _apply_headless_network_fingerprint(self, page, browser_features: Dict[str, Any]):
         if not self.headless or not self.context or not page:
@@ -12613,20 +12508,6 @@ class XianyuSliderStealth:
         """
         import asyncio
 
-        def _run_in_thread():
-            """在独立线程中运行同步代码"""
-            import asyncio
-            # 确保线程中没有运行的事件循环
-            try:
-                loop = asyncio.get_running_loop()
-                # 如果有运行中的循环，创建新循环
-                asyncio.set_event_loop(asyncio.new_event_loop())
-            except RuntimeError:
-                # 没有运行中的循环，正常
-                pass
-
-            # 调用同步的 run 方法
-            return self.run(url)
 
         # 使用 asyncio.to_thread 在独立线程中运行
         return await self._run_sync_method_on_fresh_thread(self.run, url)
@@ -12673,9 +12554,6 @@ class XianyuSliderStealth:
         # 由于 async_run 现在调用同步的 run 方法，清理工作已经在 run 的 finally 中完成
         pass
 
-def get_slider_stats():
-    """获取滑块验证并发统计信息"""
-    return concurrency_manager.get_stats()
 
 if __name__ == "__main__":
     # 简单的命令行示例

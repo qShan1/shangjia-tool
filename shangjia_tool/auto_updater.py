@@ -171,9 +171,6 @@ class AutoUpdater:
             f"app_dir={self.app_dir}, repo={self.github_owner}/{self.github_repo}, version={self.current_version}"
         )
     
-    def add_progress_callback(self, callback: callable):
-        """添加进度回调"""
-        self._update_callbacks.append(callback)
     
     def _notify_progress(self):
         """通知进度更新"""

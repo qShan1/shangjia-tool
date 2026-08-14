@@ -102,11 +102,6 @@ class Config:
         except OSError:
             pass
 
-    @classmethod
-    def _read(cls, path: Path) -> Dict[str, Any]:
-        with open(path, 'r', encoding='utf-8') as f:
-            data = yaml.safe_load(f)
-        return data if isinstance(data, dict) else {}
 
     def _find_config_path(self) -> Path:
         bundled = self._runtime_base() / 'global_config.yml'

@@ -28,9 +28,6 @@ class SliderVerificationResult:
     x5_cookies: Dict[str, Any]
     message: str
 
-    def as_legacy_tuple(self) -> Tuple[bool, Optional[Dict[str, Any]]]:
-        """兼容旧调用方的 ``(success, cookies)`` 返回格式。"""
-        return self.success, self.cookies
 
 
 def _env_bool(name: str, default: bool = False) -> bool:

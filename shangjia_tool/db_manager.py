@@ -2358,12 +2358,6 @@ Cookie数量: {cookie_count}
             self.conn.close()
             self.conn = None
     
-    def get_connection(self):
-        """获取数据库连接，如果已关闭则重新连接"""
-        if self.conn is None:
-            self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
-        return self.conn
-
     def _log_sql(self, sql: str, params: tuple = None, operation: str = "EXECUTE"):
         """记录SQL执行日志"""
         if not self.sql_log_enabled:
@@ -2417,11 +2411,6 @@ Cookie数量: {cookie_count}
         else:
             return cursor.execute(sql)
 
-    def _executemany_sql(self, cursor, sql: str, params_list):
-        """批量执行SQL并记录日志"""
-        self._log_sql(sql, f"批量执行 {len(params_list)} 条记录", "EXECUTEMANY")
-        return cursor.executemany(sql, params_list)
-    
     def execute_query(self, sql: str, params: tuple = None):
         """执行查询并返回结果"""
         with self.lock:
@@ -6322,34 +6311,6 @@ Cookie数量: {cookie_count}
                 logger.error(f"恢复超时批量数据预占失败: {e}")
                 return 0
 
-    def peek_batch_data(self, card_id: int, line_index: int = 0):
-        """预览批量数据指定位置的记录，不执行消费。"""
-        with self.lock:
-            try:
-                cursor = self.conn.cursor()
-                self._execute_sql(cursor, "SELECT data_content FROM cards WHERE id = ? AND type = 'data'", (card_id,))
-                result = cursor.fetchone()
-
-                if not result or not result[0]:
-                    logger.warning(f"卡券 {card_id} 没有批量数据")
-                    return None
-
-                data_content = result[0]
-                lines = [line.strip() for line in data_content.split('\n') if line.strip()]
-                if not lines:
-                    logger.warning(f"卡券 {card_id} 批量数据为空")
-                    return None
-
-                if line_index < 0 or line_index >= len(lines):
-                    logger.warning(f"卡券 {card_id} 预览索引越界: index={line_index}, total={len(lines)}")
-                    return None
-
-                logger.info(f"预览批量数据成功: 卡券ID={card_id}, index={line_index}, 剩余={len(lines)}条")
-                return lines[line_index]
-            except Exception as e:
-                logger.error(f"预览批量数据失败: {e}")
-                return None
-
     def consume_specific_batch_data(self, card_id: int, expected_line: str):
         """仅当第一条记录与预期一致时消费批量数据，避免误删其他卡密。"""
         with self.lock:
@@ -6397,50 +6358,6 @@ Cookie数量: {cookie_count}
                 logger.error(f"消费指定批量数据失败: {e}")
                 self.conn.rollback()
                 return False
-
-    def consume_batch_data(self, card_id: int):
-        """消费批量数据的第一条记录（线程安全）"""
-        with self.lock:
-            try:
-                cursor = self.conn.cursor()
-
-                # 获取卡券的批量数据
-                self._execute_sql(cursor, "SELECT data_content FROM cards WHERE id = ? AND type = 'data'", (card_id,))
-                result = cursor.fetchone()
-
-                if not result or not result[0]:
-                    logger.warning(f"卡券 {card_id} 没有批量数据")
-                    return None
-
-                data_content = result[0]
-                lines = [line.strip() for line in data_content.split('\n') if line.strip()]
-
-                if not lines:
-                    logger.warning(f"卡券 {card_id} 批量数据为空")
-                    return None
-
-                # 获取第一条数据
-                first_line = lines[0]
-
-                # 移除第一条数据，更新数据库
-                remaining_lines = lines[1:]
-                new_data_content = '\n'.join(remaining_lines)
-
-                cursor.execute('''
-                UPDATE cards
-                SET data_content = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-                ''', (new_data_content, card_id))
-
-                self.conn.commit()
-
-                logger.info(f"消费批量数据成功: 卡券ID={card_id}, 剩余={len(remaining_lines)}条")
-                return first_line
-
-            except Exception as e:
-                logger.error(f"消费批量数据失败: {e}")
-                self.conn.rollback()
-                return None
 
     # ==================== 商品信息管理 ====================
 
@@ -6935,47 +6852,6 @@ Cookie数量: {cookie_count}
             self.conn.rollback()
             return False
 
-    def update_item_title_only(self, cookie_id: str, item_id: str, item_title: str) -> bool:
-        """仅更新商品标题（并发安全）
-
-        Args:
-            cookie_id: Cookie ID
-            item_id: 商品ID
-            item_title: 商品标题
-
-        Returns:
-            bool: 操作是否成功
-        """
-        try:
-            with self.lock:
-                cursor = self.conn.cursor()
-                # 使用 INSERT OR REPLACE 确保记录存在，但只更新标题字段
-                cursor.execute('''
-                INSERT INTO item_info (cookie_id, item_id, item_title, item_description,
-                                     item_category, item_price, item_detail, created_at, updated_at)
-                VALUES (?, ?, ?,
-                       COALESCE((SELECT item_description FROM item_info WHERE cookie_id = ? AND item_id = ?), ''),
-                       COALESCE((SELECT item_category FROM item_info WHERE cookie_id = ? AND item_id = ?), ''),
-                       COALESCE((SELECT item_price FROM item_info WHERE cookie_id = ? AND item_id = ?), ''),
-                       COALESCE((SELECT item_detail FROM item_info WHERE cookie_id = ? AND item_id = ?), ''),
-                       COALESCE((SELECT created_at FROM item_info WHERE cookie_id = ? AND item_id = ?), CURRENT_TIMESTAMP),
-                       CURRENT_TIMESTAMP)
-                ON CONFLICT(cookie_id, item_id) DO UPDATE SET
-                    item_title = excluded.item_title,
-                    updated_at = CURRENT_TIMESTAMP
-                ''', (cookie_id, item_id, item_title,
-                      cookie_id, item_id, cookie_id, item_id, cookie_id, item_id,
-                      cookie_id, item_id, cookie_id, item_id))
-
-                self.conn.commit()
-                logger.info(f"更新商品标题成功: {item_id} - {item_title}")
-                return True
-
-        except Exception as e:
-            logger.error(f"更新商品标题失败: {e}")
-            self.conn.rollback()
-            return False
-
     def batch_save_item_basic_info(self, items_data: list) -> int:
         """批量保存商品基本信息（并发安全）
 
@@ -7412,21 +7288,6 @@ Cookie数量: {cookie_count}
                 logger.error(f"获取卡密列表失败: {e}")
                 return []
 
-    def get_activation_code_by_code(self, code: str):
-        """按卡号查询卡密"""
-        with self.lock:
-            try:
-                cursor = self.conn.cursor()
-                cursor.execute("SELECT * FROM activation_codes WHERE code = ?", (code,))
-                row = cursor.fetchone()
-                if not row:
-                    return None
-                cols = [d[0] for d in cursor.description]
-                return dict(zip(cols, row))
-            except Exception as e:
-                logger.error(f"查询卡密失败: {e}")
-                return None
-
     def create_activation_codes(self, codes, plan: str, duration_days: int, created_by: str = None, remark: str = '') -> int:
         """批量插入卡密，返回成功插入数量（跳过重复卡号）"""
         with self.lock:
@@ -7521,18 +7382,6 @@ Cookie数量: {cookie_count}
                 logger.error(f"获取用户授权失败: {e}")
                 return {'vip_level': 'free', 'vip_expires_at': None, 'is_valid': False}
 
-    def set_user_license(self, user_id: int, level: str, expires_at) -> bool:
-        """设置用户授权（level='free' 时清空授权；expires_at 为 None 表示永久有效）"""
-        with self.lock:
-            try:
-                cursor = self.conn.cursor()
-                cursor.execute("UPDATE users SET vip_level = ?, vip_expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (level, expires_at, user_id))
-                self.conn.commit()
-                return cursor.rowcount > 0
-            except Exception as e:
-                logger.error(f"设置用户授权失败: {e}")
-                return False
-
     def redeem_activation_code(self, code: str, user_id: int):
         """兑换卡密：校验 -> 续期 -> 标记已用。成功返回 (True, 到期时间)；失败返回 (False, 原因)"""
         with self.lock:
@@ -7572,18 +7421,6 @@ Cookie数量: {cookie_count}
                 return True
             except Exception as e:
                 logger.error(f"更新用户登录信息失败: {e}")
-                return False
-
-    def update_user_remark(self, user_id: int, remark: str) -> bool:
-        """更新用户备注"""
-        with self.lock:
-            try:
-                cursor = self.conn.cursor()
-                cursor.execute("UPDATE users SET remark = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (remark, user_id))
-                self.conn.commit()
-                return cursor.rowcount > 0
-            except Exception as e:
-                logger.error(f"更新用户备注失败: {e}")
                 return False
 
     def _now_sql(self) -> str:
@@ -8016,22 +7853,6 @@ Cookie数量: {cookie_count}
             except Exception as e:
                 logger.error(f"获取订单退款前状态失败: {order_id} - {e}")
                 return None
-
-    def record_order_refund(self, order_id: str, amount: str = None, reason: str = None) -> bool:
-        """记录订单退款金额/原因/时间（售后分析用）。"""
-        with self.lock:
-            try:
-                cursor = self.conn.cursor()
-                cursor.execute('''
-                UPDATE orders SET refund_amount = ?, refund_reason = ?, refunded_at = CURRENT_TIMESTAMP,
-                                  updated_at = CURRENT_TIMESTAMP
-                WHERE order_id = ?
-                ''', (amount, reason, order_id))
-                self.conn.commit()
-                return cursor.rowcount > 0
-            except Exception as e:
-                logger.error(f"记录订单退款信息失败: {order_id} - {e}")
-                return False
 
     def _lookup_buyer_nick_from_chat_messages(self, cookie_id: str, sid: str = None, buyer_id: str = None) -> str:
         chat_id = str(sid or '').strip().split('@')[0]
@@ -8988,149 +8809,6 @@ Cookie数量: {cookie_count}
                 self.conn.rollback()
                 return False
 
-    def get_order_info(self, order_id: str):
-        """
-        获取订单完整信息（包括亦凡回调相关信息）
-        
-        Args:
-            order_id: 订单ID
-        
-        Returns:
-            Dict: 订单信息
-        """
-        with self.lock:
-            try:
-                cursor = self.conn.cursor()
-                
-                # 检查是否存在yifan相关字段
-                has_yifan_fields = False
-                try:
-                    cursor.execute("SELECT yifan_orderno FROM orders LIMIT 1")
-                    has_yifan_fields = True
-                except:
-                    pass
-                
-                if has_yifan_fields:
-                    cursor.execute('''
-                    SELECT order_id, item_id, buyer_id, spec_name, spec_value,
-                           quantity, amount, order_status, cookie_id,
-                           platform_created_at, platform_paid_at, platform_completed_at,
-                           created_at, updated_at,
-                           yifan_orderno, delivery_status, callback_data, chat_id
-                    FROM orders WHERE order_id = ?
-                    ''', (order_id,))
-                    
-                    row = cursor.fetchone()
-                    if row:
-                        return {
-                            'order_id': row[0],
-                            'item_id': row[1],
-                            'buyer_id': row[2],
-                            'spec_name': row[3],
-                            'spec_value': row[4],
-                            'quantity': row[5],
-                            'amount': row[6],
-                            'order_status': row[7],
-                            'cookie_id': row[8],
-                            'platform_created_at': row[9],
-                            'platform_paid_at': row[10],
-                            'platform_completed_at': row[11],
-                            'created_at': row[12],
-                            'updated_at': row[13],
-                            'yifan_orderno': row[14],
-                            'delivery_status': row[15],
-                            'callback_data': row[16],
-                            'chat_id': row[17]
-                        }
-                else:
-                    # 使用旧的查询方式
-                    cursor.execute('''
-                    SELECT order_id, item_id, buyer_id, spec_name, spec_value,
-                           quantity, amount, order_status, cookie_id,
-                           platform_created_at, platform_paid_at, platform_completed_at,
-                           created_at, updated_at
-                    FROM orders WHERE order_id = ?
-                    ''', (order_id,))
-                    
-                    row = cursor.fetchone()
-                    if row:
-                        return {
-                            'order_id': row[0],
-                            'item_id': row[1],
-                            'buyer_id': row[2],
-                            'spec_name': row[3],
-                            'spec_value': row[4],
-                            'quantity': row[5],
-                            'amount': row[6],
-                            'order_status': row[7],
-                            'cookie_id': row[8],
-                            'platform_created_at': row[9],
-                            'platform_paid_at': row[10],
-                            'platform_completed_at': row[11],
-                            'created_at': row[12],
-                            'updated_at': row[13]
-                        }
-                
-                return None
-                
-            except Exception as e:
-                logger.error(f"获取订单信息失败: {order_id} - {e}")
-                return None
-
-    def get_order_by_yifan_orderno(self, yifan_orderno: str):
-        """
-        根据亦凡订单号查找订单信息
-        
-        Args:
-            yifan_orderno: 亦凡平台订单号
-        
-        Returns:
-            Dict: 订单信息，如果未找到返回None
-        """
-        with self.lock:
-            try:
-                cursor = self.conn.cursor()
-                
-                # 检查是否存在yifan相关字段
-                try:
-                    cursor.execute("SELECT yifan_orderno FROM orders LIMIT 1")
-                except:
-                    logger.warning("orders表不包含yifan_orderno字段")
-                    return None
-                
-                cursor.execute('''
-                SELECT order_id, item_id, buyer_id, spec_name, spec_value,
-                       quantity, amount, order_status, cookie_id, created_at, updated_at,
-                       yifan_orderno, delivery_status, callback_data, chat_id
-                FROM orders WHERE yifan_orderno = ?
-                ''', (yifan_orderno,))
-                
-                row = cursor.fetchone()
-                if row:
-                    return {
-                        'order_id': row[0],
-                        'item_id': row[1],
-                        'buyer_id': row[2],
-                        'spec_name': row[3],
-                        'spec_value': row[4],
-                        'quantity': row[5],
-                        'amount': row[6],
-                        'order_status': row[7],
-                        'cookie_id': row[8],
-                        'created_at': row[9],
-                        'updated_at': row[10],
-                        'yifan_orderno': row[11],
-                        'delivery_status': row[12],
-                        'callback_data': row[13],
-                        'chat_id': row[14]
-                    }
-                
-                return None
-                
-            except Exception as e:
-                logger.error(f"根据亦凡订单号查找订单失败: {yifan_orderno} - {e}")
-                return None
-
     def update_order_chat_id(self, order_id: str, chat_id: str):
         """
         更新订单的chat_id（用于后续回调通知）
@@ -9257,35 +8935,6 @@ Cookie数量: {cookie_count}
         except Exception as e:
             logger.error(f"升级keywords表失败: {e}")
             raise
-    def get_item_replay(self, item_id: str) -> Optional[Dict[str, Any]]:
-        """
-        根据商品ID获取商品回复信息，并返回统一格式
-
-        Args:
-            item_id (str): 商品ID
-
-        Returns:
-            Optional[Dict[str, Any]]: 商品回复信息字典（统一格式），找不到返回 None
-        """
-        try:
-            with self.lock:
-                cursor = self.conn.cursor()
-                cursor.execute('''
-                    SELECT reply_content FROM item_replay
-                    WHERE item_id = ?
-                ''', (item_id,))
-
-                row = cursor.fetchone()
-                if row:
-                    (reply_content,) = row
-                    return {
-                        'reply_content': reply_content or ''
-                    }
-                return None
-        except Exception as e:
-            logger.error(f"获取商品回复失败: {e}")
-            return None
-
     def get_item_reply(self, cookie_id: str, item_id: str) -> Optional[Dict[str, Any]]:
         """
         获取指定账号和商品的回复内容
@@ -11226,43 +10875,6 @@ Cookie数量: {cookie_count}
                 logger.error(f"获取聊天消息失败: {e}")
                 return []
 
-    def cleanup_old_chat_messages(self, days: int = 30) -> int:
-        """清理指定天数前的聊天消息"""
-        with self.lock:
-            try:
-                cursor = self.conn.cursor()
-                self._execute_sql(cursor, """
-                    DELETE FROM chat_messages
-                    WHERE created_at < datetime('now', ?)
-                """, (f'-{days} days',))
-                deleted = cursor.rowcount
-                self.conn.commit()
-                if deleted > 0:
-                    logger.info(f"清理了 {deleted} 条过期聊天消息（{days}天前）")
-                return deleted
-            except Exception as e:
-                logger.error(f"清理聊天消息失败: {e}")
-                self.conn.rollback()
-                return 0
-
-    def delete_chat_messages_by_session(self, cookie_id: str, chat_id: str) -> int:
-        """删除指定会话的聊天消息，用于历史补拉重建。"""
-        with self.lock:
-            try:
-                cursor = self.conn.cursor()
-                self._execute_sql(cursor, """
-                    DELETE FROM chat_messages
-                    WHERE cookie_id = ? AND chat_id = ?
-                """, (cookie_id, chat_id))
-                deleted = cursor.rowcount
-                self.conn.commit()
-                logger.info(f"删除会话聊天消息成功: cookie_id={cookie_id}, chat_id={chat_id}, deleted={deleted}")
-                return deleted
-            except Exception as e:
-                logger.error(f"删除会话聊天消息失败: cookie_id={cookie_id}, chat_id={chat_id}, error={e}")
-                self.conn.rollback()
-                return 0
-
     def get_keywords_by_item_id(self, cookie_id: str, item_id: str) -> list:
         """获取指定商品的关键词列表"""
         with self.lock:
@@ -11337,33 +10949,6 @@ Cookie数量: {cookie_count}
         except Exception as e:
             logger.error(f"复制关键词失败: {e}")
             return 0
-
-    def get_all_chat_sessions(self, user_id: int, limit: int = 200) -> list:
-        """获取用户所有账号的会话列表（三栏布局用）"""
-        with self.lock:
-            try:
-                cursor = self.conn.cursor()
-                self._execute_sql(cursor, """
-                    SELECT m.cookie_id, m.chat_id, m.sender_name, m.content,
-                           m.content_type, m.item_id, m.created_at, m.direction, m.sender_id
-                    FROM chat_messages m
-                    INNER JOIN (
-                        SELECT cookie_id, chat_id, MAX(id) AS max_id
-                        FROM chat_messages
-                        WHERE cookie_id IN (SELECT id FROM cookies WHERE user_id = ?)
-                        GROUP BY cookie_id, chat_id
-                    ) latest ON m.cookie_id = latest.cookie_id
-                               AND m.chat_id = latest.chat_id
-                               AND m.id = latest.max_id
-                    ORDER BY m.created_at DESC
-                    LIMIT ?
-                """, (user_id, limit))
-                rows = cursor.fetchall()
-                columns = [desc[0] for desc in cursor.description]
-                return [dict(zip(columns, row)) for row in rows]
-            except Exception as e:
-                logger.error(f"获取全量会话列表失败: {e}")
-                return []
 
     def _normalize_blacklist_scope_value(self, value: Any) -> Optional[str]:
         if value is None:

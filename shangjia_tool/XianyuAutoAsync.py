@@ -388,12 +388,6 @@ class XianyuLive:
         return token_info
 
     @classmethod
-    def clear_auth_prewarmed_token(cls, cookie_id: str):
-        if not cookie_id:
-            return
-        cls._auth_prewarmed_tokens.pop(cookie_id, None)
-
-    @classmethod
     def _cleanup_manual_refresh_state(cls):
         """清理过期的刷新交接恢复状态。"""
         now = time.time()
@@ -653,13 +647,6 @@ class XianyuLive:
     def _clear_qr_login_grace_period(self) -> None:
         self.clear_qr_login_grace(self.cookie_id)
         self._set_qr_login_grace_until(0)
-
-    def _enter_qr_login_grace_period(self, *, stage: str = 'qr_login_success') -> int:
-        now = time.time()
-        grace_until = int(now + self.get_qr_login_grace_ttl_seconds())
-        self.mark_qr_login_grace(self.cookie_id, stage=stage, entered_at=now)
-        self._set_qr_login_grace_until(grace_until)
-        return grace_until
 
     def _consume_qr_login_grace_period_if_expired(self, current_time: Optional[float] = None) -> bool:
         current_time = current_time or time.time()
@@ -2268,16 +2255,6 @@ class XianyuLive:
     def get_instance(cls, cookie_id: str):
         """获取指定cookie_id的XianyuLive实例"""
         return cls._instances.get(cookie_id)
-
-    @classmethod
-    def get_all_instances(cls):
-        """获取所有活跃的XianyuLive实例"""
-        return dict(cls._instances)
-
-    @classmethod
-    def get_instance_count(cls):
-        """获取当前活跃实例数量"""
-        return len(cls._instances)
 
     @classmethod
     def is_manual_refresh_active(cls, cookie_id: str, allow_handoff_recovery: bool = False) -> bool:
@@ -10114,27 +10091,6 @@ class XianyuLive:
             logger.error(f"提取商品ID失败: {self._safe_str(e)}")
             return None
 
-    def debug_message_structure(self, message, context=""):
-        """调试消息结构的辅助方法"""
-        try:
-            logger.warning(f"[{context}] 消息结构调试:")
-            logger.warning(f"  消息类型: {type(message)}")
-
-            if isinstance(message, dict):
-                for key, value in message.items():
-                    logger.warning(f"  键 '{key}': {type(value)} - {str(value)[:100]}...")
-
-                    # 特别关注可能包含商品ID的字段
-                    if key in ["1", "3"] and isinstance(value, dict):
-                        logger.warning(f"    详细结构 '{key}':")
-                        for sub_key, sub_value in value.items():
-                            logger.warning(f"      '{sub_key}': {type(sub_value)} - {str(sub_value)[:50]}...")
-            else:
-                logger.warning(f"  消息内容: {str(message)[:200]}...")
-
-        except Exception as e:
-            logger.error(f"调试消息结构时发生错误: {self._safe_str(e)}")
-
     async def get_item_specific_reply(self, send_user_name: str, send_user_id: str, send_message: str, item_id: str = None, chat_id: str = None) -> str:
         """获取指定商品回复内容"""
         if not item_id:
@@ -10542,14 +10498,6 @@ class XianyuLive:
         except Exception:
             return 0.0
 
-    def _get_notification_template(self, template_type: str) -> str:
-        """获取通知模板，如果没有自定义模板则返回默认模板"""
-        return get_notification_template_text(template_type)
-
-    def _format_template(self, template: str, **kwargs) -> str:
-        """格式化模板，将变量替换为实际值"""
-        return format_notification_template(template, **kwargs)
-
     async def send_notification(self, send_user_name: str, send_user_id: str, send_message: str, item_id: str = None, chat_id: str = None):
         """发送消息通知"""
         try:
@@ -10628,16 +10576,6 @@ class XianyuLive:
             logger.error(f"📱 处理消息通知失败: {self._safe_str(e)}")
             import traceback
             logger.error(f"📱 详细错误信息: {traceback.format_exc()}")
-
-    def _parse_notification_config(self, config: str) -> dict:
-        """解析通知配置数据"""
-        try:
-            import json
-            # 尝试解析JSON格式的配置
-            return json.loads(config)
-        except (json.JSONDecodeError, TypeError):
-            # 兼容旧格式（直接字符串）
-            return {"config": config}
 
     async def _send_qq_notification(self, config_data: dict, message: str):
         """发送QQ通知 - 统一使用 notification_dispatcher 实现，不再硬编码外部地址"""
@@ -13713,26 +13651,6 @@ class XianyuLive:
         logger.info(f"【{self.cookie_id}】已创建独立历史拉取实例: chat_id={cid}, page_size={page_size}")
         return await isolated_live.list_all_conversations(cid, page_size=page_size)
 
-    async def fetch_conversation_history_with_fallback(self, cid: str, page_size: int = 20, isolated_timeout: int = 12):
-        """优先使用独立临时实例拉取历史，超时后回退到主实例方式。"""
-        try:
-            return await asyncio.wait_for(
-                self.fetch_conversation_history_once(cid, page_size=page_size),
-                timeout=max(3, isolated_timeout),
-            )
-        except asyncio.TimeoutError:
-            logger.warning(
-                f"【{self.cookie_id}】独立历史拉取超时，回退主实例方式: chat_id={cid}, "
-                f"page_size={page_size}, timeout={isolated_timeout}s"
-            )
-        except Exception as isolated_exc:
-            logger.warning(
-                f"【{self.cookie_id}】独立历史拉取失败，回退主实例方式: chat_id={cid}, "
-                f"error={self._safe_str(isolated_exc)}"
-            )
-
-        return await self.list_all_conversations(cid, page_size=page_size)
-
     def _extract_image_url_from_message(self, message: dict) -> Optional[str]:
         """从消息结构中提取图片URL"""
         try:
@@ -15420,50 +15338,6 @@ class XianyuLive:
         except Exception as e:
             logger.warning(f"【{self.cookie_id}】强制关闭时出现异常（已忽略）: {e}")
 
-    async def send_msg_once(self, toid, item_id, text):
-        """单次发送消息（创建新的WebSocket连接）"""
-        headers = self._build_websocket_headers()
-
-        logger.info(f"【{self.cookie_id}】开始单次发送消息: toid={toid}, item_id={item_id}")
-
-        # 兼容不同版本的websockets库
-        try:
-            async with websockets.connect(
-                self.base_url,
-                extra_headers=headers,
-                close_timeout=5  # 添加关闭超时
-            ) as websocket:
-                result = await self._handle_websocket_connection(websocket, toid, item_id, text)
-                if result:
-                    logger.info(f"【{self.cookie_id}】单次发送消息成功")
-                else:
-                    raise Exception("消息发送失败")
-        except TypeError as e:
-            # 安全地检查异常信息
-            error_msg = self._safe_str(e)
-
-            if "extra_headers" in error_msg:
-                logger.warning("websockets库不支持extra_headers参数，使用兼容模式")
-                # 使用兼容模式
-                async with websockets.connect(
-                    self.base_url,
-                    additional_headers=headers,
-                    close_timeout=5
-                ) as websocket:
-                    result = await self._handle_websocket_connection(websocket, toid, item_id, text)
-                    if result:
-                        logger.info(f"【{self.cookie_id}】单次发送消息成功(兼容模式)")
-                    else:
-                        raise Exception("消息发送失败")
-            else:
-                raise
-        except websockets.exceptions.ConnectionClosedError as e:
-            logger.warning(f"【{self.cookie_id}】WebSocket连接关闭: {self._safe_str(e)}")
-            # 连接关闭但消息可能已发送，不抛出异常
-        except Exception as e:
-            logger.error(f"【{self.cookie_id}】单次发送消息异常: {self._safe_str(e)}")
-            raise
-
     async def send_delivery_steps_once(self, toid, item_id, delivery_steps):
         """单次发送发货步骤（创建新的WebSocket连接）。"""
         headers = self._build_websocket_headers()
@@ -15891,57 +15765,6 @@ class XianyuLive:
             return result.get('data', {}) or {}
         logger.warning(f"【{self.cookie_id}】获取IM黑名单状态失败: session_id={session_id}, ret={result.get('ret')}")
         return {}
-
-    async def get_api_reply(self, msg_time, user_url, send_user_id, send_user_name, item_id, send_message, chat_id):
-        """调用API获取回复消息"""
-        try:
-            if not self.session:
-                await self.create_session()
-
-            api_config = AUTO_REPLY.get('api', {})
-            timeout = aiohttp.ClientTimeout(total=api_config.get('timeout', 10))
-
-            payload = {
-                "cookie_id": self.cookie_id,
-                "msg_time": msg_time,
-                "user_url": user_url,
-                "send_user_id": send_user_id,
-                "send_user_name": send_user_name,
-                "item_id": item_id,
-                "send_message": send_message,
-                "chat_id": chat_id
-            }
-
-            async with self.session.post(
-                api_config.get('url', 'http://localhost:8080/xianyu/reply'),
-                json=payload,
-                timeout=timeout
-            ) as response:
-                result = await response.json()
-
-                # 将code转换为字符串进行比较，或者直接用数字比较
-                if str(result.get('code')) == '200' or result.get('code') == 200:
-                    send_msg = result.get('data', {}).get('send_msg')
-                    if send_msg:
-                        # 格式化消息中的占位符
-                        return send_msg.format(
-                            send_user_id=payload['send_user_id'],
-                            send_user_name=payload['send_user_name'],
-                            send_message=payload['send_message']
-                        )
-                    else:
-                        logger.warning("API返回成功但无回复消息")
-                        return None
-                else:
-                    logger.warning(f"API返回错误: {result.get('msg', '未知错误')}")
-                    return None
-
-        except asyncio.TimeoutError:
-            logger.error("API调用超时")
-            return None
-        except Exception as e:
-            logger.error(f"调用API出错: {self._safe_str(e)}")
-            return None
 
     async def _handle_message_with_semaphore(self, message_data, websocket, msg_id="unknown"):
         """带信号量的消息处理包装器，防止并发任务过多"""
@@ -18489,43 +18312,3 @@ class XianyuLive:
             logger.error(f"【{self.cookie_id}】发送图片消息失败: {self._safe_str(e)}")
             raise
 
-    async def send_image_from_file(self, ws, cid, toid, image_path):
-        """从本地文件发送图片"""
-        try:
-            # 上传图片到闲鱼CDN
-            logger.info(f"【{self.cookie_id}】开始上传图片: {image_path}")
-
-            from utils.image_uploader import ImageUploader
-            uploader = ImageUploader(self.cookies_str)
-
-            async with uploader:
-                image_url = await uploader.upload_image(image_path)
-
-            if image_url:
-                # 获取图片信息
-                from utils.image_utils import image_manager
-                try:
-                    from PIL import Image
-                    with Image.open(image_path) as img:
-                        width, height = img.size
-                except Exception as e:
-                    logger.warning(f"无法获取图片尺寸，使用默认值: {e}")
-                    width, height = 800, 600
-
-                # 发送图片消息
-                await self.send_image_msg(ws, cid, toid, image_url, width, height)
-                logger.info(f"【{self.cookie_id}】图片发送完成: {image_path} -> {image_url}")
-                return True
-            else:
-                logger.error(f"【{self.cookie_id}】图片上传失败: {image_path}")
-                logger.error(f"【{self.cookie_id}】❌ Cookie可能已失效！请检查配置并更新Cookie")
-                return False
-
-        except Exception as e:
-            logger.error(f"【{self.cookie_id}】从文件发送图片失败: {self._safe_str(e)}")
-            return False
-
-if __name__ == '__main__':
-    cookies_str = os.getenv('COOKIES_STR')
-    xianyuLive = XianyuLive(cookies_str)
-    asyncio.run(xianyuLive.main())

@@ -596,22 +596,6 @@ class AIReplyEngine:
                 logger.error(f"请求URL: {e.request.url}")
             return None
 
-    async def generate_reply_async(self, message: str, item_info: dict, chat_id: str,
-                                   cookie_id: str, user_id: str, item_id: str,
-                                   skip_wait: bool = False, image_url: str = None) -> Optional[str]:
-        """
-        异步包装器：在独立线程池中执行同步的 `generate_reply`，并返回结果。
-        这样可以在异步代码中直接 await，而不阻塞事件循环。
-        """
-        try:
-            import asyncio as _asyncio
-            return await _asyncio.to_thread(
-                self.generate_reply, message, item_info, chat_id, cookie_id,
-                user_id, item_id, skip_wait, image_url
-            )
-        except Exception as e:
-            logger.error(f"异步生成回复失败: {e}")
-            return None
     
     def get_conversation_context(self, chat_id: str, cookie_id: str, limit: int = 20) -> List[Dict]:
         """获取对话上下文"""

@@ -3960,10 +3960,6 @@ def _validate_system_setting_value(key: str, value: str) -> str:
     return value
 
 
-class SystemSettingCreateIn(BaseModel):
-    key: str
-    value: str
-    description: Optional[str] = None
 
 
 class ChatSendRequest(BaseModel):
@@ -4006,22 +4002,6 @@ class CopyKeywordsRequest(BaseModel):
     target_item_ids: List[str]
 
 
-class ChatHydrationDebug(BaseModel):
-    success: bool
-    cookie_id: str
-    chat_id: str
-    stage: str
-    message: str
-    fetched: int = 0
-    saved: int = 0
-    normalized_count: int = 0
-    skipped_count: int = 0
-    sample_sender_id: Optional[str] = None
-    sample_sender_name: Optional[str] = None
-    sample_content: Optional[str] = None
-    remote_history_status: Optional[str] = None
-    remote_history_checked_at: Optional[str] = None
-    runtime_status: Optional[Dict[str, Any]] = None
 
 
 _chat_session_enrichment_cache: Dict[str, Dict[str, Any]] = {}
@@ -4051,28 +4031,6 @@ def _get_cached_chat_history_probe(cookie_id: str, chat_id: str) -> Optional[Dic
     return dict(cached)
 
 
-def _set_cached_chat_history_probe(
-    cookie_id: str,
-    chat_id: str,
-    *,
-    status: str,
-    fetched: int = 0,
-    normalized_count: int = 0,
-    saved: int = 0,
-    note: Optional[str] = None,
-) -> Dict[str, Any]:
-    checked_at = time.time()
-    payload = {
-        'status': str(status or '').strip() or 'unknown',
-        'fetched': max(0, int(fetched or 0)),
-        'normalized_count': max(0, int(normalized_count or 0)),
-        'saved': max(0, int(saved or 0)),
-        'note': str(note or '').strip() or None,
-        'checked_at': checked_at,
-        'checked_at_display': datetime.fromtimestamp(checked_at, tz=LOCAL_TIMEZONE).strftime('%Y-%m-%d %H:%M:%S'),
-    }
-    _chat_history_probe_cache[_build_chat_history_probe_key(cookie_id, chat_id)] = payload
-    return dict(payload)
 
 
 def _apply_chat_history_probe_to_session(cookie_id: str, session: Dict[str, Any]) -> Dict[str, Any]:
@@ -4648,19 +4606,6 @@ def _format_history_created_at(raw_value: Any) -> Optional[str]:
         return None
 
 
-def _build_chat_message_signature(record: Dict[str, Any]) -> tuple:
-    return (
-        str(record.get('chat_id') or ''),
-        str(record.get('sender_id') or ''),
-        str(record.get('content') or ''),
-        int(record.get('content_type') or 0),
-        str(record.get('image_url') or ''),
-        str(record.get('media_url') or ''),
-        str(record.get('link_url') or ''),
-        str(record.get('item_id') or ''),
-        int(record.get('direction') or 0),
-        str(record.get('created_at') or ''),
-    )
 
 
 def _build_chat_sessions_from_recent_orders(cookie_id: str, limit: int = 50) -> List[Dict[str, Any]]:
@@ -4696,31 +4641,6 @@ def _build_chat_sessions_from_recent_orders(cookie_id: str, limit: int = 50) -> 
     return sessions
 
 
-def _merge_chat_sessions_with_order_fallback(
-    local_sessions: List[Dict[str, Any]],
-    fallback_sessions: List[Dict[str, Any]],
-    limit: int = 100,
-) -> List[Dict[str, Any]]:
-    """合并本地会话和订单兜底会话，避免本地只有少量会话时隐藏其他历史入口。"""
-    merged: List[Dict[str, Any]] = []
-    seen_chat_ids = set()
-
-    for session in local_sessions or []:
-        chat_id = str(session.get('chat_id') or '').strip()
-        if not chat_id or chat_id in seen_chat_ids:
-            continue
-        merged.append(session)
-        seen_chat_ids.add(chat_id)
-
-    for session in fallback_sessions or []:
-        chat_id = str(session.get('chat_id') or '').strip()
-        if not chat_id or chat_id in seen_chat_ids:
-            continue
-        merged.append(session)
-        seen_chat_ids.add(chat_id)
-
-    merged.sort(key=lambda item: str(item.get('created_at') or ''), reverse=True)
-    return merged[:limit]
 
 
 def _clean_goofish_id(value: Any) -> str:
@@ -17242,38 +17162,10 @@ async def refresh_order_status(order_id: str, current_user: Dict[str, Any] = Dep
 from auto_updater import get_updater, UpdateStatus, init_updater
 from pydantic import BaseModel as PydanticBaseModel
 
-class UpdateCheckResponse(PydanticBaseModel):
-    """更新检查响应"""
-    has_update: bool
-    current_version: str
-    new_version: str = ""
-    description: str = ""
-    changelog: list = []
-    files_count: int = 0
-    total_size: int = 0
-    release_date: str = ""
 
 
-class UpdateProgressResponse(PydanticBaseModel):
-    """更新进度响应"""
-    status: str
-    current_file: str = ""
-    current_index: int = 0
-    total_files: int = 0
-    downloaded_bytes: int = 0
-    total_bytes: int = 0
-    message: str = ""
-    error: str = ""
 
 
-class UpdateResultResponse(PydanticBaseModel):
-    """更新结果响应"""
-    success: bool
-    message: str
-    updated_files: list = []
-    deleted_files: list = []
-    needs_restart: bool = False
-    new_version: str = ""
 
 
 @app.get('/api/update/check')

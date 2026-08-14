@@ -652,20 +652,6 @@ class OrderDetailFetcher:
         )
         return any(token in lowered_url for token in trusted_tokens)
 
-    def _normalize_minor_amount_value(self, amount_value: Any) -> Any:
-        text = str(amount_value).strip() if amount_value is not None else ''
-        if not re.fullmatch(r'\d+', text):
-            return amount_value
-
-        try:
-            minor_value = int(text)
-        except (TypeError, ValueError):
-            return amount_value
-
-        if minor_value <= 0:
-            return amount_value
-
-        return f"{minor_value / 100:.2f}"
 
     def _payload_references_order(self, payload: Any, order_id: str, url: str = '') -> bool:
         order_id_text = str(order_id or '').strip()
@@ -1216,27 +1202,6 @@ class OrderDetailFetcher:
         )
         return ranked_candidates[0] if ranked_candidates else None
 
-    def _get_best_captured_sku_candidate(self) -> Optional[Dict[str, Any]]:
-        if not self._captured_sku_candidates:
-            return None
-
-        deduped: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
-        for candidate in self._captured_sku_candidates:
-            dedupe_key = (
-                str(candidate.get('sku_text', '')),
-                str(candidate.get('quantity', '')),
-                str(candidate.get('path', '')),
-            )
-            existing = deduped.get(dedupe_key)
-            if existing is None or candidate.get('score', 0) > existing.get('score', 0):
-                deduped[dedupe_key] = candidate
-
-        ranked_candidates = sorted(
-            deduped.values(),
-            key=lambda item: (item.get('score', 0), len(str(item.get('sku_text', '')))),
-            reverse=True,
-        )
-        return ranked_candidates[0] if ranked_candidates else None
 
     def _get_ranked_captured_sku_candidates(self) -> List[Dict[str, Any]]:
         if not self._captured_sku_candidates:

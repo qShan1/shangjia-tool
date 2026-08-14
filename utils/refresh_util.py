@@ -912,9 +912,6 @@ class DrissionHandler:
         except Exception as e:
             logger.warning(f"验证后行为模拟失败: {e}")
 
-    def ease_out_expo(self, t):
-        """缓动函数，使滑动轨迹更自然"""
-        return 1 - pow(2, -10 * t) if t != 1 else 1
 
     def get_tracks(self, distance, target_points=None):
         """
@@ -1698,38 +1695,6 @@ class DrissionHandler:
         """检测页面是否被拦截"""
         return self.page.title == "验证码拦截"
 
-    def adjust_y_offset_settings(self, y_drift_range=None, shake_range=None,
-                                fast_move_multiplier=None, directional_range=None, max_y_offset=None):
-        """
-        调整垂直偏移量设置
-
-        :param y_drift_range: 整体漂移趋势范围 ±像素（默认3）
-        :param shake_range: 基础抖动范围 ±像素（默认1.5）
-        :param fast_move_multiplier: 快速移动时的抖动放大倍数（默认1.8）
-        :param directional_range: 方向性偏移范围（默认1.0）
-        :param max_y_offset: 最大垂直偏移限制 ±像素（默认8）
-        """
-        if y_drift_range is not None:
-            self.y_drift_range = y_drift_range
-            logger.info(f"整体漂移趋势范围调整为: ±{y_drift_range}像素")
-
-        if shake_range is not None:
-            self.shake_range = shake_range
-            logger.info(f"基础抖动范围调整为: ±{shake_range}像素")
-
-        if fast_move_multiplier is not None:
-            self.fast_move_multiplier = fast_move_multiplier
-            logger.info(f"快速移动抖动放大倍数调整为: {fast_move_multiplier}")
-
-        if directional_range is not None:
-            self.directional_range = directional_range
-            logger.info(f"方向性偏移范围调整为: {directional_range}")
-
-        if max_y_offset is not None:
-            self.max_y_offset = max_y_offset
-            logger.info(f"最大垂直偏移限制调整为: ±{max_y_offset}像素")
-
-        logger.info("垂直偏移量设置已更新")
 
     def close(self):
         """关闭浏览器"""

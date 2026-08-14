@@ -73,15 +73,6 @@ class QRLoginSession:
         """检查是否过期"""
         return time.time() - self.created_time > self.expire_time
 
-    def to_dict(self) -> Dict[str, Any]:
-        """转换为字典"""
-        return {
-            'session_id': self.session_id,
-            'status': self.status,
-            'qr_code_url': self.qr_code_url,
-            'created_time': self.created_time,
-            'is_expired': self.is_expired()
-        }
 
 
 class QRLoginManager:

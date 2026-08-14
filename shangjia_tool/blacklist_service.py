@@ -106,22 +106,6 @@ class BlacklistService:
             item_id=item_id,
         )
 
-    def is_buyer_blacklisted_by_cookie(
-        self,
-        cookie_id: str,
-        buyer_id: str,
-        item_id: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
-        cookie_details = self.db.get_cookie_details(cookie_id) if cookie_id else None
-        user_id = cookie_details.get('user_id') if cookie_details else None
-        if not user_id:
-            return None
-        return self.is_buyer_blacklisted(
-            user_id=user_id,
-            buyer_id=buyer_id,
-            cookie_id=cookie_id,
-            item_id=item_id,
-        )
 
     def export_personal_xlsx(self, user_id: int) -> bytes:
         records = self.db.list_personal_blacklist(user_id=user_id, page=1, page_size=100000).get('data', [])
