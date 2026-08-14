@@ -426,6 +426,8 @@ body.sidebar-collapsed .main-content {
   backdrop-filter: blur(32px) saturate(1.6);
   transition: transform 0.25s cubic-bezier(0.22, 0.61, 0.36, 1), box-shadow 0.25s ease, border-color 0.25s ease;
   transform-style: preserve-3d;
+  /* 苹果液态玻璃：顶部更亮的高光边缘，模拟光打在玻璃上 */
+  box-shadow: var(--ui-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 .card:hover {
@@ -471,6 +473,9 @@ body.sidebar-collapsed .main-content {
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.42), 0 1px 2px rgba(15, 23, 42, 0.04);
   -webkit-backdrop-filter: blur(18px) saturate(1.25);
   backdrop-filter: blur(18px) saturate(1.25);
+  /* 苹果液态玻璃：按下即时反馈 + 短促可打断过渡（damping 1.0，response ~100ms） */
+  transition: transform 100ms ease-out, box-shadow 150ms ease, background 150ms ease, border-color 150ms ease;
+  will-change: transform;
 }
 
 .btn:hover {
@@ -479,7 +484,8 @@ body.sidebar-collapsed .main-content {
 }
 
 .btn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.3), 0 1px 4px rgba(15, 23, 42, 0.1);
 }
 
 .btn-primary,
