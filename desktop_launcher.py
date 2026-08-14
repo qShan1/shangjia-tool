@@ -135,17 +135,40 @@ class _DesktopApi:
     def resolve_desktop_dialog(self, result):
         """接收网页弹窗的选择，供关闭/更新后台线程继续执行。
 
+        result 为网页端传回的 JSON 字符串：关闭弹窗传 {"value": "tray"/"exit", "remember": bool}，
+        更新/通知弹窗仅传字符串。remember=True 时持久化关闭行为（下次不再弹窗）。
+
         pywebview 的 JS bridge 回调运行在内部线程，直接在此调用 window.destroy()/
         request_exit() 会在窗口销毁流程中死锁，导致界面无响应且后续 stop_service()
         不执行、服务残留。因此把"托盘/退出"动作放到独立线程异步执行。
         """
         global _DIALOG_RESULT, _DIALOG_EVENT
-        _DIALOG_RESULT = str(result or "")
+        payload = str(result or "")
+        choice = payload
+        remember = False
+        try:
+            parsed = json.loads(payload)
+            if isinstance(parsed, dict):
+                choice = str(parsed.get("value") or "")
+                remember = bool(parsed.get("remember"))
+        except (ValueError, TypeError):
+            pass
+        _DIALOG_RESULT = choice
+
+        if remember and choice in ("tray", "exit"):
+            try:
+                settings = desktop_settings()
+                settings["close_behavior"] = choice
+                settings["remember_close_choice"] = True
+                desktop_settings_path().parent.mkdir(parents=True, exist_ok=True)
+                desktop_settings_path().write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
+            except Exception as error:
+                with desktop_log_path().open("a", encoding="utf-8") as output:
+                    output.write(f"save close choice failed: {error}\n")
+
         if _DIALOG_EVENT is not None:
             _DIALOG_EVENT.set()
         elif _WINDOW is not None:
-            choice = _DIALOG_RESULT
-
             def _act():
                 try:
                     if choice == "tray":
@@ -696,8 +719,9 @@ def desktop_remember_close_choice():
     return desktop_settings().get("remember_close_choice", False) is not False
 
 
-def _desktop_dialog_script(title, message, buttons):
+def _desktop_dialog_script(title, message, buttons, remember_label=None):
     payload = json.dumps({"title": title, "message": message, "buttons": buttons}, ensure_ascii=False)
+    remember = json.dumps(remember_label, ensure_ascii=False)
     return f"""(() => {{
         const data = {payload};
         document.getElementById('__desktopDialog')?.remove();
@@ -708,17 +732,32 @@ def _desktop_dialog_script(title, message, buttons):
         card.querySelector('h3').textContent = data.title;
         card.querySelector('p').textContent = data.message;
         const actions = card.querySelector('.desktop-dialog-actions');
+        const rememberEl = {remember};
+        let rememberChecked = false;
         data.buttons.forEach(item => {{
             const button = document.createElement('button');
             button.type = 'button';
             button.textContent = item.label;
             button.className = item.primary ? 'desktop-dialog-primary' : 'desktop-dialog-secondary';
             button.onclick = () => {{
-                window.pywebview?.api?.resolve_desktop_dialog(item.value);
+                const value = item.value;
+                const send = rememberEl ? JSON.stringify({{value, remember: rememberChecked}}) : value;
+                window.pywebview?.api?.resolve_desktop_dialog(send);
                 root.remove();
             }};
             actions.appendChild(button);
         }});
+        if (rememberEl) {{
+            const row = document.createElement('label');
+            row.className = 'desktop-dialog-remember';
+            const box = document.createElement('input');
+            box.type = 'checkbox';
+            box.checked = false;
+            box.onchange = () => {{ rememberChecked = box.checked; }};
+            row.appendChild(box);
+            row.appendChild(document.createTextNode(rememberEl));
+            actions.insertBefore(row, actions.firstChild);
+        }}
         document.body.appendChild(root);
         card.querySelector('button')?.focus();
     }})()"""
@@ -728,13 +767,14 @@ def _show_web_close_prompt(window):
     if window is None:
         return False
     try:
-        window.evaluate_js(_desktop_dialog_script(
+        window.run_js(_desktop_dialog_script(
             "关闭上架工具",
             "请选择关闭后的操作。最小化会继续在右下角托盘运行，退出会完全停止本地服务。",
             [
                 {"value": "tray", "label": "最小化到托盘", "primary": True},
                 {"value": "exit", "label": "退出软件", "primary": False},
             ],
+            remember_label="记住我的选择，下次不再询问",
         ))
         return True
     except Exception as error:
@@ -751,7 +791,7 @@ def _ask_web_question(message):
     _DIALOG_EVENT = event
     _DIALOG_RESULT = None
     try:
-        _WINDOW.evaluate_js(_desktop_dialog_script(
+        _WINDOW.run_js(_desktop_dialog_script(
             "软件更新",
             message,
             [
@@ -775,7 +815,7 @@ def _show_web_notice(title, message):
     _DIALOG_EVENT = event
     _DIALOG_RESULT = None
     try:
-        _WINDOW.evaluate_js(_desktop_dialog_script(
+        _WINDOW.run_js(_desktop_dialog_script(
             title,
             message,
             [{"value": "ok", "label": "知道了", "primary": True}],
