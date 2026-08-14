@@ -2,15 +2,15 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $python = Join-Path $root 'venv\Scripts\python.exe'
-$healthUrl = 'http://127.0.0.1:8090/health'
+$healthUrl = 'http://127.0.0.1:8890/health'
 
 if (-not (Test-Path -LiteralPath $python)) {
     throw "Project Python environment not found: $python"
 }
 
-$listener = Get-NetTCPConnection -LocalPort 8090 -State Listen -ErrorAction SilentlyContinue
+$listener = Get-NetTCPConnection -LocalPort 8890 -State Listen -ErrorAction SilentlyContinue
 if ($listener) {
-    Write-Host 'Service already running: http://127.0.0.1:8090/'
+    Write-Host 'Service already running: http://127.0.0.1:8890/'
     exit 0
 }
 
@@ -22,7 +22,7 @@ for ($i = 0; $i -lt 30; $i++) {
     try {
         $response = Invoke-WebRequest -UseBasicParsing -Uri $healthUrl -TimeoutSec 2
         if ($response.StatusCode -eq 200) {
-            Write-Host 'Service started: http://127.0.0.1:8090/'
+            Write-Host 'Service started: http://127.0.0.1:8890/'
             exit 0
         }
     }

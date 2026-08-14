@@ -176,7 +176,7 @@ def _start_api_server():
 
     # 优先使用环境变量配置
     host = os.getenv('API_HOST', '127.0.0.1')  # 默认仅本机访问，避免局域网可直登管理界面
-    port = int(os.getenv('API_PORT', '8090'))  # 默认端口8090
+    port = int(os.getenv('API_PORT', '8890'))  # 默认端口8890
 
     # 显式环境变量优先，桌面启动器需要能选择隔离端口。
     if 'API_HOST' not in os.environ and 'host' in api_conf:
@@ -186,11 +186,11 @@ def _start_api_server():
 
     # 兼容旧的URL配置方式
     if 'url' in api_conf and 'host' not in api_conf and 'port' not in api_conf:
-        url = api_conf.get('url', 'http://0.0.0.0:8090/xianyu/reply')
+        url = api_conf.get('url', 'http://0.0.0.0:8890/xianyu/reply')
         parsed = urlparse(url)
         if parsed.hostname and parsed.hostname != 'localhost':
             host = parsed.hostname
-        port = parsed.port or 8090
+        port = parsed.port or 8890
 
     logger.info(f"启动Web服务器: http://{host}:{port}")
     # 在后台线程中创建独立事件循环并直接运行 server.serve()

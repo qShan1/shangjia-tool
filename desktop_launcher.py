@@ -18,7 +18,7 @@ if getattr(sys, "frozen", False):
     ROOT = Path(sys.executable).resolve().parent
 else:
     ROOT = Path(__file__).resolve().parent
-PORT = int(os.environ.get("SHANGJIA_PORT", "8090"))
+PORT = int(os.environ.get("SHANGJIA_PORT", "8890"))
 DATA_ROOT = Path(os.environ.get("SHANGJIA_DATA_DIR", Path(os.environ.get("LOCALAPPDATA", ROOT)) / "ShangjiaTool"))
 _LOCK_HANDLE = None
 _SERVICE_PROCESS = None
@@ -541,13 +541,13 @@ def _taskkill_all_services():
 def clean_stale_services():
     """清除上一次会话残留的服务进程。
 
-    旧版退出不干净会让 ShangjiaService.exe 长期存活并独占 8090 端口；再次启动时启动器
+    旧版退出不干净会让 ShangjiaService.exe 长期存活并独占 8890 端口；再次启动时启动器
     检测到端口已通就不起新服务，而旧实例所属 PyInstaller onefile 的临时解压目录(_MEI)
     被系统清理后，其 index.html 静态资源会消失，界面报 'No front-end found'。单实例
     应用同一时间只应有一个服务，启动前统一清扫是安全的。
     """
     _taskkill_all_services()
-    # 给刚被杀的进程一点时间释放 8090 端口，避免新服务绑定冲突。
+    # 给刚被杀的进程一点时间释放 8890 端口，避免新服务绑定冲突。
     time.sleep(0.2)
 
 
@@ -581,7 +581,7 @@ def stop_service():
     # 的 pid 失效，这里统一清理本工具的全部服务进程（单实例，同一时刻只应有一个服务）。
     _taskkill_all_services()
 
-    # 等端口真正被释放；超时后强杀任何仍占用 8090 的残留进程，确保退出后无残留。
+    # 等端口真正被释放；超时后强杀任何仍占用 8890 的残留进程，确保退出后无残留。
     deadline = time.time() + 10
     while time.time() < deadline and _port_owner_pid() is not None:
         time.sleep(0.2)
@@ -1109,7 +1109,7 @@ if __name__ == "__main__":
         raise
     finally:
         # 兜底：无论 main() 以何种路径退出，都确保后台服务被彻底清掉，避免残留
-        # ShangjiaService.exe / 占用 8090 端口。os._exit 只用于托盘“退出”的硬退出链路。
+        # ShangjiaService.exe / 占用 8890 端口。os._exit 只用于托盘“退出”的硬退出链路。
         try:
             stop_service()
         except Exception:

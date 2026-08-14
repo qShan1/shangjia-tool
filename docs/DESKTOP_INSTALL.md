@@ -22,7 +22,7 @@
 
 双击 `dist\ShangjiaTool\ShangjiaTool.exe`。启动器会：
 
-1. 检查本机 `127.0.0.1:8090` 的服务状态。
+1. 检查本机 `127.0.0.1:8890` 的服务状态。
 2. 启动 `_internal\ShangjiaService.exe`。
 3. 等待健康检查成功后打开管理台。
 
@@ -37,7 +37,7 @@
 可用环境变量：
 
 - `SHANGJIA_DATA_DIR`：指定桌面端数据目录。
-- `SHANGJIA_PORT`：指定本地端口，默认 `8090`。
+- `SHANGJIA_PORT`：指定本地端口，默认 `8890`。
 - `ADMIN_PASSWORD`：首次初始化时预设管理员密码。
 
 ## 构建

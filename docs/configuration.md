@@ -7,11 +7,11 @@
 | 变量 | 用途 | 示例 |
 | --- | --- | --- |
 | `API_HOST` | 源码服务监听地址 | `127.0.0.1` |
-| `API_PORT` | 源码服务端口 | `8090` |
+| `API_PORT` | 源码服务端口 | `8890` |
 | `APP_DATA_DIR` | 运行数据根目录 | `D:\ShangjiaData` |
 | `DB_PATH` | SQLite 数据库路径 | `D:\ShangjiaData\data\xianyu_data.db` |
 | `SHANGJIA_DATA_DIR` | 桌面端数据目录 | `D:\ShangjiaData` |
-| `SHANGJIA_PORT` | 桌面端服务端口 | `8090` |
+| `SHANGJIA_PORT` | 桌面端服务端口 | `8890` |
 | `ADMIN_PASSWORD` | 首次初始化管理员密码 | 仅在本机设置 |
 | `COOKIES_STR` | 旧单账号兼容入口 | 不要写入仓库 |
 

@@ -55,7 +55,7 @@ class AISiteAuditService:
     def _health_snapshot(self) -> Dict[str, Any]:
         result: Dict[str, Any] = {"status": "unknown"}
         try:
-            request = Request("http://127.0.0.1:8090/health", method="GET")
+            request = Request("http://127.0.0.1:8890/health", method="GET")
             with urlopen(request, timeout=5) as response:
                 result = {"status": response.status, "body": self._redact(response.read().decode("utf-8", "replace"))}
         except Exception as exc:

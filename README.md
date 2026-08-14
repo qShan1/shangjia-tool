@@ -32,7 +32,7 @@ playwright install chromium
 python Start.py
 ```
 
-管理台地址为 `http://127.0.0.1:8090/admin`，健康检查为 `http://127.0.0.1:8090/health`。
+管理台地址为 `http://127.0.0.1:8890/admin`，健康检查为 `http://127.0.0.1:8890/health`。
 
 ## 文档
 
