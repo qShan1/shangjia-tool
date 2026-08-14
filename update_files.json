@@ -1,6 +1,6 @@
 {
   "version": "v1.0.3",
-  "release_date": "2026-08-13",
+  "release_date": "2026-08-14",
   "description": "版本 v1.0.3 更新",
   "min_version": "v1.0.0",
   "changelog": [
@@ -161,8 +161,8 @@
     },
     {
       "path": "static/index.html",
-      "md5": "bba5db938a2ab651892645b500ac8c3a",
-      "size": 937689,
+      "md5": "16252b414800a6ac52591f14c154c80b",
+      "size": 937981,
       "download_url": "https://raw.githubusercontent.com/qShan1/shangjia-tool/v1.0.3/static/index.html",
       "requires_restart": false,
       "description": ""
