@@ -332,70 +332,61 @@ function showDashboardAnnouncementHistoryModal() {
     modal.show();
 }
 
+// 合并后的公告展示：不再渲染独立的可叉掉公告卡片，而是把"未读公告"并入常驻 sticky note。
+// 有未读公告 -> sticky note 显示公告标题+摘要+未读红点+关闭按钮；
+// 无未读公告 -> sticky note 显示默认（版本·联系客服）。
 function renderDashboardAnnouncement() {
-    const slot = document.getElementById('dashboardAnnouncementSlot');
-    if (!slot) return;
-
     const currentAnnouncement = dashboardAnnouncementState.current;
-    if (!currentAnnouncement || isDashboardAnnouncementDismissed(currentAnnouncement)) {
+    const hasUnread = !!(currentAnnouncement && !isDashboardAnnouncementDismissed(currentAnnouncement));
+
+    const note = document.getElementById('dashboardStickyNote');
+    const titleEl = document.getElementById('dashboardStickyNoteTitle');
+    const messageEl = document.getElementById('dashboardStickyNoteMessage');
+    const dismissBtn = document.getElementById('dashboardStickyNoteDismiss');
+    const slot = document.getElementById('dashboardAnnouncementSlot');
+
+    if (hasUnread) {
+        const level = ['info', 'success', 'warning', 'danger'].includes(String(currentAnnouncement.level || '').trim().toLowerCase())
+            ? String(currentAnnouncement.level || '').trim().toLowerCase()
+            : 'info';
+        const title = String(currentAnnouncement.title || '').trim();
+        const summary = String(
+            currentAnnouncement.summary
+            || currentAnnouncement.brief
+            || currentAnnouncement.short_message
+            || currentAnnouncement.message
+            || ''
+        ).trim();
+        if (titleEl) titleEl.textContent = title || '公告';
+        if (messageEl) {
+            messageEl.textContent = summary || '有新公告，点击查看详情';
+            messageEl.title = summary;
+        }
+        if (dismissBtn) dismissBtn.style.display = 'inline-flex';
+        if (note) note.classList.add('has-unread');
+        if (note) note.dataset.announcementId = String(currentAnnouncement.id || '').trim();
+    } else {
+        // 恢复默认：不覆盖版本/客服文本（由页面初始 HTML 与 app.misc.js 版本赋值管理），
+        // 仅隐藏关闭按钮与未读样式。
+        if (dismissBtn) dismissBtn.style.display = 'none';
+        if (note) note.classList.remove('has-unread');
+        if (note) delete note.dataset.announcementId;
+    }
+
+    // 兼容旧逻辑：动态公告卡插槽不再使用，保持隐藏
+    if (slot) {
         slot.style.display = 'none';
         slot.innerHTML = '';
-        return;
     }
+}
 
-    const level = ['info', 'success', 'warning', 'danger'].includes(String(currentAnnouncement.level || '').trim().toLowerCase())
-        ? String(currentAnnouncement.level || '').trim().toLowerCase()
-        : 'info';
-    const title = String(currentAnnouncement.title || '').trim();
-    const message = String(currentAnnouncement.message || '').trim();
-    const summary = String(currentAnnouncement.summary || currentAnnouncement.brief || currentAnnouncement.short_message || '').trim();
-    const displayMessage = summary || message;
-    const actionText = String(currentAnnouncement.action_type ? (currentAnnouncement.action_text || '') : '').trim();
-    const dismissible = currentAnnouncement.dismissible !== false;
-
-    slot.style.display = '';
-    slot.innerHTML = `
-        <div class="dashboard-announcement-card is-${level}" role="status" aria-live="polite">
-            <button
-                type="button"
-                class="dashboard-announcement-main"
-                id="dashboardAnnouncementOpenBtn"
-                title="点击查看公告记录"
-                aria-label="查看公告记录"
-            >
-                <span class="dashboard-announcement-icon">
-                    <i class="bi bi-megaphone-fill"></i>
-                </span>
-                <span class="dashboard-announcement-body">
-                    ${title ? `<span class="dashboard-announcement-title">${escapeHtml(title)}</span>` : ''}
-                    ${displayMessage ? `<span class="dashboard-announcement-message">${escapeHtml(displayMessage)}</span>` : ''}
-                </span>
-            </button>
-            <div class="dashboard-announcement-actions">
-                ${actionText ? `<button type="button" class="btn btn-sm dashboard-announcement-action" id="dashboardAnnouncementActionBtn">${escapeHtml(actionText)}</button>` : ''}
-                ${dismissible ? `
-                    <button type="button" class="btn btn-sm dashboard-announcement-close" id="dashboardAnnouncementCloseBtn" aria-label="关闭公告">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
-                ` : ''}
-            </div>
-        </div>
-    `;
-
-    const openButton = document.getElementById('dashboardAnnouncementOpenBtn');
-    if (openButton) {
-        openButton.onclick = () => showDashboardAnnouncementHistoryModal();
+// 关闭当前未读公告（sticky note 上的关闭按钮），回到默认状态
+function dismissCurrentDashboardAnnouncement() {
+    const currentAnnouncement = dashboardAnnouncementState.current;
+    if (currentAnnouncement) {
+        dismissDashboardAnnouncement(currentAnnouncement);
     }
-
-    const actionButton = document.getElementById('dashboardAnnouncementActionBtn');
-    if (actionButton) {
-        actionButton.onclick = () => handleDashboardAnnouncementAction(currentAnnouncement);
-    }
-
-    const closeButton = document.getElementById('dashboardAnnouncementCloseBtn');
-    if (closeButton) {
-        closeButton.onclick = () => dismissDashboardAnnouncement(currentAnnouncement);
-    }
+    renderDashboardAnnouncement();
 }
 
 async function loadDashboardAnnouncement() {

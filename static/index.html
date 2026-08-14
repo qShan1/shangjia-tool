@@ -471,11 +471,12 @@
             </div>
             <div class="dashboard-announcement-slot" id="dashboardAnnouncementSlot" style="display: none;"></div>
             <div class="dashboard-sticky-note" id="dashboardStickyNote" role="button" tabindex="0" title="点击查看公告记录" aria-label="常驻公告，点击查看公告与更新记录" onclick="showDashboardAnnouncementHistoryModal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showDashboardAnnouncementHistoryModal();}">
-              <span class="dashboard-sticky-note-icon"><i class="bi bi-pin-angle-fill"></i></span>
+              <span class="dashboard-sticky-note-icon" id="dashboardStickyNoteIcon"><i class="bi bi-pin-angle-fill"></i></span>
               <span class="dashboard-sticky-note-body">
-                <span class="dashboard-sticky-note-title">欢迎使用闲鱼商家工具</span>
+                <span class="dashboard-sticky-note-title" id="dashboardStickyNoteTitle">欢迎使用闲鱼商家工具</span>
                 <span class="dashboard-sticky-note-message" id="dashboardStickyNoteMessage">请使用右上角账号信息联系客服反馈问题</span>
               </span>
+              <button type="button" class="dashboard-sticky-note-dismiss" id="dashboardStickyNoteDismiss" title="关闭公告" aria-label="关闭公告" style="display: none;" onclick="event.stopPropagation();dismissCurrentDashboardAnnouncement()"><i class="bi bi-x-lg"></i></button>
             </div>
           </div>
           <div class="version-info d-flex gap-2">
