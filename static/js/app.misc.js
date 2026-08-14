@@ -6,6 +6,7 @@ let searchResultsData = [];
 let currentSearchPage = 1;
 let searchPageSize = 20;
 let totalSearchPages = 0;
+let animateSectionEnterTimer = null;
 
 // 初始化商品搜索功能
 function initItemSearch() {
@@ -3960,6 +3961,13 @@ function animateSectionEnter(sectionName) {
     const sec = document.getElementById(sectionName + '-section');
     if (!sec) return;
     const body = sec.querySelector('.content-body') || sec;
+    // 过渡期临时隐藏纵向滚动条，消除进入时滚动条闪现（动画结束后恢复显示）
+    const root = document.documentElement;
+    root.classList.add('section-transition');
+    clearTimeout(animateSectionEnterTimer);
+    animateSectionEnterTimer = setTimeout(() => {
+        root.classList.remove('section-transition');
+    }, 520);
     magicIn(body, 'fadeIn');
 }
 

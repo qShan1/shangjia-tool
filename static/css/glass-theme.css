@@ -7,6 +7,14 @@ html {
 html[data-theme="dark"] {
   color-scheme: dark;
 }
+/* 页面切换过渡期隐藏纵向滚动条，消除进入时滚动条闪现；
+   仅隐藏 thumb，不改变布局（scrollbar-gutter 保留槽位），过渡结束恢复显示 */
+html.section-transition {
+  scrollbar-width: none;
+}
+html.section-transition::-webkit-scrollbar {
+  display: none;
+}
 :root {
   --ui-canvas: #e9edef;
   --ui-surface: rgba(255, 255, 255, 0.34);
