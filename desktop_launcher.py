@@ -138,63 +138,29 @@ class _DesktopApi:
         return set_autostart_enabled(bool(enabled))
 
     def resolve_desktop_dialog(self, result):
-        """接收网页弹窗的选择，供关闭/更新后台线程继续执行。
+        """接收网页弹窗的选择，供更新/通知后台线程继续执行。
 
-        result 为网页端传回的 JSON 字符串：关闭弹窗传 {"value": "tray"/"exit", "remember": bool}，
-        更新/通知弹窗仅传字符串。remember=True 时持久化关闭行为（下次不再弹窗）。
+        result 为网页端传回的 JSON 字符串或普通字符串；仅用于更新确认/通知弹窗，
+        通过 _DIALOG_EVENT.set() 唤醒等待的线程。关闭确认已改为原生 MessageBoxW
+        （见 allow_window_close），不再走此处。
 
-        pywebview 的 JS bridge 回调运行在内部线程，直接在此调用 window.destroy()/
-        request_exit() 会在窗口销毁流程中死锁，导致界面无响应且后续 stop_service()
-        不执行、服务残留。因此把"托盘/退出"动作放到独立线程异步执行。
+        pywebview 的 JS bridge 回调运行在内部线程，绝不在此直接调用
+        window.destroy()/request_exit()（会与 WinForms 主线程 Invoke 死锁，
+        界面无响应且服务残留，pywebview PR #638）。
         """
         global _DIALOG_RESULT, _DIALOG_EVENT
         payload = str(result or "")
         choice = payload
-        remember = False
         try:
             parsed = json.loads(payload)
             if isinstance(parsed, dict):
                 choice = str(parsed.get("value") or "")
-                remember = bool(parsed.get("remember"))
         except (ValueError, TypeError):
             pass
         _DIALOG_RESULT = choice
 
-        if remember and choice in ("tray", "exit"):
-            try:
-                settings = desktop_settings()
-                settings["close_behavior"] = choice
-                settings["remember_close_choice"] = True
-                desktop_settings_path().parent.mkdir(parents=True, exist_ok=True)
-                desktop_settings_path().write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
-            except Exception as error:
-                with desktop_log_path().open("a", encoding="utf-8") as output:
-                    output.write(f"save close choice failed: {error}\n")
-
         if _DIALOG_EVENT is not None:
             _DIALOG_EVENT.set()
-        elif _WINDOW is not None:
-            def _act():
-                try:
-                    if choice == "tray":
-                        minimize_to_tray(_WINDOW)
-                    elif choice == "exit":
-                        request_exit(_WINDOW)
-                    elif choice == "cancel":
-                        # 用户点了弹窗右上角 ✕ 或背景：仅关闭弹窗，不执行任何关闭动作。
-                        pass
-                except Exception as error:
-                    with desktop_log_path().open("a", encoding="utf-8") as output:
-                        output.write(f"resolve_desktop_dialog action failed: {error}\n")
-                finally:
-                    # 动作结束后释放关闭防重入锁，确保后续再次点关闭仍可正常弹窗。
-                    global _CLOSE_ACTIVE
-                    _CLOSE_ACTIVE = False
-
-            threading.Thread(target=_act, name="shangjia-dialog-action", daemon=True).start()
-        else:
-            global _CLOSE_ACTIVE
-            _CLOSE_ACTIVE = False
         return {"success": True}
 
 
@@ -787,26 +753,6 @@ def _desktop_dialog_script(title, message, buttons, remember_label=None, dismiss
     }})()"""
 
 
-def _show_web_close_prompt(window):
-    if window is None:
-        return False
-    try:
-        window.run_js(_desktop_dialog_script(
-            "关闭上架工具",
-            "请选择关闭后的操作。最小化会继续在右下角托盘运行，退出会完全停止本地服务。",
-            [
-                {"value": "tray", "label": "最小化到托盘", "primary": True},
-                {"value": "exit", "label": "退出软件", "primary": False},
-            ],
-            remember_label="记住我的选择，下次不再询问",
-        ))
-        return True
-    except Exception as error:
-        with desktop_log_path().open("a", encoding="utf-8") as output:
-            output.write(f"Web close dialog failed: {error}\n")
-        return False
-
-
 def _ask_web_question(message):
     global _DIALOG_EVENT, _DIALOG_RESULT
     if _WINDOW is None:
@@ -853,31 +799,49 @@ def _show_web_notice(title, message):
 
 
 def _prompt_close_choice():
-    """弹出选择提示：最小化到托盘 / 直接退出。
+    """弹出原生关闭确认框：最小化到托盘 / 直接退出。
+
     返回 (choice, remember)；choice 为 'tray' 或 'exit'，remember 恒为 False。
-    使用 MessageBoxW 而非 TaskDialogIndirect——后者在 ctypes 结构体布局错误时会返回
-    0x80070057 静默失败，导致关闭直接回退到托盘而不弹窗。
+    在 closing 事件（WinForms 主线程）中直接同步调用 MessageBoxW 是业界标准做法：
+    MessageBox 内部自带消息泵，会正常处理窗口消息，不会与主线程形成死锁。
+    之前用网页玻璃弹窗（run_js 注入 + JS bridge 线程 Invoke 窗口）在 WinForms 上
+    会因主线程/bridge 线程竞争而卡死（pywebview 已知问题，见 PR #638）。
+
+    MB_YESNOCANCEL：
+      是(Yes)=6    → 最小化到托盘
+      否(No)=7     → 直接退出
+      取消(Cancel) → 取消关闭，保持窗口
     """
     try:
         import ctypes
-        # MB_YESNO：是 → 最小化托盘；否 → 直接退出
-        wants_tray = ctypes.windll.user32.MessageBoxW(
+        # MB_YESNOCANCEL | MB_ICONQUESTION | MB_DEFBUTTON1
+        result = ctypes.windll.user32.MessageBoxW(
             None,
             "关闭软件后希望如何操作？\n\n"
-            "[是] 最小化到系统托盘后台运行（主窗口隐藏，右下角常驻，双击图标恢复）\n"
-            "[否] 直接退出软件（完全关闭后台服务与进程）",
+            "[是]    最小化到系统托盘后台运行（主窗口隐藏，右下角常驻，双击图标恢复）\n"
+            "[否]    直接退出软件（完全关闭后台服务与进程）\n"
+            "[取消]  保持软件运行",
             APP_NAME,
-            0x24,
-        ) == 6
-        return ("tray" if wants_tray else "exit"), False
+            0x23,
+        )
+        if result == 6:
+            return "tray", False
+        if result == 7:
+            return "exit", False
+        return "cancel", False
     except Exception as error:
         with desktop_log_path().open("a", encoding="utf-8") as output:
-            output.write(f"Close-prompt dialog failed, defaulting to tray: {error}\n")
-        return "tray", False
+            output.write(f"Close-prompt dialog failed, defaulting to cancel: {error}\n")
+        return "cancel", False
 
 
 def allow_window_close():
-    """标题栏关闭按钮 → 依据配置：弹窗选择 / 最小化托盘 / 直接退出。"""
+    """标题栏关闭按钮 → 依据配置：原生弹窗选择 / 最小化托盘 / 直接退出。
+
+    全部用原生 MessageBoxW 同步执行（MessageBox 自带消息泵，不会死锁），
+    彻底移除网页玻璃弹窗的 run_js 注入与 JS bridge 线程 Invoke 窗口的死锁路径。
+    返回 True 表示允许关闭，False 表示阻止关闭（保持窗口）。
+    """
     global _CLOSE_ACTIVE
     if _EXIT_REQUESTED or _WINDOW is None:
         return True
@@ -888,15 +852,12 @@ def allow_window_close():
     if behavior == "tray":
         minimize_to_tray(_WINDOW)
         return False
-    # 防重入：closing 事件可能被连续触发，避免重复弹窗/并发操作窗口导致卡死。
+    # 防重入：closing 事件可能被连续触发，避免重复弹窗/并发操作窗口。
     with _CLOSE_LOCK:
         if _CLOSE_ACTIVE:
             return False
         _CLOSE_ACTIVE = True
     try:
-        # prompt：使用当前页面的玻璃弹窗，避免原生 MessageBox 与应用视觉割裂。
-        if _show_web_close_prompt(_WINDOW):
-            return False
         choice, remember = _prompt_close_choice()
         if remember:
             try:
@@ -908,6 +869,8 @@ def allow_window_close():
             except Exception as error:
                 with desktop_log_path().open("a", encoding="utf-8") as output:
                     output.write(f"Persist close choice failed: {error}\n")
+        if choice == "cancel":
+            return False
         if choice == "exit":
             request_exit(_WINDOW)
             return True
