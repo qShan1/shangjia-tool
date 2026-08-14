@@ -232,3 +232,43 @@
         display: grid;
     }
 }
+
+/* 关于页 - 免责声明区块（与品牌卡统一玻璃/卡片风格） */
+.about-disclaimer-card {
+    max-width: 920px;
+    margin: 1rem auto 0;
+    padding: 1.5rem 1.75rem;
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+}
+
+.about-disclaimer-card h4 {
+    margin: 0 0 0.9rem;
+    color: var(--color-text);
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.about-disclaimer-card h4 i {
+    color: var(--color-brand);
+}
+
+.about-disclaimer-list {
+    margin: 0;
+    padding: 0 0 0 1.1rem;
+    color: var(--color-text-secondary);
+    line-height: 1.8;
+    font-size: 0.9rem;
+}
+
+.about-disclaimer-list li {
+    margin: 0.35rem 0;
+}
+
+@media (max-width: 768px) {
+    .about-disclaimer-card {
+        padding: 1.25rem 1.25rem;
+    }
+}
