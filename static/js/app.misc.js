@@ -2065,6 +2065,10 @@ let chatMessagesHasMore = false;
 let chatMessagesSource = 'remote_im';
 let chatOldestMsgId = null;
 let chatSseAbortController = null;
+// AI 助手状态：开关 + 处理去重 + 忙碌标志。开启后收到买家新消息自动切换会话并生成 AI 建议填入输入框（不自动发送）。
+let chatAssistantEnabled = false;
+let chatAssistantHandled = new Set();
+let chatAssistantBusy = false;
 let chatSseRetryCount = 0;
 let chatSseShouldRun = false;
 let chatSessionsRefreshTimer = null;
@@ -3144,6 +3148,97 @@ function stopChatStream() {
     }
 }
 
+function toggleChatAssistant() {
+    chatAssistantEnabled = !!document.getElementById('chatAssistantSwitch')?.checked;
+    if (!chatAssistantEnabled) {
+        chatAssistantHandled.clear();
+        const state = document.getElementById('chatAssistantState');
+        if (state) state.textContent = '关闭';
+        return;
+    }
+    const state = document.getElementById('chatAssistantState');
+    if (state) state.textContent = '运行中，新消息自动接管输入框';
+}
+
+async function maybeHandleChatAssistant(data) {
+    // 助手开启 + 非忙碌 + 收到买家(非本人)消息 + 文本类内容 + 当前输入框空闲，才自动接管。
+    if (!chatAssistantEnabled || chatAssistantBusy) return;
+    if (Number(data.direction) !== 2) return; // 只处理买家发来的消息
+    if (data.content_type && ![0, 1].includes(Number(data.content_type))) return; // 只处理文本
+    const input = document.getElementById('chatInputBox');
+    if (input && String(input.value || '').trim()) return; // 用户正在输入则不接管
+
+    const key = String(data.cookie_id) + ':' + String(data.chat_id);
+    if (chatAssistantHandled.has(key)) return; // 同会话只接管一次
+    chatAssistantHandled.add(key);
+
+    chatAssistantBusy = true;
+    const stateEl = document.getElementById('chatAssistantState');
+    try {
+        if (stateEl) stateEl.textContent = '正在处理新消息...';
+        // 若消息属于其他账号，先切换到该账号（内部会刷新该账号的会话列表到 chatSessionsCache）
+        if (String(data.cookie_id) !== String(chatCurrentCookieId)) {
+            await selectChatAccount(data.cookie_id);
+        }
+        // 在当前账号的会话缓存中找到目标会话并切换
+        const session = chatSessionsCache.find(s => String(s.chat_id) === String(data.chat_id))
+            || null;
+        if (session) {
+            await selectChatSession(session);
+        } else if (String(data.chat_id) !== String(chatCurrentChatId)) {
+            // 会话不在缓存则直接按消息信息切换
+            await selectChatSession({
+                chat_id: data.chat_id,
+                buyer_id: data.sender_id,
+                buyer_name: data.sender_name,
+                sender_id: data.sender_id,
+                sender_name: data.sender_name,
+                item_id: data.item_id,
+                content: data.content,
+                content_type: data.content_type,
+            });
+        }
+        // 生成 AI 建议（dry_run 不落库不发送），填入输入框供人工确认
+        const reply = await generateChatAssistantSuggestion(data);
+        // 填建议前再次确认输入框仍空闲，避免覆盖用户异步期间输入的内容
+        const inputNow = document.getElementById('chatInputBox');
+        if (reply && inputNow && !String(inputNow.value || '').trim()) {
+            inputNow.value = reply;
+            if (stateEl) stateEl.textContent = '已填入 AI 建议，确认后发送';
+            inputNow.focus();
+        } else {
+            if (stateEl) stateEl.textContent = reply ? '输入框非空闲，未覆盖' : 'AI 建议生成失败（可能未启用 AI 回复）';
+            if (!reply) chatAssistantHandled.delete(key);
+        }
+    } catch (error) {
+        console.error('AI 助手处理失败:', error);
+        if (stateEl) stateEl.textContent = '处理失败，已暂停';
+    } finally {
+        chatAssistantBusy = false;
+    }
+}
+
+async function generateChatAssistantSuggestion(data) {
+    const base = String(data.content || '').trim();
+    if (!base) return null;
+    try {
+        const result = await fetchJSON(`${apiBase}/ai-reply-test/${encodeURIComponent(data.cookie_id)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: base,
+                item_title: data.item_title || '商品',
+                item_price: data.item_price || 0,
+                item_desc: '',
+            })
+        });
+        return result?.reply || null;
+    } catch (error) {
+        console.error('生成 AI 建议失败:', error);
+        return null;
+    }
+}
+
 function processChatSSEEvent(raw) {
     let eventType = 'message';
     let dataStr = '';
@@ -3160,6 +3255,8 @@ function processChatSSEEvent(raw) {
         const event = JSON.parse(dataStr);
         const data = event.data || {};
         data.cookie_id = data.cookie_id || event.cookie_id;
+        // AI 助手：可跨账号处理新消息（无论当前是否在该账号会话）
+        maybeHandleChatAssistant(data);
         if (data.cookie_id !== chatCurrentCookieId) {
             return;
         }

@@ -97,3 +97,8 @@ static/control-tower-preview.html
 # ==================== 例外：需要跟踪的文件 ====================
 !docs/*.md
 !tests/test_item_polish_module.py
+
+# ==================== 本地工具/图谱/测试数据 ====================
+.serena/
+graphify-out/
+test_data/
