@@ -1554,34 +1554,43 @@ async function fetchJSON(url, opts = {}) {
         requestOptions.headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const res = await fetch(url, requestOptions);
-    if (res.status === 401) {
-        // 未授权，跳转到登录页面
-        localStorage.removeItem('auth_token');
-        window.location.href = '/';
-        return;
-    }
-    if (!res.ok) {
-        let errorMessage = `HTTP ${res.status}`;
-        try {
-        const errorText = await res.text();
-        if (errorText) {
-            // 尝试解析JSON错误信息
+    // 统一请求超时：防止后端长时间阻塞(如 Playwright 刷新)导致全局加载遮罩永不关闭
+    const timeoutMs = opts.timeout || 30000;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    requestOptions.signal = requestOptions.signal || controller.signal;
+    try {
+        const res = await fetch(url, requestOptions);
+        if (res.status === 401) {
+            // 未授权，跳转到登录页面
+            localStorage.removeItem('auth_token');
+            window.location.href = '/';
+            return;
+        }
+        if (!res.ok) {
+            let errorMessage = `HTTP ${res.status}`;
             try {
-            const errorJson = JSON.parse(errorText);
-            errorMessage = errorJson.detail || errorJson.message || errorText;
-            } catch {
-            errorMessage = errorText;
+            const errorText = await res.text();
+            if (errorText) {
+                // 尝试解析JSON错误信息
+                try {
+                const errorJson = JSON.parse(errorText);
+                errorMessage = errorJson.detail || errorJson.message || errorText;
+                } catch {
+                errorMessage = errorText;
+                }
             }
+            } catch {
+            errorMessage = `HTTP ${res.status} ${res.statusText}`;
+            }
+            throw new Error(errorMessage);
         }
-        } catch {
-        errorMessage = `HTTP ${res.status} ${res.statusText}`;
-        }
-        throw new Error(errorMessage);
+        const data = await res.json();
+        if (!silent) toggleLoading(false);
+        return data;
+    } finally {
+        clearTimeout(timer);
     }
-    const data = await res.json();
-    if (!silent) toggleLoading(false);
-    return data;
     } catch (err) {
     if (!silent) {
         handleApiError(err);

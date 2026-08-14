@@ -8649,12 +8649,50 @@ async def refresh_cookies_from_qr_login(
             register_instance=False,
         )
 
-        # 执行cookie刷新
-        success = await temp_instance.refresh_cookies_from_qr_login(
-            qr_cookies_str=qr_cookies,
-            cookie_id=cookie_id,
-            user_id=current_user['user_id']
-        )
+        # 执行cookie刷新（加整体超时，避免 Playwright 浏览器操作长时间阻塞导致前端一直转圈）
+        try:
+            success = await asyncio.wait_for(
+                temp_instance.refresh_cookies_from_qr_login(
+                    qr_cookies_str=qr_cookies,
+                    cookie_id=cookie_id,
+                    user_id=current_user['user_id']
+                ),
+                timeout=120,
+            )
+        except asyncio.TimeoutError:
+            log_with_user('error', f"扫码cookie刷新超时(120s): {cookie_id}", current_user)
+            if risk_log_id:
+                try:
+                    db_manager.update_risk_control_log(
+                        log_id=risk_log_id,
+                        processing_status='failed',
+                        processing_result='扫码Cookie刷新超时',
+                        session_id=risk_session_id,
+                        trigger_scene='manual_qr_refresh',
+                        result_code='manual_qr_refresh_timeout',
+                        duration_ms=max(0, int((time.time() - risk_log_started_at) * 1000)),
+                        event_meta=_build_risk_event_meta({'account_id': cookie_id})
+                    )
+                except Exception:
+                    pass
+            return {'success': False, 'message': 'Cookie刷新超时，请稍后重试'}
+        except Exception as refresh_e:
+            log_with_user('error', f"扫码cookie刷新异常: {cookie_id}, 错误: {str(refresh_e)}", current_user)
+            if risk_log_id:
+                try:
+                    db_manager.update_risk_control_log(
+                        log_id=risk_log_id,
+                        processing_status='failed',
+                        processing_result=f'扫码Cookie刷新异常: {str(refresh_e)[:200]}',
+                        session_id=risk_session_id,
+                        trigger_scene='manual_qr_refresh',
+                        result_code='manual_qr_refresh_error',
+                        duration_ms=max(0, int((time.time() - risk_log_started_at) * 1000)),
+                        event_meta=_build_risk_event_meta({'account_id': cookie_id})
+                    )
+                except Exception:
+                    pass
+            return {'success': False, 'message': f'Cookie刷新失败: {str(refresh_e)[:100]}'}
 
         if success:
             log_with_user('info', f"扫码cookie刷新成功: {cookie_id}", current_user)
