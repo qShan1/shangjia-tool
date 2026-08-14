@@ -2042,6 +2042,48 @@ async function configAIReply(accountId) {
 }
 
 // 更新API请求地址预览
+// 选择 API 类型时自动填充对应供应商的默认 base_url + 推荐模型（业界标准一键配置，借鉴 NextChat/LobeChat）
+function applyApiTypePreset() {
+    const apiType = document.getElementById('aiApiType').value;
+    const baseUrlInput = document.getElementById('aiBaseUrl');
+    const modelSelect = document.getElementById('aiModelName');
+    const customModelInput = document.getElementById('customModelName');
+    if (!apiType) {
+        updateApiUrlPreview();
+        return;
+    }
+    // 供应商默认 base_url（OpenAI 兼容端点）
+    const baseUrlMap = {
+        'openai': 'https://api.openai.com/v1',
+        'openai_responses': 'https://api.openai.com/v1',
+        'gemini': 'https://generativelanguage.googleapis.com/v1beta',
+        'anthropic': 'https://api.anthropic.com',
+        'azure_openai': '',
+        'ollama': 'http://localhost:11434',
+    };
+    // 推荐模型
+    const modelMap = {
+        'openai': 'gpt-4o-mini',
+        'openai_responses': 'gpt-4o-mini',
+        'gemini': 'gemini-2.0-flash',
+        'anthropic': 'claude-3-5-sonnet',
+        'ollama': 'qwen2.5',
+    };
+    // 仅当用户尚未手动输入 base_url 时才自动填充，避免覆盖已填内容
+    const currentBase = (baseUrlInput.value || '').trim();
+    if (!currentBase && baseUrlMap[apiType] !== undefined) {
+        baseUrlInput.value = baseUrlMap[apiType];
+    }
+    if (modelMap[apiType] && modelSelect) {
+        modelSelect.value = 'custom';
+        if (customModelInput) {
+            customModelInput.style.display = 'block';
+            customModelInput.value = modelMap[apiType];
+        }
+    }
+    updateApiUrlPreview();
+}
+
 function updateApiUrlPreview() {
     const baseUrl = (document.getElementById('aiBaseUrl').value || '').replace(/\/+$/, '');
     const apiType = document.getElementById('aiApiType').value;
