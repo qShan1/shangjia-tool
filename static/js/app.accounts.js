@@ -2124,6 +2124,8 @@ function updateApiUrlPreview() {
 
 // 切换AI回复设置显示
 function toggleAIReplySettings() {
+    // AI 设置配置区始终显示（默认可见），aiReplyEnabled 只作为"AI 回复功能"的启用开关，
+    // 不再控制配置区块的显隐——方便用户先配置连接参数再决定是否启用自动回复。
     const enabled = document.getElementById('aiReplyEnabled').checked;
     const settingsDiv = document.getElementById('aiReplySettings');
     const bargainSettings = document.getElementById('bargainSettings');
@@ -2131,19 +2133,12 @@ function toggleAIReplySettings() {
     const promptSettings = document.getElementById('promptSettings');
     const testArea = document.getElementById('testArea');
 
-    if (enabled) {
-    settingsDiv.style.display = 'block';
-    bargainSettings.style.display = 'block';
-    aiParamSettings.style.display = 'block';
-    promptSettings.style.display = 'block';
-    testArea.style.display = 'block';
-    } else {
-    settingsDiv.style.display = 'none';
-    bargainSettings.style.display = 'none';
-    aiParamSettings.style.display = 'none';
-    promptSettings.style.display = 'none';
-    testArea.style.display = 'none';
-    }
+    // 配置区始终显示
+    if (settingsDiv) settingsDiv.style.display = 'block';
+    if (bargainSettings) bargainSettings.style.display = 'block';
+    if (aiParamSettings) aiParamSettings.style.display = 'block';
+    if (promptSettings) promptSettings.style.display = 'block';
+    if (testArea) testArea.style.display = 'block';
 }
 
 // 保存AI回复配置
