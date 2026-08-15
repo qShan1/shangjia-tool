@@ -128,6 +128,23 @@ def is_chat_manual_typing(chat_id: str) -> bool:
     return True
 
 
+_BROWSER_SLOT_WAIT_SECONDS = 15
+
+
+async def _acquire_browser_slot():
+    """带超时获取浏览器并发槽位。
+
+    返回 True 表示已取得槽位；False 表示等待超时（浏览器繁忙）。
+    避免手动刷新等操作因并发槽位被占而无限转圈。
+    """
+    import asyncio
+    try:
+        await asyncio.wait_for(_BROWSER_SEMAPHORE.acquire(), timeout=_BROWSER_SLOT_WAIT_SECONDS)
+        return True
+    except asyncio.TimeoutError:
+        logger.warning(f"等待浏览器并发槽位超时({_BROWSER_SLOT_WAIT_SECONDS}s)，浏览器繁忙，请稍后重试")
+        return False
+
 
 def _force_kill_chromium(pid=None):
     """Windows 兜底强杀 chromium 进程树，playwright.stop() 超时后用 taskkill /T /F 释放残留进程。
@@ -14251,7 +14268,9 @@ class XianyuLive:
             from utils.xianyu_utils import trans_cookies
 
             logger.info(f"【{target_cookie_id}】等待浏览器并发槽位...")
-            await _BROWSER_SEMAPHORE.acquire()
+            if not await _acquire_browser_slot():
+                logger.warning(f"【{target_cookie_id}】浏览器并发槽位等待超时，放弃本次手动刷新")
+                return False
             logger.info(f"【{target_cookie_id}】获取浏览器并发槽位成功（当前剩余: {_BROWSER_SEMAPHORE._value}）")
 
             logger.info(f"【{target_cookie_id}】开始使用扫码登录cookie获取真实cookie...")
@@ -14638,7 +14657,9 @@ class XianyuLive:
             from utils.xianyu_utils import trans_cookies
 
             logger.info(f"【{self.cookie_id}】等待浏览器并发槽位...")
-            await _BROWSER_SEMAPHORE.acquire()
+            if not await _acquire_browser_slot():
+                logger.warning(f"【{self.cookie_id}】浏览器并发槽位等待超时，放弃本次刷新")
+                return False
             logger.info(f"【{self.cookie_id}】获取浏览器并发槽位成功（当前剩余: {_BROWSER_SEMAPHORE._value}）")
 
             logger.info(f"【{self.cookie_id}】开始使用当前cookie访问指定页面获取真实cookie...")
@@ -14914,7 +14935,9 @@ class XianyuLive:
             from playwright.async_api import async_playwright
 
             logger.info(f"【{self.cookie_id}】等待浏览器并发槽位...")
-            await _BROWSER_SEMAPHORE.acquire()
+            if not await _acquire_browser_slot():
+                logger.warning(f"【{self.cookie_id}】浏览器并发槽位等待超时，放弃本次刷新")
+                return False
             logger.info(f"【{self.cookie_id}】获取浏览器并发槽位成功（当前剩余: {_BROWSER_SEMAPHORE._value}）")
 
             # 检查是否需要等待扫码登录Cookie刷新的冷却时间

@@ -703,7 +703,7 @@ async function toggleAccountStatus(accountId, enabled) {
                 if (liveStatus.risk_protected) {
                     const toggle = document.querySelector(`input[onchange*="${accountId}"]`);
                     if (toggle) toggle.checked = false;
-                    showToast('账号处于平台风控保护中，请先恢复账号并导入新 Cookie 后再启用', 'warning');
+                    showToast('该账号后台正在处理登录恢复，通常 5-10 分钟自动重试；若一直未恢复，建议先用官方闲鱼 App 扫码登录一次，再回来手动刷新 Cookie', 'warning');
                     return;
                 }
             }
@@ -717,7 +717,7 @@ async function toggleAccountStatus(accountId, enabled) {
     if (enabled && accountSnapshot?.runtime_status?.risk_protected) {
         const toggle = document.querySelector(`input[onchange*="${accountId}"]`);
         if (toggle) toggle.checked = false;
-        showToast('账号处于平台风控保护中，请先恢复账号并导入新 Cookie 后再启用', 'warning');
+        showToast('该账号后台正在处理登录恢复，通常 5-10 分钟自动重试；若一直未恢复，建议先用官方闲鱼 App 扫码登录一次，再回来手动刷新 Cookie', 'warning');
         return;
     }
 

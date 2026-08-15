@@ -8803,8 +8803,8 @@ def update_cookie_status(cid: str, status_data: CookieStatusIn, current_user: Di
             raise HTTPException(
                 status_code=409,
                 detail=(
-                    '账号处于平台风控保护中，系统已停止自动恢复。'
-                    '请先在官方闲鱼端确认账号恢复，再导入新的有效Cookie并完成预检，暂不能直接启用。'
+                    '该账号后台正在处理登录恢复，通常 5-10 分钟会自动重试，届时可再启用。'
+                    '若一直未恢复，建议先用官方闲鱼 App 扫码登录一次，再回来手动刷新 Cookie。'
                 ),
             )
 
@@ -15861,8 +15861,8 @@ async def connect_chat_account(cid: str, current_user: Dict[str, Any] = Depends(
             raise HTTPException(
                 status_code=409,
                 detail=(
-                    '账号处于平台风控保护中，在线客服不会自动启用或重新连接。'
-                    '请先在官方闲鱼端恢复账号，再导入新的有效Cookie并完成预检。'
+                    '该账号后台正在处理登录恢复，在线客服暂未自动连接。'
+                    '通常几分钟内会自动恢复；若仍无效，建议用官方闲鱼 App 扫码登录一次后再试。'
                 ),
             )
 

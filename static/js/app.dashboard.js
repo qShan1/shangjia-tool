@@ -733,8 +733,8 @@ function getManualInterventionAlert(statusNote, runtimeStatus) {
     const manualKeywords = ['滑块', '风控', '验证码', '验证', '账号存在风险', '拦截', '客户端登录'];
     if (riskProtected) {
         return {
-            title: '平台风控保护中，自动恢复已停止',
-            detail: '当前没有可接管的验证页面，也不会继续自动滑块或反复刷新。请先在官方闲鱼端确认账号恢复，再导入新的有效 Cookie 并完成认证预检。',
+            title: '账号暂时无法自动登录',
+            detail: '后台正在自动处理中，通常 5-10 分钟会自动重试。若长时间未恢复，建议直接用官方闲鱼 App 扫码登录一次（最有效），登录成功后再回到本工具点“手动刷新 Cookie”。',
             vncUrl: null,
             vncAvailable: false,
         };
@@ -953,7 +953,7 @@ function renderDashboardAccountOverview(accounts, totalItems = 0) {
 
     enabledHint.textContent = `${enabledAccounts.length} 个账号`;
     disabledHint.textContent = disabledAccounts.length
-        ? `${disabledAccounts.length} 个账号待恢复${riskProtectedAccounts ? `，其中 ${riskProtectedAccounts} 个处于风控保护中` : ''}`
+        ? `${disabledAccounts.length} 个账号待恢复${riskProtectedAccounts ? `，其中 ${riskProtectedAccounts} 个暂不可用` : ''}`
         : '暂无禁用账号';
 
     const sortAccounts = (items) => [...items].sort((a, b) => {
