@@ -13829,6 +13829,18 @@ def list_log_files(admin_user: Dict[str, Any] = Depends(require_admin)):
         log_with_user('error', f"获取日志文件列表失败: {str(e)}", admin_user)
         raise HTTPException(status_code=500, detail=str(e))
 
+def _iter_file(path: str):
+    file_handle = open(path, 'rb')
+    try:
+        while True:
+            chunk = file_handle.read(8192)
+            if not chunk:
+                break
+            yield chunk
+    finally:
+        file_handle.close()
+
+
 @app.get('/admin/logs/export')
 def export_log_file(file: str, admin_user: Dict[str, Any] = Depends(require_admin)):
     """导出指定的日志文件"""
@@ -13853,22 +13865,12 @@ def export_log_file(file: str, admin_user: Dict[str, Any] = Depends(require_admi
             raise HTTPException(status_code=404, detail="日志文件不存在")
 
         log_with_user('info', f"导出日志文件: {safe_name}", admin_user)
-        def iter_file(path: str):
-            file_handle = open(path, 'rb')
-            try:
-                while True:
-                    chunk = file_handle.read(8192)
-                    if not chunk:
-                        break
-                    yield chunk
-            finally:
-                file_handle.close()
 
         headers = {
             "Content-Disposition": f'attachment; filename="{safe_name}"'
         }
         return StreamingResponse(
-            iter_file(target_path),
+            _iter_file(target_path),
             media_type='text/plain; charset=utf-8',
             headers=headers
         )
@@ -14427,22 +14429,11 @@ def download_backup_file(file: str, admin_user: Dict[str, Any] = Depends(require
 
         log_with_user('info', f"下载备份文件: {safe_name}", admin_user)
 
-        def iter_file(path: str):
-            file_handle = open(path, 'rb')
-            try:
-                while True:
-                    chunk = file_handle.read(8192)
-                    if not chunk:
-                        break
-                    yield chunk
-            finally:
-                file_handle.close()
-
         headers = {
             "Content-Disposition": f'attachment; filename="{safe_name}"'
         }
         return StreamingResponse(
-            iter_file(target_path),
+            _iter_file(target_path),
             media_type='application/octet-stream',
             headers=headers
         )
