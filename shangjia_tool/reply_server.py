@@ -11541,6 +11541,16 @@ class ProductSinglePublishRequest(BaseModel):
     specs: Optional[List[Any]] = None
 
 
+class AiPublishRequest(BaseModel):
+    account_id: str
+    keywords: str
+    images: List[Any] = None
+    material_id: Optional[int] = None
+    delivery_method: str = "包邮"
+    condition: Optional[str] = "全新"
+    quantity: Optional[int] = 1
+
+
 def _parse_optional_non_negative_float(value: Any, field_label: str) -> Optional[float]:
     if value is None:
         return None
@@ -12309,6 +12319,102 @@ async def publish_product_json(
         skus=data.get('skus') or [],
         specs=data.get('specs') or [],
     )
+
+
+@app.post("/product-publish/ai")
+async def ai_publish_product(
+    request: AiPublishRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """AI 发布商品：按关键词生成完整商品（标题/描述/类目/价格）并直接发布。
+    图片必须由调用方提供：material_id 复用素材图，或直接传 images（URL/Base64/本地路径）。
+    AI 不生成图片。"""
+    try:
+        keywords = str(request.keywords or '').strip()
+        if not keywords:
+            raise HTTPException(status_code=400, detail="请提供商品卖点或关键词")
+
+        cleaned_account_id = _ensure_cookie_access(request.account_id, current_user)
+
+        # 校验 AI 发布开关
+        ai_settings = db_manager.get_ai_reply_settings(cleaned_account_id) or {}
+        if not ai_settings.get('ai_publish_enabled'):
+            raise HTTPException(
+                status_code=400,
+                detail="该账号未开启 AI 发布（请在 AI 设置中开启“AI 发布”开关）",
+            )
+
+        # 解析图片来源：优先素材图，其次传入 images
+        images = []
+        if request.material_id:
+            material = db_manager.get_product_material(request.material_id, user_id=current_user['user_id'])
+            if material and material.get('images'):
+                try:
+                    material_images = material['images']
+                    if isinstance(material_images, str):
+                        import json as _json
+                        material_images = _json.loads(material_images or '[]')
+                    if isinstance(material_images, list):
+                        for img in material_images:
+                            if isinstance(img, str):
+                                images.append({'url': img})
+                            elif isinstance(img, dict):
+                                images.append(img)
+                except Exception as e:
+                    logger.warning(f"解析素材图片失败: {e}")
+        if not images and request.images:
+            images = request.images
+        if not images:
+            return {
+                'success': False,
+                'status': 'need_images',
+                'message': 'AI 发布需要商品图片：请选择已含图片的素材，或先上传图片。AI 不生成图片。',
+            }
+
+        # AI 生成完整商品
+        ai_result = ai_reply_engine.optimize_item_copy(
+            cleaned_account_id,
+            title=keywords,
+            description='',
+            category='',
+            mode='generate',
+            keywords=keywords,
+        )
+        if not ai_result or not ai_result.get('title'):
+            raise HTTPException(status_code=500, detail="AI 生成商品失败，请检查 AI 配置后重试")
+
+        # 价格取区间中值
+        price = None
+        pmin = ai_result.get('price_min')
+        pmax = ai_result.get('price_max')
+        if pmin and pmax:
+            price = round((float(pmin) + float(pmax)) / 2, 2)
+        elif pmax:
+            price = float(pmax)
+        elif pmin:
+            price = float(pmin)
+
+        return await _publish_product_to_account(
+            current_user=current_user,
+            account_id=request.account_id,
+            title=ai_result.get('title'),
+            description=ai_result.get('description') or '',
+            images=images,
+            current_price=price,
+            original_price=None,
+            delivery_choice=request.delivery_method or '包邮',
+            post_price=0,
+            can_self_pickup=False,
+            category_hint=ai_result.get('category'),
+            condition=request.condition or '全新',
+            quantity=request.quantity or 1,
+            material_id=request.material_id,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"AI 发布商品失败: {e}")
+        raise HTTPException(status_code=500, detail=f"AI 发布商品失败: {str(e)}")
 
 
 @app.post("/product-publish/batch")

@@ -1426,6 +1426,70 @@ async function generateItemCopyWithAI() {
     }
 }
 
+// AI 一键发布：按关键词生成完整商品并直接发布（图片复用已载入素材，或要求先上传）
+async function aiPublishProduct() {
+    const values = getItemPublishFormValues();
+    const button = document.getElementById('itemPublishAiPublishBtn');
+    if (!values.accountId) {
+        showToast('请先选择发布账号（用于读取 AI 配置）', 'warning');
+        return;
+    }
+    let keywords = values.title || '';
+    if (!keywords) {
+        const input = window.prompt('请输入商品卖点或关键词（例如：正版网盘会员 自动发货 永久更新）');
+        if (!input || !input.trim()) return;
+        keywords = input.trim();
+    }
+    // 图片来源：已载入素材图
+    const images = (itemPublishLoadedMaterialImages || []).map(img =>
+        typeof img === 'string' ? { url: img } : img
+    );
+    if (images.length === 0) {
+        showToast('AI 发布需要商品图片：请先在“商品素材”中载入含图片的素材，或先上传图片。AI 不生成图片', 'warning');
+        return;
+    }
+    if (!await uiConfirm(`AI 将根据关键词生成完整商品并直接发布到账号「${values.accountId}」，共使用 ${images.length} 张图片。确定继续吗？`)) return;
+
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>AI 发布中...';
+    }
+    const resultContainer = document.getElementById('itemPublishComplianceResult');
+    if (resultContainer) resultContainer.innerHTML = '<div class="alert alert-secondary mb-0"><i class="bi bi-magic me-1"></i>AI 正在生成并发布商品，请稍候...</div>';
+    try {
+        const response = await requestItemPublishJson('/product-publish/ai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                account_id: values.accountId,
+                keywords,
+                images,
+            }),
+        });
+        if (response?.success) {
+            showToast('AI 商品发布成功', 'success');
+            if (resultContainer) resultContainer.innerHTML = '<div class="alert alert-success mb-0"><i class="bi bi-check-circle me-1"></i>AI 商品已发布成功</div>';
+            try { loadItemsFromCookie(values.accountId); } catch (e) { console.warn('刷新商品列表失败', e); }
+        } else if (response?.status === 'need_images') {
+            showToast('AI 发布需要图片：请先载入含图片的素材', 'warning');
+            if (resultContainer) resultContainer.innerHTML = `<div class="alert alert-warning mb-0">${escapeHtml(response.message || '需要图片')}</div>`;
+        } else {
+            const msg = response?.message || 'AI 发布失败';
+            showToast(msg, 'danger');
+            if (resultContainer) resultContainer.innerHTML = `<div class="alert alert-danger mb-0">AI 发布失败：${escapeHtml(msg)}</div>`;
+        }
+    } catch (error) {
+        const msg = error.message || 'AI 发布失败';
+        showToast(msg, 'danger');
+        if (resultContainer) resultContainer.innerHTML = `<div class="alert alert-danger mb-0">AI 发布失败：${escapeHtml(msg)}</div>`;
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<i class="bi bi-magic me-1"></i>AI 一键发布';
+        }
+    }
+}
+
 // AI 优化商品文案：去违禁词/绝对化表述，转换为可发布文案（仅优化建议，不限制发布）
 async function optimizeItemCopyWithAI() {
     const values = getItemPublishFormValues();
