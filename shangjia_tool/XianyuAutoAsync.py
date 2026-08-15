@@ -12253,10 +12253,14 @@ class XianyuLive:
                 try:
                     from db_manager import db_manager
 
-                    # 过滤掉买家订单（如果send_user_id是自己，说明是自己购买的订单）
-                    if send_user_id and send_user_id == self.myid:
+                    # 过滤掉买家订单：用"商品归属"判断更可靠（仅当对方==自己才算买单的旧逻辑，
+                    # 会在卖家主动发消息时误判）。商品不属于自己=本账号是买家=买单，跳过不落库。
+                    # 无法判断归属(None)时回退旧逻辑（send_user_id==myid），避免行为突变。
+                    is_owned = await self._is_item_owned_by_self(item_id)
+                    if is_owned is False:
+                        logger.info(f"【{self.cookie_id}】跳过买家订单 {order_id}，商品 {item_id} 不属于本账号（本账号是买家）")
+                    elif is_owned is None and send_user_id and send_user_id == self.myid:
                         logger.info(f"【{self.cookie_id}】跳过买家订单 {order_id}，buyer_id={send_user_id} 等于自己的ID")
-                        # 不保存买家订单，但继续返回发货内容（如果有的话）
                     else:
                         # 检查cookie_id是否在cookies表中存在
                         cookie_info = db_manager.get_cookie_by_id(self.cookie_id)
