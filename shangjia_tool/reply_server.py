@@ -1008,8 +1008,8 @@ def _persist_remembered_login(token: str, user_id: int, username: str, is_admin:
             'username': username,
             'is_admin': is_admin,
         }, expires_at)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"持久化记住登录token失败: {e}")
 
 
 def _load_remembered_token(token: str) -> Optional[Dict[str, Any]]:
@@ -1037,8 +1037,8 @@ def _drop_remembered_token(token: str) -> None:
     try:
         from db_manager import db_manager
         db_manager.delete_auth_token(token)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"删除记住登录token失败: {e}")
 
 
 def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[Dict[str, Any]]:
@@ -1378,8 +1378,8 @@ async def log_requests(request, call_next):
                 # 检查token是否过期
                 if time.time() - token_data['timestamp'] <= TOKEN_EXPIRE_TIME:
                     user_info = f"【{token_data['username']}#{token_data['user_id']}】"
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"API请求日志解析token异常: {e}")
 
     logger.info(f"🌐 {user_info} API请求: {request.method} {request.url.path}")
 
@@ -1944,8 +1944,8 @@ async def login(login_request: LoginRequest, request: Request):
                 try:
                     from db_manager import db_manager as _dm
                     _dm.update_user_last_login(user['id'], client_ip)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"更新用户最后登录时间失败: {e}")
 
                 return LoginResponse(
                     success=True,
@@ -4446,8 +4446,8 @@ def _extract_history_message_text(message: Dict[str, Any]) -> str:
             text = str(candidate or '').strip()
             if text and text not in {'{}', '[]'}:
                 return text
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"提取聊天历史消息文本失败: {e}")
 
     raw_text = str(message.get('raw') or '').strip()
     return raw_text[:120] if raw_text else ''
@@ -5913,8 +5913,8 @@ async def trigger_session_keepalive(cid: str, current_user: Dict[str, Any] = Dep
                 status='failed',
                 message=f"手动轻量保活失败: {str(e)}",
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"记录保活任务失败日志异常: {e}")
         raise HTTPException(status_code=400, detail=safe_client_error("手动轻量保活失败，请稍后重试"))
 
 
@@ -6782,8 +6782,8 @@ async def _execute_password_login(session_id: str, account_id: str, account: str
                     try:
                         if cookie_manager.manager:
                             cookie_manager.manager.cookie_status[account_id] = True
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"更新cookie状态失败: {e}")
                     if is_new_account:
                         log_with_user('info', f"新账号Cookie和账号密码已保存: {account_id}", current_user)
                     else:
@@ -6975,14 +6975,14 @@ async def _execute_password_login(session_id: str, account_id: str, account: str
             try:
                 from XianyuAutoAsync import XianyuLive
                 XianyuLive.end_manual_refresh(account_id, source=manual_refresh_owner)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"结束手动刷新会话失败: {e}")
         if auth_recovery_acquired and not login_thread_started:
             try:
                 from XianyuAutoAsync import XianyuLive
                 XianyuLive.end_auth_recovery_session(account_id, auth_recovery_owner)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"结束认证恢复会话失败: {e}")
         import traceback
         logger.error(traceback.format_exc())
 
@@ -7212,8 +7212,8 @@ async def _execute_manual_cookie_import(
                 try:
                     from utils.xianyu_slider_stealth import concurrency_manager
                     concurrency_manager.unregister_instance(account_id, slider_instance)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"注销并发管理实例失败: {e}")
 
         import threading
         login_thread = threading.Thread(target=run_import, daemon=True)
@@ -8400,8 +8400,8 @@ async def process_qr_login_cookies(cookies: str, unb: str, current_user: Dict[st
                                         'token_prewarmed': False,
                                     })
                                 )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"记录扫码风险日志失败: {e}")
 
                     return {
                         'account_id': account_id,
@@ -8428,8 +8428,8 @@ async def process_qr_login_cookies(cookies: str, unb: str, current_user: Dict[st
                                 duration_ms=max(0, int((time.time() - risk_log_started_at) * 1000)),
                                 event_meta=_build_risk_event_meta({'account_id': account_id, 'is_new_account': is_new_account})
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"记录扫码风险日志失败: {e}")
                     # 降级处理：使用原始扫码cookie
                     return await _fallback_save_qr_cookie(account_id, cookies, user_id, is_new_account, current_user, "无法从数据库获取真实cookie")
             else:
@@ -8446,8 +8446,8 @@ async def process_qr_login_cookies(cookies: str, unb: str, current_user: Dict[st
                             duration_ms=max(0, int((time.time() - risk_log_started_at) * 1000)),
                             event_meta=_build_risk_event_meta({'account_id': account_id, 'is_new_account': is_new_account})
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"记录扫码风险日志失败: {e}")
                 # 降级处理：使用原始扫码cookie
                 return await _fallback_save_qr_cookie(account_id, cookies, user_id, is_new_account, current_user, "真实cookie获取失败")
 
@@ -8465,8 +8465,8 @@ async def process_qr_login_cookies(cookies: str, unb: str, current_user: Dict[st
                         duration_ms=max(0, int((time.time() - risk_log_started_at) * 1000)),
                         event_meta=_build_risk_event_meta({'account_id': account_id, 'is_new_account': is_new_account})
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"记录扫码风险日志失败: {e}")
             # 降级处理：使用原始扫码cookie
             return await _fallback_save_qr_cookie(account_id, cookies, user_id, is_new_account, current_user, f"获取真实cookie异常: {str(refresh_e)}")
 
@@ -8593,8 +8593,8 @@ async def refresh_cookies_from_qr_login(
                         duration_ms=max(0, int((time.time() - risk_log_started_at) * 1000)),
                         event_meta=_build_risk_event_meta({'account_id': cookie_id})
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"记录扫码刷新风险日志失败: {e}")
             return {'success': False, 'message': 'Cookie刷新超时，请稍后重试'}
         except Exception as refresh_e:
             log_with_user('error', f"扫码cookie刷新异常: {cookie_id}, 错误: {str(refresh_e)}", current_user)
@@ -8610,8 +8610,8 @@ async def refresh_cookies_from_qr_login(
                         duration_ms=max(0, int((time.time() - risk_log_started_at) * 1000)),
                         event_meta=_build_risk_event_meta({'account_id': cookie_id})
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"记录扫码刷新风险日志失败: {e}")
             return {'success': False, 'message': f'Cookie刷新失败: {str(refresh_e)[:100]}'}
 
         if success:
@@ -8630,8 +8630,8 @@ async def refresh_cookies_from_qr_login(
                         duration_ms=max(0, int((time.time() - risk_log_started_at) * 1000)),
                         event_meta=_build_risk_event_meta({'account_id': cookie_id})
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"记录扫码刷新风险日志失败: {e}")
 
             # 如果cookie_manager存在，更新其中的cookie
             if cookie_manager.manager:
@@ -8672,8 +8672,8 @@ async def refresh_cookies_from_qr_login(
                         duration_ms=max(0, int((time.time() - risk_log_started_at) * 1000)),
                         event_meta=_build_risk_event_meta({'account_id': cookie_id})
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"记录扫码刷新风险日志失败: {e}")
             return {'success': False, 'message': '获取真实cookie失败'}
 
     except Exception as e:
@@ -8691,8 +8691,8 @@ async def refresh_cookies_from_qr_login(
                     duration_ms=max(0, int((time.time() - risk_log_started_at) * 1000)),
                     event_meta=_build_risk_event_meta({'account_id': cookie_id})
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"记录扫码刷新风险日志失败: {e}")
         return {'success': False, 'message': f'刷新cookie失败: {str(e)}'}
 
 
@@ -15788,8 +15788,8 @@ async def batch_rate_historical_orders(
                     db_manager.add_scheduled_rate_log(
                         batch_id, raw_cookie_id, status='failed', message=account_result['message']
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"记录定时评分日志失败: {e}")
                 details.append(account_result)
 
         message = (
@@ -16507,8 +16507,8 @@ async def chat_send_message(
             try:
                 detail = db_manager.get_cookie_details(cookie_id) or {}
                 sender_name = detail.get('remark') or detail.get('username') or cookie_id
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"获取cookie详情失败: {e}")
 
             _msg_id_db = db_manager.save_chat_message(
                 cookie_id=cookie_id, chat_id=req.chat_id,
@@ -17804,8 +17804,8 @@ async def polish_account_items(cid: str, current_user: Dict[str, Any] = Depends(
                 status='failed',
                 message=f"擦亮异常: {str(e)}",
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"记录擦亮任务日志失败: {e}")
         return {"success": False, "message": f"擦亮异常: {str(e)}"}
 
 

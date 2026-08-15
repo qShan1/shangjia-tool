@@ -129,8 +129,8 @@ class DBManager:
                     f.write(key)
                 try:
                     os.chmod(self.secret_key_path, 0o600)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"设置密钥文件权限失败: {e}")
 
         self.secret_fernet = Fernet(key)
 
@@ -1521,8 +1521,8 @@ Cookie数量: {cookie_count}
                     # 如果重建失败，尝试回滚
                     try:
                         cursor.execute("DROP TABLE IF EXISTS cards_new")
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.warning(f"回滚清理cards_new表失败: {e}")
             else:
                 logger.error(f"检查cards表约束时出现未知错误: {e}")
 
@@ -1625,8 +1625,8 @@ Cookie数量: {cookie_count}
             # 如果迁移失败，尝试清理
             try:
                 cursor.execute("DROP TABLE IF EXISTS notification_templates_new")
-            except:
-                pass
+            except Exception as e:
+                logger.warning(f"回滚清理notification_templates_new表失败: {e}")
 
     def check_and_upgrade_db(self, cursor):
         """检查数据库版本并执行必要的升级"""
@@ -1877,8 +1877,8 @@ Cookie数量: {cookie_count}
             # admin 统一为普通用户
             try:
                 self._execute_sql(cursor, "UPDATE users SET is_admin = 0 WHERE username = 'admin'")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"重置admin用户管理员标记失败: {e}")
             self._execute_sql(cursor, "SELECT id FROM users WHERE username = ?", (manager_name,))
             if cursor.fetchone():
                 # manager 已存在，确保其管理员身份
@@ -2348,8 +2348,8 @@ Cookie数量: {cookie_count}
             # 如果迁移失败，尝试回滚
             try:
                 cursor.execute('DROP TABLE IF EXISTS keywords_temp')
-            except:
-                pass
+            except Exception as e:
+                logger.warning(f"回滚清理keywords_temp表失败: {e}")
             raise
 
     def close(self):
@@ -6933,8 +6933,8 @@ Cookie数量: {cookie_count}
             logger.error(f"批量保存商品信息失败: {e}")
             try:
                 cursor.execute('ROLLBACK')
-            except:
-                pass
+            except Exception as e:
+                logger.warning(f"批量保存商品信息回滚失败: {e}")
             return success_count
 
     def batch_update_item_title_price(self, items_data: list) -> int:
@@ -7000,8 +7000,8 @@ Cookie数量: {cookie_count}
             logger.error(f"批量更新商品标题和价格失败: {e}")
             try:
                 cursor.execute('ROLLBACK')
-            except:
-                pass
+            except Exception as e:
+                logger.warning(f"批量更新商品标题和价格回滚失败: {e}")
             return success_count
 
     def delete_item_info(self, cookie_id: str, item_id: str) -> bool:
@@ -7078,8 +7078,8 @@ Cookie数量: {cookie_count}
             logger.error(f"批量删除商品信息失败: {e}")
             try:
                 cursor.execute('ROLLBACK')
-            except:
-                pass
+            except Exception as e:
+                logger.warning(f"批量删除商品信息回滚失败: {e}")
             return success_count
 
     # ==================== 用户设置管理方法 ====================

@@ -3074,8 +3074,8 @@ class XianyuLive:
                                 return 1  # 订单消息 - 高优先级
                             if 'message' in data_str or 'chat' in data_str:
                                 return 2  # 聊天消息 - 中优先级
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"【{self.cookie_id}】解析消息优先级失败: {self._safe_str(e)}")
                 
                 # ACK确认消息
                 if message_data.get("code") == 200:
@@ -9190,8 +9190,8 @@ class XianyuLive:
                     try:
                         os.remove(test_image_path)
                         logger.debug(f"【{self.cookie_id}】已删除测试图片")
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"【{self.cookie_id}】删除测试图片失败: {self._safe_str(e)}")
                         
         except Exception as e:
             error_str = self._safe_str(e)
@@ -10923,8 +10923,8 @@ class XianyuLive:
                     except Exception:
                         try:
                             server.close()
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"【{self.cookie_id}】关闭本地server失败: {self._safe_str(e)}")
 
         except smtplib.SMTPAuthenticationError:
             # 认证错误已在上面处理，这里不再重复记录
@@ -11651,12 +11651,12 @@ class XianyuLive:
                         if spec_name_2 and spec_value_2:
                             logger.info(f"【{self.cookie_id}】📋 规格2名称: {spec_name_2}")
                             logger.info(f"【{self.cookie_id}】📝 规格2值: {spec_value_2}")
-                            print(f"🛍️ 【{self.cookie_id}】订单 {order_id} 规格信息: {spec_name} -> {spec_value}, {spec_name_2} -> {spec_value_2}")
+                            logger.info(f"🛍️ 【{self.cookie_id}】订单 {order_id} 规格信息: {spec_name} -> {spec_value}, {spec_name_2} -> {spec_value_2}")
                         else:
-                            print(f"🛍️ 【{self.cookie_id}】订单 {order_id} 规格信息: {spec_name} -> {spec_value}")
+                            logger.info(f"🛍️ 【{self.cookie_id}】订单 {order_id} 规格信息: {spec_name} -> {spec_value}")
                     else:
                         logger.warning(f"【{self.cookie_id}】未获取到有效的规格信息")
-                        print(f"⚠️ 【{self.cookie_id}】订单 {order_id} 规格信息获取失败")
+                        logger.info(f"⚠️ 【{self.cookie_id}】订单 {order_id} 规格信息获取失败")
 
                     if amount:
                         logger.info(f"【{self.cookie_id}】💰 订单金额: {amount} (source={amount_source})")
@@ -11835,7 +11835,7 @@ class XianyuLive:
 
                             if success:
                                 logger.info(f"【{self.cookie_id}】订单信息已保存到数据库: {order_id}")
-                                print(f"💾 【{self.cookie_id}】订单 {order_id} 信息已保存到数据库")
+                                logger.info(f"💾 【{self.cookie_id}】订单 {order_id} 信息已保存到数据库")
                             else:
                                 logger.warning(f"【{self.cookie_id}】订单信息保存失败: {order_id}")
 
@@ -11867,18 +11867,18 @@ class XianyuLive:
 
                 try:
                     order_spec_mode_value = _get_order_spec_mode()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"【{self.cookie_id}】获取订单规格模式失败: {self._safe_str(e)}")
 
                 try:
                     rule_spec_mode_value = _get_rule_spec_mode(matched_rule) if matched_rule else None
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"【{self.cookie_id}】获取规则规格模式失败: {self._safe_str(e)}")
 
                 try:
                     item_config_mode_value = 'spec_enabled' if item_config_multi_spec else 'no_spec'
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"【{self.cookie_id}】获取商品规格模式失败: {self._safe_str(e)}")
 
                 if include_meta:
                     return {
@@ -13398,8 +13398,8 @@ class XianyuLive:
             if 'dt' in headers:
                 ack["headers"]["dt"] = headers["dt"]
             await ws.send(json.dumps(ack))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"【{self.cookie_id}】发送WebSocket确认失败: {self._safe_str(e)}")
 
     def _resolve_lwp_response_waiter(self, message_data: dict) -> bool:
         try:
@@ -13504,8 +13504,8 @@ class XianyuLive:
                     if 'dt' in message.get("headers", {}):
                         ack["headers"]["dt"] = message["headers"]["dt"]
                     await websocket.send(json.dumps(ack))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"【{self.cookie_id}】发送WebSocket确认失败: {self._safe_str(e)}")
                 
                 try:
                     if message.get('lwp') == "/s/vulcan":
@@ -13678,8 +13678,8 @@ class XianyuLive:
                 pics = content_obj.get('image', {}).get('pics', [])
                 if pics:
                     return pics[0].get('url', '')
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"【{self.cookie_id}】解析商品图片URL失败: {self._safe_str(e)}")
         return None
 
     def _extract_rich_fields_from_message(self, message: dict, raw_content_type: int):
@@ -14622,8 +14622,8 @@ class XianyuLive:
                         try:
                             if hasattr(browser, '_connection'):
                                 browser._connection = None
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"【{self.cookie_id}】清理browser连接失败: {self._safe_str(e)}")
                         _force_kill_chromium(browser_pid)
                     except Exception as e:
                         logger.warning(f"【{target_cookie_id}】关闭浏览器时出错: {self._safe_str(e)}")
@@ -14642,8 +14642,8 @@ class XianyuLive:
                             # 取消可能正在运行的Playwright任务
                             if hasattr(playwright, '_transport'):
                                 playwright._transport = None
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"【{self.cookie_id}】清理playwright连接失败: {self._safe_str(e)}")
                     except Exception as e:
                         logger.warning(f"【{target_cookie_id}】关闭Playwright时出错: {self._safe_str(e)}")
             except Exception as cleanup_e:
@@ -15260,8 +15260,8 @@ class XianyuLive:
                 if browser or playwright:
                     try:
                         await self._force_close_resources(browser, playwright, browser_pid)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"【{self.cookie_id}】强制关闭资源失败: {self._safe_str(e)}")
 
     async def _async_close_browser(self, browser, playwright, browser_pid=None):
         """异步关闭：正常关闭，超时后强制关闭"""
@@ -15298,8 +15298,8 @@ class XianyuLive:
                         # 尝试强制关闭
                         if hasattr(browser, '_connection'):
                             browser._connection.dispose()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"【{self.cookie_id}】强制关闭browser连接失败: {self._safe_str(e)}")
                 except Exception as e:
                     logger.warning(f"【{self.cookie_id}】关闭浏览器时出错: {e}")
             
@@ -15316,8 +15316,8 @@ class XianyuLive:
                     try:
                         if hasattr(playwright, '_connection'):
                             playwright._connection.dispose()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"【{self.cookie_id}】强制关闭playwright连接失败: {self._safe_str(e)}")
                 except Exception as e:
                     logger.warning(f"【{self.cookie_id}】关闭Playwright时出错: {e}")
                 
@@ -15353,8 +15353,8 @@ class XianyuLive:
                                 browser._connection.dispose()
                             elif playwright and hasattr(playwright, '_connection'):
                                 playwright._connection.dispose()
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"【{self.cookie_id}】关闭playwright连接失败: {self._safe_str(e)}")
                 
                 logger.info(f"【{self.cookie_id}】强制关闭完成")
             else:
@@ -16168,14 +16168,14 @@ class XianyuLive:
                     logger.warning(f"【{self.cookie_id}】chat_id {chat_id} 的防抖任务被取消")
                     try:
                         await self._release_message_reply(message_id, reason="防抖任务取消")
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"【{self.cookie_id}】释放防抖回复失败: {self._safe_str(e)}")
                 except Exception as e:
                     logger.error(f"【{self.cookie_id}】处理防抖回复时发生错误: {self._safe_str(e)}")
                     try:
                         await self._release_message_reply(message_id, reason=f"防抖任务异常: {self._safe_str(e)}")
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"【{self.cookie_id}】释放防抖回复(异常)失败: {self._safe_str(e)}")
                     # 确保从防抖任务中移除
                     async with self.message_debounce_lock:
                         if chat_id in self.message_debounce_tasks:
@@ -16466,8 +16466,8 @@ class XianyuLive:
                         logger.error(f"【{self.cookie_id}】[{msg_id}] Base64数据长度: {len(raw_data)}")
                         logger.error(f"【{self.cookie_id}】[{msg_id}] Base64前100字符: {raw_data[:100]}")
                         logger.error(f"【{self.cookie_id}】[{msg_id}] Base64后100字符: {raw_data[-100:]}")
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"【{self.cookie_id}】[{msg_id}] 记录Base64片段失败: {self._safe_str(e)}")
                 logger.error(f"【{self.cookie_id}】[{msg_id}] ⏹️ 消息处理结束（解密失败）")
                 return
 
@@ -16773,8 +16773,8 @@ class XianyuLive:
                             logger.info(f"【{self.cookie_id}】[{msg_id}] ⏹️ 处理结束（未启用自动发货）")
                             return
                     # 如果不是简化结构，继续走正常流程
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"【{self.cookie_id}】解析简化消息结构失败: {self._safe_str(e)}")
 
             # 判断是否为聊天消息
             if not self.is_chat_message(message):
@@ -16979,8 +16979,8 @@ class XianyuLive:
                                     message_6_3 = message_6.get('3', {})
                                     if isinstance(message_6_3, dict):
                                         content_type = message_6_3.get('4', 0)
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logger.debug(f"【{self.cookie_id}】解析消息content_type失败: {self._safe_str(e)}")
                             
                             # 检查bizTag是否包含系统消息标识
                             is_system_msg = False
@@ -16990,8 +16990,8 @@ class XianyuLive:
                                     biz_tag = message_10.get('bizTag', '')
                                     if biz_tag and ('SECURITY' in biz_tag or 'taskName' in biz_tag or 'taskId' in biz_tag):
                                         is_system_msg = True
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logger.debug(f"【{self.cookie_id}】解析消息bizTag失败: {self._safe_str(e)}")
                             
                             # 过滤非真实客户消息：
                             # 1. message['1']['7'] != 2 表示不是接收的消息
@@ -17324,8 +17324,8 @@ class XianyuLive:
                             card_message_6_3 = card_message_6.get('3', {})
                             if isinstance(card_message_6_3, dict):
                                 card_content_type = card_message_6_3.get('4', 0)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"【{self.cookie_id}】解析卡片content_type失败: {self._safe_str(e)}")
 
                     try:
                         card_message_10 = card_message_1.get('10', {}) if isinstance(card_message_1, dict) else {}
@@ -17333,8 +17333,8 @@ class XianyuLive:
                             biz_tag = card_message_10.get('bizTag', '')
                             if biz_tag and ('SECURITY' in biz_tag or 'taskName' in biz_tag or 'taskId' in biz_tag):
                                 card_is_system_biz = True
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"【{self.cookie_id}】解析卡片bizTag失败: {self._safe_str(e)}")
 
                     is_system_card_message = card_message_direction == 1 or card_content_type == 6 or card_is_system_biz
                     if not is_system_card_message:
@@ -17643,8 +17643,8 @@ class XianyuLive:
                                                 msg_preview = "[同步包]"
                                             elif "ack" in str(message_data["body"]).lower():
                                                 msg_preview = "[确认]"
-                                    except Exception:
-                                        pass
+                                    except Exception as e:
+                                        logger.debug(f"【{self.cookie_id}】解析消息预览失败: {self._safe_str(e)}")
                                     
                                     logger.info(f"【{self.cookie_id}】📨 收到消息 [ID:{msg_id}] {msg_preview} {len(message) if message else 0}字节")
 
@@ -17741,8 +17741,8 @@ class XianyuLive:
                                     await asyncio.wait_for(self.ws.close(), timeout=2.0)
                                 except (asyncio.TimeoutError, Exception):
                                     pass
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"【{self.cookie_id}】WebSocket消息接收循环异常: {self._safe_str(e)}")
                         finally:
                             self.ws = None
                             logger.info(f"【{self.cookie_id}】WebSocket引用已清理")
@@ -17826,8 +17826,8 @@ class XianyuLive:
                         # 强制刷新日志缓冲区，确保日志被写入
                         try:
                             sys.stdout.flush()
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"【{self.cookie_id}】刷新stdout失败: {self._safe_str(e)}")
                         
                         # 使用可中断的sleep，每5秒输出一次心跳日志
                         chunk_size = 5.0  # 每5秒输出一次日志
@@ -17845,8 +17845,8 @@ class XianyuLive:
                                     # 定期刷新日志
                                     try:
                                         sys.stdout.flush()
-                                    except Exception:
-                                        pass
+                                    except Exception as e:
+                                        logger.debug(f"【{self.cookie_id}】刷新stdout失败: {self._safe_str(e)}")
                             except asyncio.CancelledError:
                                 logger.warning(f"【{self.cookie_id}】等待期间收到取消信号")
                                 raise
@@ -17862,8 +17862,8 @@ class XianyuLive:
                         # 再次强制刷新日志
                         try:
                             sys.stdout.flush()
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"【{self.cookie_id}】刷新stdout失败: {self._safe_str(e)}")
                         
                     except Exception as cleanup_error:
                         logger.error(f"【{self.cookie_id}】清理过程出错: {self._safe_str(cleanup_error)}")
@@ -18068,28 +18068,28 @@ class XianyuLive:
                     logger.info(f"成功获取到 {len(items_list)} 个商品")
 
                     # 打印商品详细信息到控制台
-                    print("\n" + "="*80)
-                    print(f"📦 账号 {self.myid} 的商品列表 (第{page_number}页，{len(items_list)} 个商品)")
-                    print("="*80)
+                    logger.info("\n" + "="*80)
+                    logger.info(f"📦 账号 {self.myid} 的商品列表 (第{page_number}页，{len(items_list)} 个商品)")
+                    logger.info("="*80)
 
                     for i, item in enumerate(items_list, 1):
-                        print(f"\n🔸 商品 {i}:")
-                        print(f"   商品ID: {item.get('id', 'N/A')}")
-                        print(f"   商品标题: {item.get('title', 'N/A')}")
-                        print(f"   价格: {item.get('price_text', 'N/A')}")
-                        print(f"   分类ID: {item.get('category_id', 'N/A')}")
-                        print(f"   商品状态: {item.get('item_status', 'N/A')}")
-                        print(f"   拍卖类型: {item.get('auction_type', 'N/A')}")
-                        print(f"   详情链接: {item.get('detail_url', 'N/A')}")
+                        logger.info(f"\n🔸 商品 {i}:")
+                        logger.info(f"   商品ID: {item.get('id', 'N/A')}")
+                        logger.info(f"   商品标题: {item.get('title', 'N/A')}")
+                        logger.info(f"   价格: {item.get('price_text', 'N/A')}")
+                        logger.info(f"   分类ID: {item.get('category_id', 'N/A')}")
+                        logger.info(f"   商品状态: {item.get('item_status', 'N/A')}")
+                        logger.info(f"   拍卖类型: {item.get('auction_type', 'N/A')}")
+                        logger.info(f"   详情链接: {item.get('detail_url', 'N/A')}")
                         if item.get('pic_info'):
                             pic_info = item['pic_info']
-                            print(f"   图片信息: {pic_info.get('width', 'N/A')}x{pic_info.get('height', 'N/A')}")
-                            print(f"   图片链接: {pic_info.get('picUrl', 'N/A')}")
-                        print(f"   完整信息: {json.dumps(item, ensure_ascii=False, indent=2)}")
+                            logger.info(f"   图片信息: {pic_info.get('width', 'N/A')}x{pic_info.get('height', 'N/A')}")
+                            logger.info(f"   图片链接: {pic_info.get('picUrl', 'N/A')}")
+                        logger.info(f"   完整信息: {json.dumps(item, ensure_ascii=False, indent=2)}")
 
-                    print("\n" + "="*80)
-                    print("✅ 商品列表获取完成")
-                    print("="*80)
+                    logger.info("\n" + "="*80)
+                    logger.info("✅ 商品列表获取完成")
+                    logger.info("="*80)
 
                     # 自动保存商品信息到数据库
                     if items_list:
