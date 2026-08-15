@@ -12,11 +12,14 @@ if (-not (Test-Path $python)) {
     if (-not $python) { throw "Python not found" }
 }
 Write-Host "Using Python: $python"
-& $python -m pip install --upgrade pywebview pystray pyinstaller
+# 2>&1：PowerShell 5.1 会把原生命令 stderr 当 NativeCommandError，配合 $ErrorActionPreference='Stop' 会误杀脚本。
+# 这里把 stderr 并进输出流规避；真实失败由 $LASTEXITCODE 兜底。
+$null = & $python -m pip install --upgrade pywebview pystray pyinstaller 2>&1
+if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
 
 # 第一步：构建 ShangjiaService（onefile 模式，打包静态资源和配置）
 Write-Host "Building ShangjiaService (onefile)..."
-& $python -m PyInstaller --noconfirm --clean --distpath $dist ShangjiaService.spec
+& $python -m PyInstaller --noconfirm --clean --distpath $dist ShangjiaService.spec 2>&1
 if ($LASTEXITCODE -ne 0) { throw "ShangjiaService build failed" }
 $service = Join-Path $dist 'ShangjiaService.exe'
 if (-not (Test-Path $service)) {
@@ -26,7 +29,7 @@ if (-not (Test-Path $service)) {
 # 第二步：构建 ShangjiaTool（onedir 模式，嵌入 ShangjiaService.exe）
 Write-Host "Building ShangjiaTool (onedir)..."
 $env:SHANGJIA_SERVICE_EXE = $service
-& $python -m PyInstaller --noconfirm --clean --distpath $dist ShangjiaTool.spec
+& $python -m PyInstaller --noconfirm --clean --distpath $dist ShangjiaTool.spec 2>&1
 Remove-Item Env:SHANGJIA_SERVICE_EXE -ErrorAction SilentlyContinue
 if ($LASTEXITCODE -ne 0) { throw "ShangjiaTool build failed" }
 if (-not (Test-Path (Join-Path $dist 'ShangjiaTool\ShangjiaTool.exe'))) {
