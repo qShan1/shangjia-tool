@@ -102,3 +102,10 @@ static/control-tower-preview.html
 .serena/
 graphify-out/
 test_data/
+
+# ==================== 前端静态库（需提交，勿被上方 lib/ 误伤） ====================
+!static/lib/
+!static/lib/anime/
+!static/lib/hover/
+!static/lib/lenis/
+!static/lib/magic/
