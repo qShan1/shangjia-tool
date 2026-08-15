@@ -12835,6 +12835,96 @@ def get_all_ai_reply_settings(current_user: Dict[str, Any] = Depends(get_current
         raise HTTPException(status_code=500, detail=f"服务器错误: {str(e)}")
 
 
+# ---------- AI 会话 / 缓存管理 ----------
+
+@app.get("/ai/manage/stats")
+def get_ai_manage_stats(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """AI 会话/缓存统计。"""
+    try:
+        user_id = current_user['user_id']
+        from db_manager import db_manager
+        conversations = db_manager.get_ai_conversation_stats(user_id=user_id)
+        cache = db_manager.get_ai_cache_stats()
+        return {'success': True, 'conversations': conversations, 'cache': cache}
+    except Exception as e:
+        logger.error(f"获取AI管理统计失败: {e}")
+        raise HTTPException(status_code=500, detail=f"服务器错误: {str(e)}")
+
+
+@app.delete("/ai/manage/conversations/{target}")
+def clear_ai_conversations_target(target: str, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """清空 AI 会话。target 为 cookie_id 时清指定账号，为 'all' 时清当前用户全部。"""
+    try:
+        user_id = current_user['user_id']
+        from db_manager import db_manager
+        user_cookies = db_manager.get_all_cookies(user_id)
+        deleted = 0
+        if target == 'all':
+            for cid in user_cookies:
+                deleted += db_manager.clear_ai_conversations(cookie_id=cid)
+        else:
+            if target not in user_cookies:
+                raise HTTPException(status_code=403, detail="无权操作该Cookie")
+            deleted = db_manager.clear_ai_conversations(cookie_id=target)
+        return {'success': True, 'deleted': deleted}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"清空AI会话失败: {e}")
+        raise HTTPException(status_code=500, detail=f"服务器错误: {str(e)}")
+
+
+@app.delete("/ai/manage/item-cache")
+def clear_ai_item_cache(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """清空 AI 商品缓存。"""
+    try:
+        from db_manager import db_manager
+        deleted = db_manager.clear_ai_item_cache()
+        return {'success': True, 'deleted': deleted}
+    except Exception as e:
+        logger.error(f"清空AI缓存失败: {e}")
+        raise HTTPException(status_code=500, detail=f"服务器错误: {str(e)}")
+
+
+@app.get("/ai/manage/auto-cleanup")
+def get_ai_auto_cleanup(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """读取 AI 自动清理配置。"""
+    try:
+        from db_manager import db_manager
+        enabled = db_manager.get_system_setting('ai_auto_cleanup_enabled')
+        days = db_manager.get_system_setting('ai_auto_cleanup_days')
+        return {
+            'success': True,
+            'enabled': str(enabled).lower() == 'true',
+            'days': int(days) if days and str(days).isdigit() else 30,
+        }
+    except Exception as e:
+        logger.error(f"读取AI自动清理配置失败: {e}")
+        raise HTTPException(status_code=500, detail=f"服务器错误: {str(e)}")
+
+
+@app.put("/ai/manage/auto-cleanup")
+async def set_ai_auto_cleanup(request: Request, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """写入 AI 自动清理配置。body: {enabled: bool, days: int}"""
+    try:
+        body = {}
+        try:
+            body = await request.json() or {}
+        except Exception:
+            body = {}
+        from db_manager import db_manager
+        enabled = bool(body.get('enabled', False))
+        days = int(body.get('days', 30) or 30)
+        if days < 1 or days > 365:
+            days = 30
+        db_manager.set_system_setting('ai_auto_cleanup_enabled', 'true' if enabled else 'false', 'AI自动清理开关')
+        db_manager.set_system_setting('ai_auto_cleanup_days', str(days), 'AI自动清理保留天数')
+        return {'success': True, 'enabled': enabled, 'days': days}
+    except Exception as e:
+        logger.error(f"写入AI自动清理配置失败: {e}")
+        raise HTTPException(status_code=500, detail=f"服务器错误: {str(e)}")
+
+
 @app.get("/ai-config-presets")
 def list_ai_config_presets(current_user: Dict[str, Any] = Depends(get_current_user)):
     """获取当前用户的AI配置预设列表（无自定义预设时提供内置常用预设）"""

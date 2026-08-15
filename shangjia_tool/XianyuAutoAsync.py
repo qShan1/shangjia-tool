@@ -14029,6 +14029,17 @@ class XianyuLive:
                             except asyncio.CancelledError:
                                 logger.warning(f"【{self.cookie_id}】数据库清理被取消")
                                 raise
+                            # AI 自动清理：若开启，按配置天数清理 AI 会话/缓存（不依赖全局90天）
+                            try:
+                                _ai_enabled = str(db_manager.get_system_setting('ai_auto_cleanup_enabled') or '').lower() == 'true'
+                                if _ai_enabled:
+                                    _ai_days = int(db_manager.get_system_setting('ai_auto_cleanup_days') or 30)
+                                    _ai_stats = await asyncio.to_thread(db_manager.cleanup_ai_data, days=_ai_days)
+                                    logger.info(f"【{self.cookie_id}】AI自动清理完成(days={_ai_days}): {_ai_stats}")
+                            except asyncio.CancelledError:
+                                raise
+                            except Exception as _ai_e:
+                                logger.error(f"【{self.cookie_id}】AI自动清理失败: {_ai_e}")
                     except asyncio.CancelledError:
                         raise  # 重新抛出取消信号
                     except Exception as db_clean_e:

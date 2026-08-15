@@ -8909,6 +8909,98 @@ Cookie数量: {cookie_count}
                 self.conn.rollback()
                 return False
 
+    # ---------- AI 会话 / 缓存管理 ----------
+    def get_ai_conversation_stats(self, user_id: int = None) -> dict:
+        """AI 会话统计：总数 + 各账号数（可限定用户）。"""
+        try:
+            with self.lock:
+                cursor = self.conn.cursor()
+                stats = {'total': 0, 'by_cookie': {}}
+                if user_id is not None:
+                    cursor.execute(
+                        "SELECT c.id AS cookie_id, COUNT(v.id) AS cnt FROM ai_conversations v "
+                        "JOIN cookies c ON c.id = v.cookie_id WHERE c.user_id = ? "
+                        "GROUP BY c.id", (user_id,))
+                else:
+                    cursor.execute(
+                        "SELECT cookie_id, COUNT(id) AS cnt FROM ai_conversations GROUP BY cookie_id")
+                for row in cursor.fetchall():
+                    stats['by_cookie'][row[0]] = row[1]
+                    stats['total'] += row[1]
+                return stats
+        except Exception as e:
+            logger.error(f"获取AI会话统计失败: {e}")
+            return {'total': 0, 'by_cookie': {}}
+
+    def get_ai_cache_stats(self) -> dict:
+        """AI 商品缓存统计。"""
+        try:
+            with self.lock:
+                cursor = self.conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM ai_item_cache")
+                count = cursor.fetchone()[0] or 0
+                return {'count': count}
+        except Exception as e:
+            logger.error(f"获取AI缓存统计失败: {e}")
+            return {'count': 0}
+
+    def clear_ai_conversations(self, cookie_id: str = None) -> int:
+        """清空 AI 会话。cookie_id 为空则清全部，否则清指定账号。返回删除条数。"""
+        try:
+            with self.lock:
+                cursor = self.conn.cursor()
+                if cookie_id:
+                    cursor.execute("DELETE FROM ai_conversations WHERE cookie_id = ?", (cookie_id,))
+                else:
+                    cursor.execute("DELETE FROM ai_conversations")
+                self.conn.commit()
+                return cursor.rowcount
+        except Exception as e:
+            logger.error(f"清空AI会话失败: {e}")
+            self.conn.rollback()
+            return 0
+
+    def clear_ai_item_cache(self) -> int:
+        """清空 AI 商品缓存。返回删除条数。"""
+        try:
+            with self.lock:
+                cursor = self.conn.cursor()
+                cursor.execute("DELETE FROM ai_item_cache")
+                self.conn.commit()
+                return cursor.rowcount
+        except Exception as e:
+            logger.error(f"清空AI缓存失败: {e}")
+            self.conn.rollback()
+            return 0
+
+    def cleanup_ai_data(self, days: int = 30) -> dict:
+        """按配置天数清理 AI 会话与缓存（供自动清理使用）。"""
+        try:
+            with self.lock:
+                cursor = self.conn.cursor()
+                stats = {}
+                try:
+                    cursor.execute(
+                        "DELETE FROM ai_conversations WHERE created_at < datetime('now', '-' || ? || ' days')",
+                        (days,))
+                    stats['ai_conversations'] = cursor.rowcount
+                except Exception as e:
+                    logger.warning(f"清理AI会话失败: {e}")
+                    stats['ai_conversations'] = 0
+                try:
+                    cursor.execute(
+                        "DELETE FROM ai_item_cache WHERE last_updated < datetime('now', '-' || ? || ' days')",
+                        (days,))
+                    stats['ai_item_cache'] = cursor.rowcount
+                except Exception as e:
+                    logger.warning(f"清理AI缓存失败: {e}")
+                    stats['ai_item_cache'] = 0
+                self.conn.commit()
+                return stats
+        except Exception as e:
+            logger.error(f"AI数据清理失败: {e}")
+            return {'error': str(e)}
+
     def upgrade_keywords_table_for_image_support(self, cursor):
         """升级keywords表以支持图片关键词"""
         try:

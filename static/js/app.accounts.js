@@ -1957,6 +1957,8 @@ async function loadAISettingsPage() {
         }
         // 侧边栏进入时也加载预设列表，避免启用后预设下拉为空
         try { await loadAIPresets(); } catch (e) { console.warn('加载AI预设失败:', e); }
+        // AI 管理 tab 的会话/缓存统计与自动清理配置
+        try { await loadAiManage(); } catch (e) { console.warn('加载AI管理失败:', e); }
     } catch (error) {
         console.error('加载AI设置页面失败:', error);
     }
@@ -2288,6 +2290,84 @@ async function testAIReply() {
     showToast('测试AI回复失败', 'danger');
     } finally {
     if (testBtn) { testBtn.disabled = false; testBtn.textContent = '测试回复'; }
+    }
+}
+
+// ---------- AI 管理（会话/缓存/自动清理） ----------
+
+async function loadAiManage() {
+    try {
+        const stats = await fetchJSON(`${apiBase}/ai/manage/stats`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (stats?.success) {
+            const total = document.getElementById('aiConvTotal');
+            if (total) total.textContent = stats.conversations?.total ?? 0;
+            const cache = document.getElementById('aiCacheCount');
+            if (cache) cache.textContent = stats.cache?.count ?? 0;
+        }
+    } catch (error) {
+        console.error('加载AI管理统计失败:', error);
+    }
+    // 加载自动清理配置
+    try {
+        const cfg = await fetchJSON(`${apiBase}/ai/manage/auto-cleanup`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (cfg?.success) {
+            const enabled = document.getElementById('aiAutoCleanupEnabled');
+            if (enabled) enabled.checked = cfg.enabled;
+            const days = document.getElementById('aiAutoCleanupDays');
+            if (days) days.value = cfg.days;
+        }
+    } catch (error) {
+        console.error('加载AI自动清理配置失败:', error);
+    }
+}
+
+async function clearAiConversations() {
+    if (!await uiConfirm('确定清空全部 AI 会话记录吗？此操作不可恢复。')) return;
+    try {
+        const result = await fetchJSON(`${apiBase}/ai/manage/conversations/all`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        showToast(result?.success ? `已清空 ${result.deleted ?? 0} 条会话` : '清空会话失败', result?.success ? 'success' : 'danger');
+        loadAiManage();
+    } catch (error) {
+        console.error('清空AI会话失败:', error);
+        showToast('清空AI会话失败', 'danger');
+    }
+}
+
+async function clearAiItemCache() {
+    if (!await uiConfirm('确定清空全部 AI 商品缓存吗？此操作不可恢复。')) return;
+    try {
+        const result = await fetchJSON(`${apiBase}/ai/manage/item-cache`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        showToast(result?.success ? `已清空 ${result.deleted ?? 0} 条缓存` : '清空缓存失败', result?.success ? 'success' : 'danger');
+        loadAiManage();
+    } catch (error) {
+        console.error('清空AI缓存失败:', error);
+        showToast('清空AI缓存失败', 'danger');
+    }
+}
+
+async function saveAiAutoCleanup() {
+    const enabled = !!document.getElementById('aiAutoCleanupEnabled')?.checked;
+    const days = Number(document.getElementById('aiAutoCleanupDays')?.value || 30);
+    try {
+        const result = await fetchJSON(`${apiBase}/ai/manage/auto-cleanup`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled, days })
+        });
+        showToast(result?.success ? '自动清理设置已保存' : '保存失败', result?.success ? 'success' : 'danger');
+    } catch (error) {
+        console.error('保存AI自动清理设置失败:', error);
+        showToast('保存AI自动清理设置失败', 'danger');
     }
 }
 
